@@ -1,14 +1,19 @@
 # Technical Preferences
 
-<!-- Populated by /setup-engine. Updated as the user makes decisions throughout development. -->
+<!-- Populated by /setup-engine (game engines) or /setup-web-stack (browser games). -->
+<!-- Updated as the user makes decisions throughout development. -->
 <!-- All agents reference this file for project-specific standards and conventions. -->
 
 ## Engine & Language
 
-- **Engine**: [TO BE CONFIGURED — run /setup-engine]
+- **Engine**: [TO BE CONFIGURED — run /setup-engine for Godot/Unity/Unreal, or /setup-web-stack for Web]
 - **Language**: [TO BE CONFIGURED]
 - **Rendering**: [TO BE CONFIGURED]
 - **Physics**: [TO BE CONFIGURED]
+
+> Supported engine profiles: **Godot 4**, **Unity**, **Unreal Engine 5**, **Web** (TypeScript full-stack monorepo).
+> When Engine = Web, the "engine" refers to the framework + runtime
+> combination — see `docs/engine-reference/web/stack-overview.md`.
 
 ## Input & Platform
 

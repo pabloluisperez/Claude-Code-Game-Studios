@@ -110,6 +110,21 @@ ls -t Saved/Logs/ 2>/dev/null | grep -i "test\|automation" | head -5 \
 If no matching log found: "UE automation tests must be run via the Session
 Frontend or CI pipeline. Please confirm test status manually."
 
+**Web:**
+```bash
+# Vitest unit + integration (fast — runs in-process, no browser needed)
+pnpm test:unit 2>&1
+```
+If unit tests pass, optionally run end-to-end:
+```bash
+# Playwright e2e (slower — requires dev server + browsers installed)
+pnpm test:e2e 2>&1
+```
+Parse Vitest output for `Tests  N passed | M failed` and Playwright for
+`N passed (Xs)` / `N failed`. If `pnpm` is not on PATH, note: "pnpm not
+found — Web projects require pnpm 9+. Confirm test results from CI or
+local environment."
+
 **Unknown engine / not configured:**
 "Engine not configured in `.claude/docs/technical-preferences.md`. Run
 `/setup-engine` to specify the engine, then re-run `/smoke-check`."

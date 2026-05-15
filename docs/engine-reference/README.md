@@ -2,14 +2,26 @@
 
 This directory contains curated, version-pinned documentation snapshots for the
 game engine(s) used in this project. These files exist because **LLM knowledge
-has a cutoff date** and game engines update frequently.
+has a cutoff date** and game engines (and web frameworks) update frequently.
+
+## Supported Engine Profiles
+
+| Profile | Directory | Type |
+|---------|-----------|------|
+| Godot 4 | `godot/` | Native game engine |
+| Unity | `unity/` | Native game engine |
+| Unreal Engine 5 | `unreal/` | Native game engine |
+| **Web** | `web/` | **TypeScript full-stack profile (SvelteKit + Hono + Drizzle + Socket.IO)** |
+
+Web is a peer of the others: its "engine" is the framework + runtime
+combination, version-pinned the same way.
 
 ## Why This Exists
 
-Claude's training data has a knowledge cutoff (currently May 2025). Game engines
-like Godot, Unity, and Unreal ship updates that introduce breaking API changes,
-new features, and deprecated patterns. Without these reference files, agents will
-suggest outdated code.
+LLM training data has a knowledge cutoff. Game engines like Godot, Unity, and
+Unreal — and frontend/backend frameworks like SvelteKit, Hono, and Drizzle —
+ship updates that introduce breaking API changes, new features, and deprecated
+patterns. Without these reference files, agents will suggest outdated code.
 
 ## Structure
 

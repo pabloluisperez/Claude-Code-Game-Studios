@@ -9,12 +9,22 @@ model: sonnet
 
 When this skill is invoked:
 
+> **For browser-based games (Web profile)**: this skill pins `Engine: Web` in
+> `CLAUDE.md` and points the `@` import to `docs/engine-reference/web/VERSION.md`,
+> but does NOT scaffold the SvelteKit + Hono monorepo. After picking Web here,
+> run **`/setup-web-stack`** to actually create `apps/web`, `apps/api`,
+> `packages/shared`, `packages/db`, Docker Compose for Postgres + Redis, and
+> initial session-auth wiring. `/setup-engine` is primarily for native game
+> engines (Godot / Unity / Unreal); Web is a peer profile with its own
+> dedicated scaffolding skill.
+
 ## 1. Parse Arguments
 
-Four modes:
+Five modes:
 
 - **Full spec**: `/setup-engine godot 4.6` — engine and version provided
 - **Engine only**: `/setup-engine unity` — engine provided, version will be looked up
+- **Web profile**: `/setup-engine web` — pins `Engine: Web`, sets the `@` import to `docs/engine-reference/web/VERSION.md`, then directs the user to run `/setup-web-stack` for scaffolding
 - **No args**: `/setup-engine` — fully guided mode (engine recommendation + version)
 - **Refresh**: `/setup-engine refresh` — update reference docs (see Section 10)
 - **Upgrade**: `/setup-engine upgrade [old-version] [new-version]` — migrate to a new engine version (see Section 11)
@@ -37,7 +47,7 @@ If no engine is specified, run an interactive engine selection process:
 
 **Question 1 — Prior experience** (ask this first, always, via `AskUserQuestion`):
 - Prompt: "Have you worked in any of these engines before?"
-- Options: `Godot` / `Unity` / `Unreal Engine 5` / `Multiple — I'll explain` / `None of them`
+- Options: `Godot` / `Unity` / `Unreal Engine 5` / `Web (browser-based, TypeScript)` / `Multiple — I'll explain` / `None of them`
 - If they pick a specific engine → recommend that engine. Prior experience outweighs all other factors. Confirm with them and skip the matrix.
 - If "None" or "Multiple" → continue to the questions below.
 
@@ -49,7 +59,7 @@ If no engine is specified, run an interactive engine selection process:
 - Platform rules that feed directly into the recommendation:
   - Mobile → Unity strongly preferred; Unreal is a poor fit; Godot is viable for simple mobile
   - Console → Unity or Unreal; Godot console support requires third-party publishers or significant extra work
-  - Web → Godot exports cleanly to web; Unity WebGL is functional; Unreal has poor web support
+  - Web → Two paths: (a) For browser-NATIVE games (management sims, social, turn-based, idle, card — the typical "web game"), choose the **Web profile** and run `/setup-web-stack` (SvelteKit + Hono + Drizzle + Socket.IO). (b) For browser ports of action/arcade games where a native engine is the runtime, Godot WebGL exports cleanly; Unity WebGL is functional; Unreal has poor web support.
   - PC only → all engines viable; other factors decide
   - Multiple → Unity is the most portable across PC/mobile/console
 
@@ -83,6 +93,12 @@ Do NOT use a simple scoring matrix that eliminates engines. Instead, reason thro
 - Licensing reality: 5% royalty only applies AFTER $1M gross revenue per title. For a first game or any game that doesn't reach $1M, it costs nothing. This threshold is high enough that most indie developers will never pay it.
 - Best fit: AAA-quality 3D; large open-world games; photorealistic visuals; developers with C++ experience or willing to use Blueprint; games targeting high-end PC/console where visual fidelity is a core selling point
 
+**Web (TypeScript full-stack profile)**
+- Genuine strengths: Browser-native — zero install, instant updates, easy social/multiplayer via WebSockets (Socket.IO); lowest friction for UI-heavy and management-style games; full-stack TypeScript so types are shared client↔server; modular monolith backend is trivial to extend; best fit for AI-assisted development (one language across the stack)
+- Real limitations: Not for action games requiring deterministic <50ms input loops; no native console/mobile distribution (PWA only); requires a server (operational hosting cost); browser security model limits some patterns
+- Licensing reality: Entirely open-source stack (MIT/BSD across SvelteKit, Hono, Drizzle, Socket.IO, BullMQ, PixiJS); zero royalties; only operational hosting costs
+- Best fit: Management sims (PC-Fútbol-style manager games), idle / incremental, card games, turn-based strategy, social games, browser-based MMOs (BBMMO style — hundreds-to-thousands concurrent per shard), narrative / visual novels with branching, deck builders, any browser-only commercial release
+
 **Genre-specific guidance** (factor this into the recommendation):
 - 2D any style → Godot strongly preferred
 - 3D stylized / atmospheric / contained world → Godot viable, Unity solid alternative
@@ -94,6 +110,11 @@ Do NOT use a simple scoring matrix that eliminates engines. Instead, reason thro
 - Action RPG / Soulslike → Unity or Unreal for 3D; community support and assets matter here
 - Platformer 2D → Godot
 - Strategy / top-down / RTS → Godot or Unity depending on 2D vs 3D
+- Management / tycoon / manager-style → **Web** (SvelteKit + Hono) strongly preferred — UI-heavy, sim-driven, often social
+- Idle / incremental → **Web**
+- Card game / deck builder → **Web**; Godot 2D if heavy animation
+- Browser-native MMO / persistent social game → **Web** (only realistic option)
+- Visual novel / narrative-only browser → **Web**; Godot if rich audio/cinematics required
 
 **Recommendation format:**
 1. Show a comparison table with the user's specific factors as rows
@@ -167,6 +188,31 @@ Update the Technology Stack section, replacing the `[CHOOSE]` placeholders with 
 - **Build System**: Unreal Build Tool (UBT)
 - **Asset Pipeline**: Unreal Content Pipeline
 ```
+
+**For Web:**
+```markdown
+- **Engine / Runtime**: Web (TypeScript full-stack monorepo)
+- **Language**: TypeScript 5.4+ (strict)
+- **Frontend**: SvelteKit 2 + Svelte 5 (runes) + Tailwind + DaisyUI
+- **Backend**: Hono 4 + Socket.IO 4 + PostgreSQL 16 (Drizzle) + Redis 7 (BullMQ)
+- **Build System**: Vite 5 (via SvelteKit) + Turbo 2 (monorepo orchestrator)
+- **Asset Pipeline**: Vite asset imports; PixiJS 8 for canvas where needed
+```
+
+**Web fast-path**: After updating CLAUDE.md for the Web profile, the rest of
+the normal `/setup-engine` flow is replaced by `/setup-web-stack`:
+- Update the `@` import in CLAUDE.md to `docs/engine-reference/web/VERSION.md`
+  (the Web reference docs already exist in the template; they do NOT need to
+  be regenerated via WebSearch)
+- Skip Section 5 (Naming Conventions / Specialists Routing — they are
+  documented below for completeness, but `/setup-web-stack` writes them to
+  `technical-preferences.md` itself)
+- Skip Section 6 (Knowledge Gap) — already documented in
+  `docs/engine-reference/web/VERSION.md`
+- Skip Section 7 (Populate Engine Reference Docs) — already done
+- Tell the user: "Engine pinned to **Web**. Run **`/setup-web-stack`** next to
+  scaffold the monorepo (`apps/web`, `apps/api`, `packages/shared`,
+  `packages/db`, Docker Compose, initial auth, example domain module)."
 
 ---
 
@@ -290,6 +336,30 @@ Also populate the `## Engine Specialists` section in `technical-preferences.md` 
 | Native extension / plugin files (Plugin .uplugin, modules) | unreal-specialist |
 | Blueprint graphs (.uasset BP classes) | ue-blueprint-specialist |
 | General architecture review | unreal-specialist |
+```
+
+**For Web:**
+```markdown
+## Engine Specialists
+- **Primary**: web-specialist
+- **Frontend Specialist**: web-frontend-specialist (Svelte 5 / SvelteKit 2 / Tailwind / PixiJS)
+- **Backend Specialist**: web-backend-specialist (Hono / Drizzle / sessions / BullMQ)
+- **Realtime Specialist**: realtime-multiplayer-specialist (Socket.IO rooms / sync / reconnection)
+- **Additional Specialists**: technical-artist (PixiJS shaders / canvas effects), security-engineer (anti-cheat / data validation)
+- **Routing Notes**: Invoke `web-specialist` for cross-cutting architecture decisions (where logic lives in the monorepo, HTTP vs Socket.IO). Invoke `web-frontend-specialist` for any code in `apps/web/`. Invoke `web-backend-specialist` for any code in `apps/api/` or `packages/db/`. Invoke `realtime-multiplayer-specialist` for all Socket.IO topology and sync code.
+
+### File Extension Routing
+
+| File Extension / Type | Specialist to Spawn |
+|-----------------------|---------------------|
+| Frontend code (`apps/web/**/*.ts`, `*.svelte`) | web-frontend-specialist |
+| Backend code (`apps/api/**/*.ts`) | web-backend-specialist |
+| Shared sim / types / schemas (`packages/shared/**`) | web-backend-specialist (default) or web-frontend-specialist if UI-coupled |
+| DB schema / migrations (`packages/db/**`) | web-backend-specialist |
+| Socket.IO server (`apps/api/src/socket/**`) | realtime-multiplayer-specialist |
+| Socket.IO client (`apps/web/src/lib/sockets/**`) | realtime-multiplayer-specialist |
+| Build / monorepo config (`turbo.json`, `pnpm-workspace.yaml`, `Dockerfile*`) | tools-programmer (with web-specialist consult) |
+| General architecture review | web-specialist |
 ```
 
 ### Collaborative Step

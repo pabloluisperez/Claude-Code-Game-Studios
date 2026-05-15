@@ -165,6 +165,13 @@ engine risk.
 | Godot 4 | `godot-specialist`, `godot-gdscript-specialist`, `godot-shader-specialist` |
 | Unity | `unity-specialist`, `unity-ui-specialist`, `unity-shader-specialist` |
 | Unreal Engine | `unreal-specialist`, `ue-gas-specialist`, `ue-blueprint-specialist`, `ue-umg-specialist`, `ue-replication-specialist` |
+| Web | `web-specialist`, `web-frontend-specialist`, `web-backend-specialist`, `realtime-multiplayer-specialist` |
+
+**For Web projects**, the primary agents coordinate with the web specialists as their engine secondary:
+- `ui-programmer` ↔ `web-frontend-specialist` (Svelte 5 / SvelteKit 2 / Tailwind / PixiJS)
+- `engine-programmer` ↔ `web-backend-specialist` (Hono / Drizzle / sessions / BullMQ)
+- `network-programmer` ↔ `realtime-multiplayer-specialist` (Socket.IO topology / state sync / reconnection)
+- Cross-cutting architecture ↔ `web-specialist` (the Web umbrella, peer of `godot-specialist`)
 
 **When engine risk is HIGH** (from the ADR or VERSION.md): always spawn the engine
 specialist, even for non-engine-facing stories. High risk means the ADR records

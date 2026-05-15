@@ -61,8 +61,11 @@ For each content type found in Phase 1, scan the relevant directories to count
 what has been implemented. Use Glob and Grep to locate files.
 
 **Levels / Areas / Maps:**
-- Glob `assets/**/*.tscn`, `assets/**/*.unity`, `assets/**/*.umap`
+- Glob `assets/**/*.tscn`, `assets/**/*.unity`, `assets/**/*.umap` (Godot / Unity / Unreal)
 - Glob `src/**/*.tscn`, `src/**/*.unity`
+- For **Web** projects: glob `apps/web/src/routes/**/+page.svelte` for player-facing
+  screens, and `packages/db/src/schema/**` + content seed files (`packages/db/src/seed/**`)
+  for world data. Levels and worlds in web games are typically database rows + a route to view them.
 - Look for scene files in subdirectories named `levels/`, `areas/`, `maps/`,
   `worlds/`, `stages/`
 - Count unique files that appear to be level/scene definitions (not UI scenes)

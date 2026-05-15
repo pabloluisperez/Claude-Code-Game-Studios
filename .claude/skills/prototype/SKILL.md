@@ -155,6 +155,13 @@ build can reach real players globally in minutes. Use this actively:
 - **Game dev Discord servers** (GMTK, Brackeys, GameDev.tv) — members test each
   other's prototypes routinely; an HTML file is the easiest possible ask.
 
+**For Web engine projects**: if the project's engine is already set to `Web`
+(SvelteKit/Hono monorepo via `/setup-web-stack`), the HTML path can extend
+the existing scaffold rather than write a standalone file. Coordinate with
+`web-specialist`: use a throwaway route under `apps/web/src/routes/_prototype/`
+on a dedicated branch. You keep the prototype's "throwaway" character while
+reusing the auth, types, and component plumbing already in place.
+
 ---
 
 ### Path: Engine (engine project)

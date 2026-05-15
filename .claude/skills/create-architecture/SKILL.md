@@ -177,10 +177,14 @@ Format as a table per layer, then as an ASCII dependency diagram.
 relevant module reference doc. If an API is post-cutoff, flag it:
 
 ```
-⚠️  [ClassName.method()] — Godot 4.6 (post-cutoff, HIGH risk)
-    Verified against: docs/engine-reference/godot/modules/[domain].md
+⚠️  [ClassName.method()] — [Engine] [Version] (post-cutoff, HIGH risk)
+    Verified against: docs/engine-reference/[engine]/modules/[domain].md
     Behaviour confirmed: [yes / NEEDS VERIFICATION]
 ```
+
+Substitute `[engine]` with the configured engine directory: `godot`, `unity`,
+`unreal`, or `web`. For Web projects, "engine APIs" includes framework APIs
+(SvelteKit, Hono, Drizzle, Socket.IO) and their post-cutoff changes.
 
 Get user approval on the ownership map before writing.
 

@@ -202,6 +202,37 @@ Test class naming: F[SystemName]Test
 Test category naming: "MyGame.[System].[Feature]"
 ```
 
+#### Web (`Engine: Web`)
+
+For Web projects scaffolded via `/setup-web-stack`, the test framework is
+already wired (Vitest for unit/integration, Playwright for e2e). This skill
+verifies and extends:
+
+Verify these exist (created by `/setup-web-stack`):
+- `vitest.config.ts` at the repo root (or per-workspace configs referenced by Turbo)
+- `playwright.config.ts` at the repo root
+- `apps/web/tests/` — component tests (Vitest + `@testing-library/svelte`)
+- `apps/api/tests/` — integration tests (Vitest + real Postgres via testcontainers or a dedicated test DB)
+- `packages/shared/tests/` — pure-function tests for sim logic and schemas (Vitest)
+- `tests/e2e/` — end-to-end flows (Playwright)
+
+If any are missing, create them with stub content. Ensure these scripts exist in the root `package.json`:
+```json
+{
+  "scripts": {
+    "test": "turbo run test",
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test"
+  }
+}
+```
+
+Determinism rules (enforced by `web-backend-specialist` and `gameplay-programmer` during review):
+- Sim tests in `packages/shared/tests/` pass a fixed seed and assert golden outputs
+- No `Date.now()` / `Math.random()` outside the seeded RNG
+- Each test sets up and tears down its own state; tests are independent of execution order
+- Integration tests hit a real database — never mock the DB
+
 ---
 
 ## Phase 4: Create CI/CD Workflow
@@ -340,6 +371,75 @@ jobs:
 
 Note: UE CI requires a self-hosted runner with Unreal Editor installed.
 Set the `UE_EDITOR_PATH` environment variable on the runner.
+
+### Web
+
+Create `.github/workflows/tests.yml`:
+
+```yaml
+name: Automated Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Vitest + Playwright
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd=pg_isready
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      DATABASE_URL: postgres://postgres:test@localhost:5432/test
+      REDIS_URL: redis://localhost:6379
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter "./packages/db" db:migrate
+      - run: pnpm test:unit
+      - run: pnpm exec playwright install --with-deps chromium firefox
+      - run: pnpm test:e2e
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+```
+
+Note: Web CI runs Postgres and Redis as GitHub Actions service containers — no
+external secrets needed for the default profile. If the project uses managed
+databases instead, replace the `services` block with secrets pointing to those.
 
 ---
 
