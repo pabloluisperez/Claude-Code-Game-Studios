@@ -19,3 +19,10 @@ export {
   SLICE_HOME_FLAGS,
 } from "./player-gen.js";
 export type { ClubConfig } from "./player-gen.js";
+
+// DB layer (Day 4) — optional, requires Postgres on port 5435
+export * as repo from "../db/repo.js";
+export { getDb, closeDb } from "../db/client.js";
+export { generateRoundRobin, forceTargetSchedule } from "../db/fixture-gen.js";
+export type { RawFixture } from "../db/fixture-gen.js";
+export { SLICE_PLAYTHROUGH_ID, seedSlice, isSeeded } from "../db/seed.js";

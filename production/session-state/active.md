@@ -66,6 +66,7 @@ separada — el slice vive en `prototypes/` que ya está aislado).
 | 1 | 2026-05-18 | Scaffold | — | Package.json, README, BUILD-PLAN.md created |
 | 2 | 2026-05-18 | cascade-engine subset (6 chains + C0 baseline) | Seed had MPI=0; fixed to 50 | 6/6 tests pass · smoke CLI shows counterintuitive cascades + threshold BLOCKING at W2 |
 | 3 | 2026-05-18 | match-simulation pure function (F1-F10) + player-gen + smoke integration | injury_risk missing from slice NodeId catalog; added | **Sunk-cost gate PASS** · 15/15 tests · Real matches drive MPI deltas · Real Pueblo loses 4 in a row → fan_momentum 35→0 |
+| 4 | 2026-05-18 | Drizzle schema (7 tables) + repo + fixture-gen + seed + docker-compose + migrations generated | drizzle-kit partial index syntax | 23/23 tests · 380-fixture round-robin works · DB layer ready but requires `docker compose up` to run live |
 
 ---
 

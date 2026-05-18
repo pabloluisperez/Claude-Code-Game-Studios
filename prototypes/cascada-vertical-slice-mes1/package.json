@@ -6,10 +6,16 @@
   "description": "VERTICAL SLICE — NOT FOR PRODUCTION. Throwaway code validating Cascada FC full game loop. See README.md.",
   "scripts": {
     "smoke": "tsx src/sim/smoke.ts",
+    "smoke:db": "tsx src/db/smoke-db.ts",
     "dev:api": "tsx watch src/api/server.ts",
     "dev:worker": "tsx watch src/api/workers/index.ts",
     "dev:web": "cd src/web && vite dev",
-    "db:setup": "tsx src/db/migrate.ts && tsx src/db/seed.ts",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:seed": "tsx src/db/seed.ts",
+    "db:setup": "npm run db:migrate && npm run db:seed",
+    "db:generate": "drizzle-kit generate",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -24,11 +30,13 @@
     "pino": "^9.5.0",
     "seedrandom": "^3.0.5",
     "socket.io": "^4.8.0",
+    "uuid": "^11.0.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
     "@types/pg": "^8.11.0",
     "@types/seedrandom": "^3.0.8",
+    "@types/uuid": "^10.0.0",
     "drizzle-kit": "^0.28.0",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",
