@@ -11,9 +11,12 @@
   let error: string | null = $state(null);
 
   // Slice-only revenue/cost proxies — production uses economy.md F-functions
+  // MARKET_TICKET_EUR aligned with dashboard slider (Real Pueblo Segunda humilde).
+  // TODO production: compute MAX_TICKET_EUR + MARKET_TICKET_EUR from
+  // f(stadium_capacity, division_tier, fan_culture). See economy.md backlog.
   const WEEKLY_FIXED_COSTS = 18; // €K — salaries + staff + maintenance baseline
   const STADIUM_CAPACITY = 3000;
-  const TICKET_PRICE_BASE = 8; // €
+  const TICKET_PRICE_BASE = 10; // € — market price (was 8; aligned with dashboard 2026-05-18)
   const TRAINING_COST_BASE = 6; // €K — at intensity 50
 
   function ticketRevenue(s: NonNullable<StateDto["snapshot"]>): number {

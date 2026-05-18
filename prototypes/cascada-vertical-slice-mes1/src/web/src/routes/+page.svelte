@@ -8,20 +8,64 @@
   import { goto } from "$app/navigation";
   import { getState, postAdvance, type StateDto, type AdvanceResponse } from "$lib/api";
 
+  // ── UI → engine mappings ────────────────────────────────────────────────
+  // The cascade engine consumes 0-100 indices. The UI exposes natural units
+  // (categorical buckets for intensity, euros for price) and translates here.
+
+  type IntensityBucket = "descanso" | "suave" | "normal" | "fuerte" | "brutal";
+  const INTENSITY_BUCKETS: { id: IntensityBucket; label: string; index: number; danger?: "good" | "warn" | "bad" }[] = [
+    { id: "descanso", label: "Descanso", index: 10, danger: "warn" },
+    { id: "suave", label: "Suave", index: 30 },
+    { id: "normal", label: "Normal", index: 50, danger: "good" },
+    { id: "fuerte", label: "Fuerte", index: 70 },
+    { id: "brutal", label: "Brutal", index: 90, danger: "bad" },
+  ];
+
+  // Real Pueblo (Segunda humilde): max 25€, market price 10€, erosion ~13€
+  // TODO production: compute MAX_TICKET_EUR from f(stadium_capacity, division_tier, fan_culture)
+  const MARKET_TICKET_EUR = 10;
+  const MAX_TICKET_EUR = 25;
+  const TICKET_STEP_EUR = 5;
+  const EROSION_INDEX_THRESHOLD = 65; // T_price_danger from cascade-engine.md C15
+
+  function eurosToIndex(eur: number): number {
+    // index where market (10€) = 50 → index = euros / 10 × 50 = euros × 5
+    return Math.min(100, Math.round((eur / MARKET_TICKET_EUR) * 50));
+  }
+  function indexToEuros(idx: number): number {
+    return Math.round((idx / 50) * MARKET_TICKET_EUR);
+  }
+  function snapToStep(eur: number): number {
+    return Math.round(eur / TICKET_STEP_EUR) * TICKET_STEP_EUR;
+  }
+
   let pt: StateDto | null = $state(null);
-  let trainingIntensity = $state(50);
-  let ticketPriceIndex = $state(50);
+  let intensityBucket: IntensityBucket = $state("normal");
+  let ticketPriceEur = $state(MARKET_TICKET_EUR);
   let lastResult: AdvanceResponse | null = $state(null);
   let pending = $state(false);
   let error = $state<string | null>(null);
   let showOnboarding = $state(true);
 
+  const trainingIntensity = $derived(
+    INTENSITY_BUCKETS.find((b) => b.id === intensityBucket)?.index ?? 50,
+  );
+  const ticketPriceIndex = $derived(eurosToIndex(ticketPriceEur));
+  const priceWillErode = $derived(ticketPriceIndex > EROSION_INDEX_THRESHOLD);
+
   async function refresh() {
     try {
       pt = await getState();
       if (pt.snapshot?.state) {
-        trainingIntensity = pt.snapshot.state.training_intensity ?? 50;
-        ticketPriceIndex = pt.snapshot.state.ticket_price_index ?? 50;
+        // Hydrate intensity bucket from the persisted index (nearest bucket)
+        const persistedIntensity = pt.snapshot.state.training_intensity ?? 50;
+        intensityBucket =
+          INTENSITY_BUCKETS.reduce((best, b) =>
+            Math.abs(b.index - persistedIntensity) < Math.abs(best.index - persistedIntensity) ? b : best,
+          ).id;
+        // Hydrate price euros from the persisted index (snap to step)
+        const persistedPriceIndex = pt.snapshot.state.ticket_price_index ?? 50;
+        ticketPriceEur = snapToStep(indexToEuros(persistedPriceIndex));
       }
       // Auto-redirect to end-of-month when mes 1 has closed
       if (pt.playthrough.currentWeek > 4) {
@@ -41,6 +85,7 @@
     showOnboarding = false;
     try {
       lastResult = await postAdvance({
+        // UI exposes natural units; translate to engine indices on submit
         training_intensity: trainingIntensity,
         ticket_price_index: ticketPriceIndex,
       });
@@ -130,40 +175,74 @@
   <div class="panel decisions">
     <h2>Decisiones de esta semana</h2>
 
+    <!-- Intensidad: button group categórico -->
     <div class="decision-row">
-      <div class="metric-label">Intensidad de entrenamiento · <strong class="current">{trainingIntensity}</strong></div>
-      <div class="slider-wrap">
-        <input type="range" min="0" max="100" bind:value={trainingIntensity} />
-        <div class="slider-anchors">
-          <!-- anchors at 0, 30, 50, 70, 100 -->
-          <span class="anchor at-0" title="Descanso total"><span class="tick"></span><span class="anchor-label">descanso</span></span>
-          <span class="anchor at-30" title="Light"><span class="tick"></span></span>
-          <span class="anchor sweet at-50" title="Sweet spot — equilibrio óptimo"><span class="tick"></span><span class="anchor-label">⭐ sweet spot</span></span>
-          <span class="anchor at-70" title="Carga alta"><span class="tick"></span></span>
-          <span class="anchor danger at-100" title="Sobreentrenamiento — riesgo de lesiones + fatiga"><span class="tick"></span><span class="anchor-label">⚠ sobrecarga</span></span>
-        </div>
+      <div class="metric-label">Intensidad de entrenamiento</div>
+      <div class="bucket-group" role="radiogroup" aria-label="Intensidad de entrenamiento">
+        {#each INTENSITY_BUCKETS as b}
+          <button
+            type="button"
+            role="radio"
+            aria-checked={intensityBucket === b.id}
+            class:active={intensityBucket === b.id}
+            class:good={intensityBucket === b.id && b.danger === "good"}
+            class:warn={intensityBucket === b.id && b.danger === "warn"}
+            class:bad={intensityBucket === b.id && b.danger === "bad"}
+            onclick={() => (intensityBucket = b.id)}
+          >
+            {b.label}
+          </button>
+        {/each}
       </div>
       <p class="hint dim">
-        Parábola invertida (C4): los extremos castigan, el centro premia. Con
-        rachas de derrota encima, mantener intensidad alta sobreentrena.
+        Parábola invertida (C4): el centro premia, los extremos castigan. Con
+        rachas de derrota, mantener intensidad alta sobreentrena.
       </p>
     </div>
 
+    <!-- Precio: slider en €, step 5€, max contextual -->
     <div class="decision-row">
-      <div class="metric-label">Precio de entradas · <strong class="current">{ticketPriceIndex}</strong> <span class="dim">≈ {(8 * (ticketPriceIndex / 50)).toFixed(0)} €/entrada</span></div>
+      <div class="metric-label">
+        Precio de la entrada ·
+        <strong class="current">{ticketPriceEur}€</strong>
+        {#if priceWillErode}
+          <span class="warn">· erosionando lealtad</span>
+        {:else if ticketPriceEur === 0}
+          <span class="dim">· entrada gratis</span>
+        {:else if ticketPriceEur === MARKET_TICKET_EUR}
+          <span class="good">· precio del mercado</span>
+        {/if}
+      </div>
       <div class="slider-wrap">
-        <input type="range" min="0" max="100" bind:value={ticketPriceIndex} />
+        <input
+          type="range"
+          min="0"
+          max={MAX_TICKET_EUR}
+          step={TICKET_STEP_EUR}
+          bind:value={ticketPriceEur}
+        />
         <div class="slider-anchors">
-          <span class="anchor at-0" title="Gratis"><span class="tick"></span><span class="anchor-label">regalo</span></span>
-          <span class="anchor at-35" title="Promoción"><span class="tick"></span><span class="anchor-label">promoción</span></span>
-          <span class="anchor sweet at-50" title="Precio del mercado"><span class="tick"></span><span class="anchor-label">⭐ mercado</span></span>
-          <span class="anchor danger at-65" title="Umbral de erosión (C15) — por encima la lealtad cae lento"><span class="tick"></span><span class="anchor-label">⚠ erosión</span></span>
-          <span class="anchor at-100" title="Carísimo"><span class="tick"></span></span>
+          {#each [0, 5, 10, 15, 20, 25] as anchorEur}
+            <span
+              class="anchor"
+              class:sweet={anchorEur === MARKET_TICKET_EUR}
+              class:danger={anchorEur >= 15}
+              style="left: {(anchorEur / MAX_TICKET_EUR) * 100}%"
+            >
+              <span class="tick"></span>
+              <span class="anchor-label">
+                {anchorEur}€
+                {#if anchorEur === MARKET_TICKET_EUR}<br>mercado{/if}
+                {#if anchorEur === 15}<br>erosión{/if}
+              </span>
+            </span>
+          {/each}
         </div>
       </div>
       <p class="hint dim">
-        50 = precio del mercado. Por encima de 65, la afición lo recuerda 2
-        semanas después (C15 — erosión diferida).
+        Mercado de Segunda humilde: <strong>{MARKET_TICKET_EUR}€</strong>.
+        Por encima de 15€, la afición lo recuerda 2 semanas después
+        (C15 — erosión diferida).
       </p>
     </div>
 
@@ -220,9 +299,41 @@
   .decisions { display: flex; flex-direction: column; gap: var(--space-5); }
   .decision-row { display: flex; flex-direction: column; gap: var(--space-1); }
   .decision-row .current { color: var(--accent); font-size: var(--text-lg); font-variant-numeric: tabular-nums; }
-  .slider-wrap { position: relative; padding-bottom: 26px; }
+
+  /* Button group (segmented control) for categorical decisions */
+  .bucket-group {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0;
+    background: var(--bg-3);
+    border-radius: 8px;
+    padding: 2px;
+    border: 1px solid var(--border);
+  }
+  .bucket-group button {
+    background: transparent;
+    border: none;
+    padding: var(--space-2);
+    color: var(--fg-dim);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background 0.15s, color 0.15s;
+  }
+  .bucket-group button:hover { color: var(--fg); }
+  .bucket-group button.active {
+    background: var(--bg);
+    color: var(--fg);
+    font-weight: 600;
+  }
+  .bucket-group button.active.good { color: var(--accent); border: 1px solid var(--accent); }
+  .bucket-group button.active.warn { color: var(--warn); border: 1px solid var(--warn); }
+  .bucket-group button.active.bad { color: var(--bad); border: 1px solid var(--bad); }
+
+  /* Discrete euro slider */
+  .slider-wrap { position: relative; padding-bottom: 32px; }
   .slider-wrap input[type="range"] { width: 100%; margin: 0; }
-  .slider-anchors { position: relative; height: 22px; margin-top: -4px; }
+  .slider-anchors { position: relative; height: 28px; margin-top: -2px; }
   .anchor {
     position: absolute;
     top: 0;
@@ -244,15 +355,10 @@
     color: var(--fg-dim);
     white-space: nowrap;
     margin-top: 2px;
+    text-align: center;
+    line-height: 1.1;
   }
-  .anchor.sweet .anchor-label { color: var(--accent); }
-  .anchor.danger .anchor-label { color: var(--bad); }
-  .at-0 { left: 0%; }
-  .at-30 { left: 30%; }
-  .at-35 { left: 35%; }
-  .at-50 { left: 50%; }
-  .at-65 { left: 65%; }
-  .at-70 { left: 70%; }
-  .at-100 { left: 100%; }
+  .anchor.sweet .anchor-label { color: var(--accent); font-weight: 600; }
+  .anchor.danger .anchor-label { color: var(--bad); font-weight: 600; }
   .hint { font-size: var(--text-sm); margin-top: var(--space-2); }
 </style>
