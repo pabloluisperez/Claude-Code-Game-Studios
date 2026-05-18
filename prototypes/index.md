@@ -13,7 +13,7 @@ Catálogo histórico de prototipos desechables del proyecto. Cada fila documenta
 
 | Concept | Date | Path | Verdict | Report |
 |---------|------|------|---------|--------|
-| Cascada FC — "Mes 1 en Real Pueblo CF" (first-run vertical slice) | 2026-05-18 | TypeScript monorepo (SvelteKit + Hono + Drizzle + BullMQ) | **PROCEED** (tentative — needs live playtest) | [REPORT.md](cascada-vertical-slice-mes1/REPORT.md) |
+| Cascada FC — "Mes 1 en Real Pueblo CF" (first-run vertical slice) | 2026-05-18 | TypeScript monorepo (SvelteKit + Hono + Drizzle + BullMQ) | **PROCEED** (CONFIRMED by live playtest 2026-05-18) | [REPORT.md](cascada-vertical-slice-mes1/REPORT.md) |
 
 ## Spike Prototypes (mid-production)
 

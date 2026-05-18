@@ -54,8 +54,8 @@ separada — el slice vive en `prototypes/` que ya está aislado).
 - [x] Phase 2 — Scope defined and approved by user
 - [x] Phase 3 — Build plan + session checkpoint (this file)
 - [x] Phase 4 — Implementation (14 days · 1 autonomous session · 34/34 tests)
-- [⚠] Phase 5 — Playtest debrief (deferred to Pablo's live playtest; agent code-trace done Day 12)
-- [x] Phase 6 — Generated REPORT.md (verdict PROCEED, tentative)
+- [x] Phase 5 — Playtest debrief COMPLETED (Pablo, 2026-05-18 — 2 polish items captured + fixed)
+- [x] Phase 6 — REPORT.md updated with playtest findings; verdict PROMOTED to CONFIRMED
 - [—] Phase 7 — CD review (SKIPPED — lean mode)
 - [x] Phase 8 — Summary + next steps (in REPORT.md)
 
@@ -75,6 +75,7 @@ separada — el slice vive en `prototypes/` que ya está aislado).
 | 12 | 2026-05-18 | /end-of-month route (4-week resolution screen) + playtest-notes-day12.md (code-trace silent walkthrough) | Real human playtest deferred to Day 14 — agent walkthrough is approximation | 10 friction items identified; 5 prioritized for Day 13 fixes |
 | 13 | 2026-05-18 | 5 critical fixes from Day 12 notes: (1) onboarding banner, (2) auto-redirect to /end-of-month when week>4, (3) match-week dashboard prompt, (4) calendar announcements on /calendar, (5) clickable skill-point allocation + POST /api/advance/allocate-skill | $derived narrowing on .playthrough needed by() form | 34/34 backend tests · svelte-check 0/256 |
 | 14 | 2026-05-18 | REPORT.md (Executive Summary · Core Loop Validation · Feel Assessment · Technical Findings · Velocity Log · Recommended Next Steps · Lessons Learned) + prototypes/index.md updated | — | **Verdict: PROCEED (tentative — pending live playtest by Pablo)** |
+| 14b | 2026-05-18 | **Live playtest by Pablo COMPLETED**: PROCEED CONFIRMED. 2 polish fixes applied: P-01 on-slider tick anchors (sweet/danger labels), P-02 first-half events now visible in /match (extended startMatch return to include firstHalfEvents) | — | **PROCEED CONFIRMED · /create-epics unblocked** |
 
 ---
 

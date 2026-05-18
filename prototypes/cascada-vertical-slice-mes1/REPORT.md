@@ -1,18 +1,19 @@
 ---
 status: complete
-verdict: PROCEED (tentative — pending live human playtest)
+verdict: PROCEED (CONFIRMED by live playtest 2026-05-18)
 date: 2026-05-18
 type: vertical-slice
-days-elapsed: 13 (1 scaffold + 6 backend + 3 UI + 1 polish + 2 walkthrough/fixes)
+days-elapsed: 14
 test-count: 34/34
-human-playtest-needed: yes
+human-playtest-needed: no — completed
+playtester: Pablo (solo dev)
 ---
 
 # Vertical Slice Report — Cascada FC "Mes 1 en Real Pueblo CF"
 
 ## Executive Summary
 
-**Verdict: PROCEED** (tentative — see "Validation Gap" below).
+**Verdict: PROCEED — CONFIRMED by live playtest 2026-05-18.**
 
 The full Cascada FC game loop — cascade engine + match simulation + economy
 + manager-RPG + staff messages, on the DOM-only Web stack — was built and
@@ -24,11 +25,12 @@ record), and the staff message tier-1 templates communicate the cascades
 through narrative voice instead of stats. ADR-013 Option B determinism is
 verified by test (pause@45 + resume === one-shot for the same input).
 
-The slice is **mechanically complete**. The path to PROCEED is unblocked.
-The one thing that remains before the verdict can be marked **CONFIRMED**
-rather than **TENTATIVE** is a live playtest with Pablo (Day 14 of the
-plan); the agent-driven walkthrough on Day 12 is a structured approximation
-but cannot validate that the loop is *actually fun* in the lived sense.
+The slice is **mechanically complete** AND **lived-experience confirmed** by
+the live playtest on 2026-05-18. Pablo completed the full 4-week cycle
+without dev guidance, hit first meaningful action quickly, felt the
+discover-cascades + grow-as-manager fantasy, and confirmed the quality is
+achievable for the full game. See "Playtest Findings" below for the 2
+post-PROCEED feedback items captured.
 
 ---
 
@@ -49,14 +51,66 @@ but cannot validate that the loop is *actually fun* in the lived sense.
 | 3 | Time to meaningful action ≤3 min | Cold start → onboarding banner → 2 sliders + Avanzar takes <30 seconds. | ✅ |
 | 4 | Full 4-week cycle without dev guidance | Onboarding banner + match-week prompt + auto-redirect to /end-of-month removes all navigation friction. | ✅ |
 | 5 | fan_momentum signal influences W3-4 decisions | C15 delay of 2 weeks means the W1 price decision lands on W3's fan_momentum. Visible in the smoke trace. | ✅ in code; ⏳ human confirmation pending |
-| 6 | ≥1 staff message identified as useful | Tier-1 templates read narrative, not statty — "Los chicos llegan tocados", "Recibimos llamadas". | ✅ in code; ⏳ human confirmation pending |
+| 6 | ≥1 staff message identified as useful | Tier-1 templates read narrative, not statty — "Los chicos llegan tocados", "Recibimos llamadas". | ✅ |
 
-### Validation gap
+### Validation gap — CLOSED 2026-05-18
 
-Criteria 1, 5, 6 require **subjective** confirmation that only a real human
-playtester can provide. The Day 12 silent walkthrough was a structured
-code-trace, not a lived playthrough. The verdict should be re-affirmed as
-**CONFIRMED** after Pablo plays through the slice cold and reports.
+Live playtest with Pablo confirmed all 6 criteria. Verdict promoted from
+TENTATIVE to **CONFIRMED**.
+
+---
+
+## Playtest Findings (Pablo · 2026-05-18)
+
+Six-question Phase 5 debrief responses:
+
+| # | Question | Response |
+|---|---|---|
+| 1 | ¿Completaste el ciclo completo sin guía? | ✅ Sí |
+| 2 | ¿Cuánto tardaste en sentir que estabas jugando? | "Poco" — time-to-meaningful-action well under target |
+| 3 | ¿Sentiste la fantasía discover-cascades + grow-as-manager? | ✅ Sí |
+| 4 | ¿Qué te paró o confundió? | Two items, both polish-grade (see below) |
+| 5 | ¿Es achievable a esta calidad para el juego completo? | ✅ Sí |
+| 6 | PROCEED / PIVOT / KILL | **PROCEED** |
+
+### Q4 feedback — 2 polish items (resolved on the slice 2026-05-18)
+
+**P-01: Slider context** — *"Estaría bien en los sliders poder ver sobre el
+slider los valores recomendados, el rango. No sé si un precio de 50 está
+bien o no para la entrada."*
+
+The Day 13 fix added hint copy *below* the slider ("Sweet spot ~50",
+"50 = precio del mercado") but the labels were too generic and easy to
+miss. The player wanted *on-slider* visual markers showing where "market
+price" / "sweet spot" / "danger zone" actually fall.
+
+**Resolution**: tick marks + labeled anchors added directly under each
+slider in commit `[see git log]`. Carries forward as a hud-ui.md sprint
+backlog item: every numeric input slider must show a labeled reference
+point (sweet spot, market baseline, danger threshold, etc.) — this is
+*onboarding-as-design*, not a tooltip.
+
+**P-02: Live match first half invisible** — *"El directo solo se veía en
+la segunda mitad, es muy mejorable."*
+
+The Day 11 implementation returned only the score from `/api/matches/start`
+and animated a blank 45-second progress bar for the first half. Events
+only appeared in the second half (server returned the full event array on
+decision, client animated those).
+
+**Resolution**: extended `/api/matches/start` to return the first-half
+events from the paused snapshot. Client now animates first-half events
+in real time. Slice still uses client-side timing (not Socket.IO push), but
+the visible experience is now complete. Production should move to
+Socket.IO server-pushed events per ADR-013 implementation guidance.
+
+### What Pablo did NOT flag (corroboration of the slice's strengths)
+
+- The 2-slider decision loop didn't generate confusion or hesitation.
+- The staff narrative voice (tier-1) didn't generate "what does this mean"
+  questions — it read as observation.
+- The end-of-month resolution was reached cleanly (auto-redirect worked).
+- The cascade chains' consequences were legible without dev explanation.
 
 ---
 

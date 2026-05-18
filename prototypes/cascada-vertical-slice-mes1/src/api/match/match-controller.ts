@@ -27,6 +27,11 @@ export async function startMatch(playthroughId: string): Promise<{
   pausedAtTick: number;
   scoreSoFar: { home: number; away: number };
   eventsSoFar: number;
+  /** First-half MatchEvent[] for the client to animate during ticks 1-45. */
+  firstHalfEvents: import("../../sim/types.js").MatchEvent[];
+  homeClubName: string;
+  awayClubName: string;
+  playerClubSide: "home" | "away";
 }> {
   const playthrough = await repo.getPlaythrough(playthroughId);
   if (!playthrough) throw new Error("playthrough_not_found");
@@ -91,6 +96,10 @@ export async function startMatch(playthroughId: string): Promise<{
       away: snapshot.state.awayScore,
     },
     eventsSoFar: snapshot.state.events.length,
+    firstHalfEvents: snapshot.state.events,
+    homeClubName: homeClub.slug, // production: load name from clubs table
+    awayClubName: awayClub.slug,
+    playerClubSide: input.playerClubSide,
   };
 }
 

@@ -145,9 +145,26 @@ export function postAdvance(
   return http("POST", "/api/advance", { playthroughId, decisions });
 }
 
+export interface MatchEventDto {
+  type: string;
+  minute: number;
+  team?: "home" | "away";
+  playerId?: string;
+  severity?: string;
+}
+
 export function startMatch(
   playthroughId = SLICE_PLAYTHROUGH_ID,
-): Promise<{ sessionId: string; pausedAtTick: number; scoreSoFar: { home: number; away: number }; eventsSoFar: number }> {
+): Promise<{
+  sessionId: string;
+  pausedAtTick: number;
+  scoreSoFar: { home: number; away: number };
+  eventsSoFar: number;
+  firstHalfEvents: MatchEventDto[];
+  homeClubName: string;
+  awayClubName: string;
+  playerClubSide: "home" | "away";
+}> {
   return http("POST", "/api/matches/start", { playthroughId });
 }
 

@@ -129,35 +129,44 @@
 
   <div class="panel decisions">
     <h2>Decisiones de esta semana</h2>
+
     <div class="decision-row">
-      <label>
-        <div class="metric-label">Intensidad de entrenamiento</div>
+      <div class="metric-label">Intensidad de entrenamiento · <strong class="current">{trainingIntensity}</strong></div>
+      <div class="slider-wrap">
         <input type="range" min="0" max="100" bind:value={trainingIntensity} />
-        <div class="value-row">
-          <span>0 (descanso)</span>
-          <strong>{trainingIntensity}</strong>
-          <span>(carga máxima) 100</span>
+        <div class="slider-anchors">
+          <!-- anchors at 0, 30, 50, 70, 100 -->
+          <span class="anchor at-0" title="Descanso total"><span class="tick"></span><span class="anchor-label">descanso</span></span>
+          <span class="anchor at-30" title="Light"><span class="tick"></span></span>
+          <span class="anchor sweet at-50" title="Sweet spot — equilibrio óptimo"><span class="tick"></span><span class="anchor-label">⭐ sweet spot</span></span>
+          <span class="anchor at-70" title="Carga alta"><span class="tick"></span></span>
+          <span class="anchor danger at-100" title="Sobreentrenamiento — riesgo de lesiones + fatiga"><span class="tick"></span><span class="anchor-label">⚠ sobrecarga</span></span>
         </div>
-        <p class="hint dim">
-          Sweet spot ~50. El extremo bajo (descanso total) y el extremo alto (sobrecarga)
-          tienen efectos diferentes — el staff te lo dirá si ve algo.
-        </p>
-      </label>
+      </div>
+      <p class="hint dim">
+        Parábola invertida (C4): los extremos castigan, el centro premia. Con
+        rachas de derrota encima, mantener intensidad alta sobreentrena.
+      </p>
     </div>
+
     <div class="decision-row">
-      <label>
-        <div class="metric-label">Precio de entradas (índice)</div>
+      <div class="metric-label">Precio de entradas · <strong class="current">{ticketPriceIndex}</strong> <span class="dim">≈ {(8 * (ticketPriceIndex / 50)).toFixed(0)} €/entrada</span></div>
+      <div class="slider-wrap">
         <input type="range" min="0" max="100" bind:value={ticketPriceIndex} />
-        <div class="value-row">
-          <span>0 (regalado)</span>
-          <strong>{ticketPriceIndex}</strong>
-          <span>(carísimo) 100</span>
+        <div class="slider-anchors">
+          <span class="anchor at-0" title="Gratis"><span class="tick"></span><span class="anchor-label">regalo</span></span>
+          <span class="anchor at-35" title="Promoción"><span class="tick"></span><span class="anchor-label">promoción</span></span>
+          <span class="anchor sweet at-50" title="Precio del mercado"><span class="tick"></span><span class="anchor-label">⭐ mercado</span></span>
+          <span class="anchor danger at-65" title="Umbral de erosión (C15) — por encima la lealtad cae lento"><span class="tick"></span><span class="anchor-label">⚠ erosión</span></span>
+          <span class="anchor at-100" title="Carísimo"><span class="tick"></span></span>
         </div>
-        <p class="hint dim">
-          50 = precio del mercado. Subirlo genera ingresos pero la afición tiene memoria.
-        </p>
-      </label>
+      </div>
+      <p class="hint dim">
+        50 = precio del mercado. Por encima de 65, la afición lo recuerda 2
+        semanas después (C15 — erosión diferida).
+      </p>
     </div>
+
     <button class="primary" disabled={pending} onclick={advance}>
       {pending ? "Procesando…" : "Avanzar semana →"}
     </button>
@@ -208,16 +217,42 @@
     gap: var(--space-3);
     margin-bottom: var(--space-4);
   }
-  .decisions { display: flex; flex-direction: column; gap: var(--space-4); }
-  .decision-row label { display: block; }
-  .hint { font-size: var(--text-sm); margin-top: var(--space-1); }
-  .value-row {
+  .decisions { display: flex; flex-direction: column; gap: var(--space-5); }
+  .decision-row { display: flex; flex-direction: column; gap: var(--space-1); }
+  .decision-row .current { color: var(--accent); font-size: var(--text-lg); font-variant-numeric: tabular-nums; }
+  .slider-wrap { position: relative; padding-bottom: 26px; }
+  .slider-wrap input[type="range"] { width: 100%; margin: 0; }
+  .slider-anchors { position: relative; height: 22px; margin-top: -4px; }
+  .anchor {
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     align-items: center;
-    font-size: var(--text-sm);
-    color: var(--fg-dim);
-    margin-top: var(--space-1);
+    pointer-events: none;
   }
-  .value-row strong { color: var(--fg); font-size: var(--text-lg); }
+  .anchor .tick {
+    width: 1px;
+    height: 6px;
+    background: var(--border);
+  }
+  .anchor.sweet .tick { background: var(--accent); width: 2px; }
+  .anchor.danger .tick { background: var(--bad); width: 2px; }
+  .anchor-label {
+    font-size: 10px;
+    color: var(--fg-dim);
+    white-space: nowrap;
+    margin-top: 2px;
+  }
+  .anchor.sweet .anchor-label { color: var(--accent); }
+  .anchor.danger .anchor-label { color: var(--bad); }
+  .at-0 { left: 0%; }
+  .at-30 { left: 30%; }
+  .at-35 { left: 35%; }
+  .at-50 { left: 50%; }
+  .at-65 { left: 65%; }
+  .at-70 { left: 70%; }
+  .at-100 { left: 100%; }
+  .hint { font-size: var(--text-sm); margin-top: var(--space-2); }
 </style>
