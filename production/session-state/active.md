@@ -116,3 +116,79 @@ Continue Phase 4 implementation of vertical slice.
 1. Read this active.md to recover context
 2. Read `prototypes/cascada-vertical-slice-mes1/BUILD-PLAN.md` for day-by-day plan
 3. Pick up at Day 2 (or whichever is next in the velocity log)
+
+---
+
+## 2026-05-19 — Post-Slice Production Prep (autonomous, user asleep)
+
+Authorized scope: "termina gate-check y luego seguir con la implementación de
+create-epics, commitea y pushea". Executed:
+
+### Gate-Check: Pre-Production → Production — **FAIL**
+
+Report at `production/gate-checks/pre-prod-to-production-2026-05-18.md`.
+Director panel ran in parallel (lean mode):
+- CD: READY (creative vision validated by slice)
+- TD: CONCERNS (architecture.md + control-manifest + traceability missing)
+- PR: CONCERNS (2-3 day gap-fill needed: sprints, epics, UX specs, entity inv.)
+- AD: CONCERNS (MVP DOM-only addendum + entity inventory needed)
+
+7/16 required artifacts missing. **Verdict FAIL with clear 2-3 day path**.
+
+### Architecture artifacts created
+
+| Document | Path | Notes |
+|---|---|---|
+| Master architecture v1.0 | `docs/architecture/architecture.md` | TD APPROVED WITH CONDITIONS. Layer map, module ownership, data flow, API boundaries, ADR audit, traceability gaps, 5 Required New ADRs identified |
+| Control manifest 2026-05-19 | `docs/architecture/control-manifest.md` | Programmer rules sheet — Required ✅ / Forbidden ❌ / Guardrails 🧭 per layer |
+
+### Epics created (9, MVP scope)
+
+| # | Epic | Status |
+|---|---|---|
+| 1 | cascade-engine | Ready |
+| 2 | match-simulation | Ready |
+| 3 | economy | ⚠ Blocked on ADR-014 |
+| 4 | manager-rpg | Ready (AC-27/28 partial block on OQ-STAFF-04) |
+| 5 | staff-system | Ready |
+| 6 | player-management | ⚠ Blocked on ADR-016 |
+| 7 | event-system | ⚠ Blocked on ADR-015 |
+| 8 | league-system | Ready |
+| 9 | hud-ui | ⚠ Partial block on ADR-017 + ADR-018 + UX specs |
+
+Epic index at `production/epics/index.md`.
+
+### 5 Required New ADRs (architecture.md §Required New ADRs)
+
+| ADR | Topic | Unblocks |
+|---|---|---|
+| ADR-014 | Financial Flow + Bankruptcy Protocol | economy epic |
+| ADR-015 | Special Event Decision Schema | event-system epic |
+| ADR-016 | Player Lifecycle | player-management epic |
+| ADR-017 | UI Input Control Taxonomy (post-slice OQ-HUD-09/10) | hud-ui epic |
+| ADR-018 | Match Event Visual Feedback Library (post-slice OQ-HUD-11/12/13) | hud-ui epic |
+
+### Critical path to unblock Production gate
+
+1. Write 5 ADRs above
+2. `/ux-design` for 5 screens (Dashboard, Match-live, Manager, Staff-inbox, End-of-month) — resolves OQ-HUD-08
+3. Art-bible MVP-scope addendum (AD concern)
+4. `/asset-spec` (no args) → entity inventory
+5. `/create-stories` for each of 9 epics
+6. `/sprint-plan new`
+7. Re-run `/gate-check pre-production`
+
+Producer estimate: **2-3 productive days** for the solo dev.
+
+### Recommended next session
+
+Pablo wakes up → reviews this work → either:
+- A. Continue with `/architecture-decision "Financial Flow + Bankruptcy"` for ADR-014
+- B. Continue with `/ux-design Dashboard` (independent of ADRs 14-18)
+- C. Start writing stories for the 5 Ready epics (cascade-engine, match-simulation, league-system, manager-rpg, staff-system) since their ADRs are all Accepted
+
+Recommendation: **C** — get cascade-engine + match-simulation + league-system
+stories written so first sprint can begin while ADRs 14-18 are authored in
+parallel. The 5 Ready epics cover ~60% of production work.
+
+`stage.txt` remains "Concept" (not yet advanced — gate has not formally PASSED).
