@@ -7,6 +7,13 @@
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { getState, postAdvance, type StateDto, type AdvanceResponse } from "$lib/api";
+  import {
+    formatAttendance,
+    formatFanMomentum,
+    formatFitness,
+    severityClass,
+    STADIUM_CAPACITY_DEFAULT,
+  } from "$lib/format";
 
   // ── UI → engine mappings ────────────────────────────────────────────────
   // The cascade engine consumes 0-100 indices. The UI exposes natural units
@@ -51,7 +58,6 @@
     INTENSITY_BUCKETS.find((b) => b.id === intensityBucket)?.index ?? 50,
   );
   const ticketPriceIndex = $derived(eurosToIndex(ticketPriceEur));
-  const priceWillErode = $derived(ticketPriceIndex > EROSION_INDEX_THRESHOLD);
 
   async function refresh() {
     try {
@@ -147,28 +153,37 @@
     </div>
   {/if}
 
+  {@const fit = pt.snapshot?.state.team_fitness !== undefined ? formatFitness(pt.snapshot.state.team_fitness) : null}
+  {@const fan = pt.snapshot?.state.fan_momentum !== undefined ? formatFanMomentum(pt.snapshot.state.fan_momentum) : null}
+  {@const att = pt.snapshot?.state.fan_attendance !== undefined ? formatAttendance(pt.snapshot.state.fan_attendance, STADIUM_CAPACITY_DEFAULT) : null}
+
   <div class="metrics-grid">
     <div class="panel">
       <div class="metric-label">Semana</div>
       <div class="metric-value">{pt.playthrough.currentWeek}</div>
     </div>
     <div class="panel">
-      <div class="metric-label">Forma del equipo</div>
-      <div class="metric-value">{pt.snapshot?.state.team_fitness.toFixed(0) ?? "—"}</div>
+      <div class="metric-label">Estado físico</div>
+      <div class="metric-value-text {fit ? severityClass(fit.severity) : 'dim'}">
+        {fit?.text ?? "—"}
+      </div>
     </div>
     <div class="panel">
-      <div class="metric-label">Afición (fan_momentum)</div>
-      <div
-        class="metric-value"
-        class:bad={(pt.snapshot?.state.fan_momentum ?? 50) < 20}
-        class:warn={(pt.snapshot?.state.fan_momentum ?? 50) < 35}
-      >
-        {pt.snapshot?.state.fan_momentum.toFixed(0) ?? "—"}
+      <div class="metric-label">Afición</div>
+      <div class="metric-value-text {fan ? severityClass(fan.severity) : 'dim'}">
+        {fan?.text ?? "—"}
       </div>
     </div>
     <div class="panel">
       <div class="metric-label">Asistencia (último)</div>
-      <div class="metric-value">{pt.snapshot?.state.fan_attendance.toFixed(0) ?? "—"}%</div>
+      {#if att}
+        <div class="metric-value">{att.absolute.toLocaleString("es")}<span class="metric-unit"> personas</span></div>
+        <div class="metric-sub {severityClass(att.qualitative.severity)}">
+          {att.qualitative.text} · {att.percent}% del aforo
+        </div>
+      {:else}
+        <div class="metric-value">—</div>
+      {/if}
     </div>
   </div>
 
@@ -205,12 +220,18 @@
       <div class="metric-label">
         Precio de la entrada ·
         <strong class="current">{ticketPriceEur}€</strong>
-        {#if priceWillErode}
-          <span class="warn">· erosionando lealtad</span>
-        {:else if ticketPriceEur === 0}
+        {#if ticketPriceEur === 0}
           <span class="dim">· entrada gratis</span>
+        {:else if ticketPriceEur <= 5}
+          <span class="dim">· barato</span>
         {:else if ticketPriceEur === MARKET_TICKET_EUR}
           <span class="good">· precio del mercado</span>
+        {:else if ticketPriceEur === 15}
+          <span class="warn">· caro</span>
+        {:else if ticketPriceEur === 20}
+          <span class="warn">· muy caro</span>
+        {:else if ticketPriceEur >= 25}
+          <span class="bad">· carísimo</span>
         {/if}
       </div>
       <div class="slider-wrap">
@@ -222,27 +243,26 @@
           bind:value={ticketPriceEur}
         />
         <div class="slider-anchors">
-          {#each [0, 5, 10, 15, 20, 25] as anchorEur}
+          {#each [{ eur: 0, label: "gratis" }, { eur: 5, label: "barato" }, { eur: 10, label: "mercado" }, { eur: 15, label: "caro" }, { eur: 20, label: "muy caro" }, { eur: 25, label: "carísimo" }] as a}
             <span
               class="anchor"
-              class:sweet={anchorEur === MARKET_TICKET_EUR}
-              class:danger={anchorEur >= 15}
-              style="left: {(anchorEur / MAX_TICKET_EUR) * 100}%"
+              class:sweet={a.eur === MARKET_TICKET_EUR}
+              class:warn-anchor={a.eur === 15 || a.eur === 20}
+              class:danger={a.eur >= 25}
+              style="left: {(a.eur / MAX_TICKET_EUR) * 100}%"
             >
               <span class="tick"></span>
               <span class="anchor-label">
-                {anchorEur}€
-                {#if anchorEur === MARKET_TICKET_EUR}<br>mercado{/if}
-                {#if anchorEur === 15}<br>erosión{/if}
+                {a.eur}€<br>{a.label}
               </span>
             </span>
           {/each}
         </div>
       </div>
       <p class="hint dim">
-        Mercado de Segunda humilde: <strong>{MARKET_TICKET_EUR}€</strong>.
-        Por encima de 15€, la afición lo recuerda 2 semanas después
-        (C15 — erosión diferida).
+        El mercado de Segunda humilde es <strong>{MARKET_TICKET_EUR}€</strong>.
+        Cobrar caro da más por entrada vendida, pero la afición tiene memoria
+        — no perdona enseguida cuando vienen tiempos malos.
       </p>
     </div>
 
@@ -296,6 +316,13 @@
     gap: var(--space-3);
     margin-bottom: var(--space-4);
   }
+  .metric-value-text {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .metric-unit { font-size: var(--text-sm); color: var(--fg-dim); font-weight: 400; }
+  .metric-sub { font-size: var(--text-sm); margin-top: 2px; }
   .decisions { display: flex; flex-direction: column; gap: var(--space-5); }
   .decision-row { display: flex; flex-direction: column; gap: var(--space-1); }
   .decision-row .current { color: var(--accent); font-size: var(--text-lg); font-variant-numeric: tabular-nums; }
@@ -359,6 +386,8 @@
     line-height: 1.1;
   }
   .anchor.sweet .anchor-label { color: var(--accent); font-weight: 600; }
+  .anchor.warn-anchor .tick { background: var(--warn); width: 1px; }
+  .anchor.warn-anchor .anchor-label { color: var(--warn); }
   .anchor.danger .anchor-label { color: var(--bad); font-weight: 600; }
   .hint { font-size: var(--text-sm); margin-top: var(--space-2); }
 </style>

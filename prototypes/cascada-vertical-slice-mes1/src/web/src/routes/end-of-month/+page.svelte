@@ -13,6 +13,14 @@
     type StateDto,
     type StaffMessageDto,
   } from "$lib/api";
+  import {
+    formatAttendance,
+    formatFanMomentum,
+    formatFitness,
+    formatInjuryRisk,
+    severityClass,
+    STADIUM_CAPACITY_DEFAULT,
+  } from "$lib/format";
 
   interface ManagerSnapshot {
     level: number;
@@ -102,36 +110,40 @@
   </div>
 
   <!-- WorldState pulse -->
+  {@const eomFit = pt.snapshot?.state.team_fitness !== undefined ? formatFitness(pt.snapshot.state.team_fitness) : null}
+  {@const eomFan = pt.snapshot?.state.fan_momentum !== undefined ? formatFanMomentum(pt.snapshot.state.fan_momentum) : null}
+  {@const eomAtt = pt.snapshot?.state.fan_attendance !== undefined ? formatAttendance(pt.snapshot.state.fan_attendance, STADIUM_CAPACITY_DEFAULT) : null}
+  {@const eomInj = pt.snapshot?.state.injury_risk !== undefined ? formatInjuryRisk(pt.snapshot.state.injury_risk) : null}
+
   <div class="panel">
     <h2>Pulso del club</h2>
     <table>
       <tbody>
         <tr>
-          <td>Forma del equipo</td>
-          <td class="value">{pt.snapshot?.state.team_fitness.toFixed(0) ?? "—"}</td>
-        </tr>
-        <tr>
-          <td>Afición (fan_momentum)</td>
-          <td
-            class="value"
-            class:bad={(pt.snapshot?.state.fan_momentum ?? 50) < 20}
-            class:warn={(pt.snapshot?.state.fan_momentum ?? 50) < 35}
-          >
-            {pt.snapshot?.state.fan_momentum.toFixed(0) ?? "—"}
+          <td>Estado físico</td>
+          <td class="value {eomFit ? severityClass(eomFit.severity) : 'dim'}">
+            {eomFit?.text ?? "—"}
           </td>
         </tr>
         <tr>
-          <td>Asistencia media (último partido)</td>
-          <td class="value">{pt.snapshot?.state.fan_attendance.toFixed(0) ?? "—"}%</td>
+          <td>Afición</td>
+          <td class="value {eomFan ? severityClass(eomFan.severity) : 'dim'}">
+            {eomFan?.text ?? "—"}
+          </td>
+        </tr>
+        <tr>
+          <td>Asistencia (último partido)</td>
+          <td class="value {eomAtt ? severityClass(eomAtt.qualitative.severity) : 'dim'}">
+            {#if eomAtt}
+              {eomAtt.absolute.toLocaleString("es")} personas
+              <span class="dim">· {eomAtt.qualitative.text} ({eomAtt.percent}%)</span>
+            {:else}—{/if}
+          </td>
         </tr>
         <tr>
           <td>Riesgo de lesiones</td>
-          <td
-            class="value"
-            class:warn={(pt.snapshot?.state.injury_risk ?? 0) > 50}
-            class:bad={(pt.snapshot?.state.injury_risk ?? 0) > 70}
-          >
-            {pt.snapshot?.state.injury_risk.toFixed(0) ?? "—"}
+          <td class="value {eomInj ? severityClass(eomInj.severity) : 'dim'}">
+            {eomInj?.text ?? "—"}
           </td>
         </tr>
       </tbody>

@@ -35,7 +35,14 @@
       );
       positionLabel = player ? `${player.position}º` : "—";
       const fan = state?.snapshot?.state?.fan_momentum;
-      fanLabel = fan != null ? `Fan ${fan.toFixed(0)}` : "Fan —";
+      // Quick domain label inline to avoid importing the full helper into the layout bundle
+      if (fan == null) fanLabel = "Afición —";
+      else if (fan < 20) fanLabel = "Afición en crisis";
+      else if (fan < 35) fanLabel = "Afición desencantada";
+      else if (fan < 50) fanLabel = "Afición inquieta";
+      else if (fan < 65) fanLabel = "Afición neutra";
+      else if (fan < 80) fanLabel = "Afición animada";
+      else fanLabel = "Afición en llamas";
     } catch (err) {
       // API not running — keep placeholders
       weekLabel = "API ✗";

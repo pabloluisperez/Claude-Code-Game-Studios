@@ -1,6 +1,6 @@
 <!--
   VERTICAL SLICE - NOT FOR PRODUCTION
-  Live match UI — Day 13 polish (P-02 fix: first-half events visible).
+  Live match UI — Day 13 polish + dramatic event flow (modal + confetti + VAR theater).
   Date: 2026-05-18
 -->
 <script lang="ts">
@@ -24,6 +24,11 @@
     playerClubSide: "home" | "away";
   };
 
+  type DramaticModal =
+    | { kind: "goal"; event: MatchEventDto; isPlayerTeam: boolean; varPhase: "none" | "reviewing" | "upheld" | "overturned" }
+    | { kind: "injury"; event: MatchEventDto; isPlayerTeam: boolean }
+    | { kind: "highlight"; event: MatchEventDto };
+
   let pt: StateDto | null = $state(null);
   let session: SessionInfo | null = $state(null);
   let renderedEvents: MatchEventDto[] = $state([]);
@@ -33,8 +38,16 @@
   let phase: "idle" | "first_half" | "paused" | "second_half" | "complete" = $state("idle");
   let error = $state<string | null>(null);
   let pendingDecision = $state(false);
+  let modal: DramaticModal | null = $state(null);
+  let confettiActive = $state(false);
 
   const TICK_INTERVAL_MS = 100;
+  const MODAL_GOAL_HOLD_MS = 1800;
+  const MODAL_VAR_REVIEW_MS = 2200;
+  const MODAL_VAR_RESOLVE_MS = 1500;
+  const MODAL_INJURY_HOLD_MS = 1500;
+  const VAR_PROBABILITY = 0.30;
+  const VAR_OVERTURN_PROBABILITY = 0.10; // 10% of VARs overturn — overturned goals stay scored for slice (visual only)
 
   async function loadState() {
     try {
@@ -60,19 +73,74 @@
     }
   }
 
+  function isDramatic(e: MatchEventDto): boolean {
+    if (e.type === "goal") return true;
+    if (e.type === "injury" && e.severity === "major") return true;
+    return false;
+  }
+
   async function animateRange(fromTick: number, toTick: number, events: MatchEventDto[]) {
     for (let t = fromTick; t <= toTick; t++) {
       currentMinute = t;
       const eventsThisTick = events.filter((e) => e.minute === t);
-      for (const e of eventsThisTick) {
+      const dramatic = eventsThisTick.filter(isDramatic);
+      const normal = eventsThisTick.filter((e) => !isDramatic(e));
+
+      // Add non-dramatic events immediately
+      for (const e of normal) {
         renderedEvents = [...renderedEvents, e];
-        if (e.type === "goal") {
-          if (e.team === "home") homeGoals++;
-          else if (e.team === "away") awayGoals++;
-        }
       }
+
+      // Handle dramatic events with pause-and-reveal
+      for (const e of dramatic) {
+        await showDramaticEvent(e);
+        renderedEvents = [...renderedEvents, e];
+      }
+
       await sleep(TICK_INTERVAL_MS);
     }
+  }
+
+  async function showDramaticEvent(e: MatchEventDto): Promise<void> {
+    const isPlayerTeam = e.team === session?.playerClubSide;
+
+    if (e.type === "goal") {
+      // Update score immediately so it shows in the modal
+      if (e.team === "home") homeGoals++;
+      else if (e.team === "away") awayGoals++;
+
+      const goesToVar = Math.random() < VAR_PROBABILITY;
+      modal = {
+        kind: "goal",
+        event: e,
+        isPlayerTeam,
+        varPhase: goesToVar ? "reviewing" : "none",
+      };
+      if (isPlayerTeam) {
+        confettiActive = true;
+        // Confetti auto-clears after a few seconds
+        setTimeout(() => (confettiActive = false), 3500);
+      }
+      await sleep(MODAL_GOAL_HOLD_MS);
+
+      if (goesToVar) {
+        await sleep(MODAL_VAR_REVIEW_MS);
+        const overturned = Math.random() < VAR_OVERTURN_PROBABILITY;
+        if (modal && modal.kind === "goal") {
+          modal = { ...modal, varPhase: overturned ? "overturned" : "upheld" };
+        }
+        await sleep(MODAL_VAR_RESOLVE_MS);
+      }
+    } else if (e.type === "injury") {
+      modal = { kind: "injury", event: e, isPlayerTeam };
+      await sleep(MODAL_INJURY_HOLD_MS);
+    }
+
+    modal = null;
+  }
+
+  function dismissModal(): void {
+    modal = null;
   }
 
   async function decideAndResume(useSub: boolean) {
@@ -109,6 +177,7 @@
       phase = "second_half";
       const secondHalfEvents = result.outcome.events.filter((e) => e.minute > 45);
       await animateRange(46, 90, secondHalfEvents);
+      // Final score from server (in case of edge cases)
       homeGoals = result.outcome.homeScore;
       awayGoals = result.outcome.awayScore;
       renderedEvents = [...renderedEvents, { type: "full_time", minute: 90 }];
@@ -136,6 +205,15 @@
       return `🏥 ${e.minute}' Lesión ${e.severity === "major" ? "grave" : "leve"}`;
     return `${e.minute}' ${e.type}`;
   }
+
+  // Confetti: 60 emoji rain pieces with random delays/positions
+  const confettiPieces = Array.from({ length: 60 }, (_, i) => ({
+    emoji: ["⚽", "🎉", "🎊", "🟢", "✨"][i % 5],
+    left: Math.random() * 100,
+    delay: Math.random() * 0.5,
+    duration: 2.5 + Math.random() * 1.5,
+    drift: (Math.random() - 0.5) * 80,
+  }));
 
   onMount(loadState);
 </script>
@@ -214,6 +292,68 @@
   </div>
 {/if}
 
+<!-- Dramatic event modal -->
+{#if modal}
+  <div
+    class="modal-backdrop"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Evento del partido"
+    onclick={dismissModal}
+    onkeydown={(e) => e.key === "Escape" && dismissModal()}
+    tabindex="-1"
+  >
+    {#if modal.kind === "goal"}
+      <div class="modal-card goal-card" class:player-goal={modal.isPlayerTeam} class:rival-goal={!modal.isPlayerTeam}>
+        {#if modal.varPhase === "reviewing"}
+          <div class="var-spinner">🎯</div>
+          <h2>VAR REVISANDO</h2>
+          <p class="dim">Revisión del gol del minuto {modal.event.minute}'…</p>
+        {:else if modal.varPhase === "upheld"}
+          <div class="goal-icon">⚽✅</div>
+          <h2>GOL CONFIRMADO</h2>
+          <p>La acción es legal — el gol sube al marcador.</p>
+        {:else if modal.varPhase === "overturned"}
+          <div class="goal-icon">⚽❌</div>
+          <h2>VAR ANULA EL GOL</h2>
+          <p>Fuera de juego milimétrico. (Visual del slice — el marcador no cambia.)</p>
+        {:else}
+          <div class="goal-icon mega">⚽</div>
+          <h2 class="mega-title">¡GOOOOL!</h2>
+          <p class="mega-sub">
+            {modal.isPlayerTeam ? "Real Pueblo CF" : "Rival"} · minuto {modal.event.minute}'
+          </p>
+          <p class="score-flash">{homeGoals}-{awayGoals}</p>
+        {/if}
+      </div>
+    {:else if modal.kind === "injury"}
+      <div class="modal-card injury-card">
+        <div class="goal-icon">🏥</div>
+        <h2>LESIÓN</h2>
+        <p>
+          {modal.isPlayerTeam ? "Un jugador de Real Pueblo" : "El rival"} cae al
+          césped · minuto {modal.event.minute}' ·
+          <strong>{modal.event.severity === "major" ? "grave" : "leve"}</strong>
+        </p>
+      </div>
+    {/if}
+  </div>
+{/if}
+
+<!-- Confetti rain — own-team goals only -->
+{#if confettiActive}
+  <div class="confetti-container" aria-hidden="true">
+    {#each confettiPieces as p}
+      <span
+        class="confetti-piece"
+        style="left: {p.left}%; animation-delay: {p.delay}s; animation-duration: {p.duration}s; --drift: {p.drift}px;"
+      >
+        {p.emoji}
+      </span>
+    {/each}
+  </div>
+{/if}
+
 <style>
   .scoreboard { text-align: center; padding: var(--space-5); }
   .score-line { display: flex; justify-content: center; align-items: center; gap: var(--space-4); font-size: var(--text-lg); }
@@ -227,4 +367,91 @@
   .events ul li.yellow { color: var(--warn); }
   .events ul li.injury { color: var(--bad); }
   .button-link { display: inline-block; margin-top: var(--space-3); padding: var(--space-2) var(--space-4); border: 1px solid var(--border); border-radius: 6px; }
+
+  /* ── Dramatic modal ──────────────────────────────────────────── */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    backdrop-filter: blur(4px);
+    animation: fade-in 0.2s ease-out;
+  }
+  .modal-card {
+    background: var(--bg-2);
+    border: 2px solid var(--border);
+    border-radius: 14px;
+    padding: var(--space-6);
+    text-align: center;
+    max-width: 90vw;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    animation: pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .goal-card.player-goal { border-color: var(--accent); box-shadow: 0 0 60px rgba(74, 222, 128, 0.4); }
+  .goal-card.rival-goal { border-color: var(--bad); }
+  .injury-card { border-color: var(--bad); }
+  .goal-icon { font-size: 64px; line-height: 1; margin-bottom: var(--space-2); }
+  .goal-icon.mega { font-size: 96px; animation: bounce 0.6s ease-out; }
+  .mega-title { font-size: 48px; letter-spacing: -0.02em; margin-bottom: var(--space-2); }
+  .player-goal .mega-title { color: var(--accent); }
+  .rival-goal .mega-title { color: var(--bad); }
+  .mega-sub { font-size: var(--text-lg); color: var(--fg-dim); margin-bottom: var(--space-3); }
+  .score-flash {
+    font-size: 56px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    color: var(--fg);
+    letter-spacing: 0.05em;
+  }
+  .var-spinner {
+    font-size: 64px;
+    line-height: 1;
+    margin-bottom: var(--space-3);
+    animation: spin 1.4s linear infinite;
+  }
+
+  /* ── Confetti rain ──────────────────────────────────────────── */
+  .confetti-container {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 90;
+    overflow: hidden;
+  }
+  .confetti-piece {
+    position: absolute;
+    top: -40px;
+    font-size: 28px;
+    animation: confetti-fall linear forwards;
+    animation-fill-mode: forwards;
+  }
+
+  /* ── Animations ──────────────────────────────────────────── */
+  @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes pop-in {
+    0% { transform: scale(0.7); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  @keyframes bounce {
+    0% { transform: scale(0.3) rotate(-20deg); }
+    60% { transform: scale(1.2) rotate(10deg); }
+    100% { transform: scale(1) rotate(0); }
+  }
+  @keyframes spin {
+    from { transform: rotate(0); }
+    to { transform: rotate(360deg); }
+  }
+  @keyframes confetti-fall {
+    0% {
+      transform: translate(0, 0) rotate(0);
+      opacity: 1;
+    }
+    100% {
+      transform: translate(var(--drift, 0px), 110vh) rotate(720deg);
+      opacity: 0;
+    }
+  }
 </style>
