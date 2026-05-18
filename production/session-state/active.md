@@ -63,7 +63,8 @@ separada — el slice vive en `prototypes/` que ya está aislado).
 
 | Day | Date | What was built | Blockers | Notes |
 |---|---|---|---|---|
-| 1 | 2026-05-18 | Scaffold (this session) | — | Package.json, README, BUILD-PLAN.md created |
+| 1 | 2026-05-18 | Scaffold | — | Package.json, README, BUILD-PLAN.md created |
+| 2 | 2026-05-18 | cascade-engine subset (6 chains + C0 baseline) | Seed had MPI=0; fixed to 50 | 6/6 tests pass · smoke CLI shows counterintuitive cascades + threshold BLOCKING at W2 |
 
 ---
 
