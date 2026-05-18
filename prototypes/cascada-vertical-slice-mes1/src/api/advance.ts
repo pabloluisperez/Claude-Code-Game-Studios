@@ -6,8 +6,17 @@ import seedrandom from "seedrandom";
 import * as repo from "../db/repo.js";
 import { mergeDelayedBuffer, runTick } from "../sim/cascade-engine.js";
 import { getEventsForWeek, type SliceEvent } from "../sim/event-system.js";
+import {
+  applyXp,
+  initialManagerState,
+  maybeGenerateCareerEvent,
+  weeklyXpGain,
+  type ManagerState,
+  type XpGain,
+} from "../sim/manager-rpg.js";
 import { simulateMatch } from "../sim/match-simulation.js";
 import { generateLineup, REAL_PUEBLO } from "../sim/player-gen.js";
+import { generateStaffMessages, type StaffMessage } from "../sim/staff-messages.js";
 import type {
   DelayedEffect,
   MatchOutcome,
@@ -39,6 +48,10 @@ export interface AdvanceResult {
   thresholdCrossings: { nodeId: string; reason: string; value: number }[];
   cascadeLog: { edgeId: string; to: string; delta: number; delay: number }[];
   events: SliceEvent[];
+  managerState: ManagerState;
+  managerXpGains: XpGain[];
+  managerLeveledUp: boolean;
+  staffMessages: StaffMessage[];
 }
 
 export async function advanceOneWeek(
@@ -138,10 +151,62 @@ export async function advanceOneWeek(
     week,
   );
 
-  // ── 6: persist snapshot ───────────────────────────────────────────────────
-  await repo.saveSnapshot(playthroughId, week, state, delayedBuffer);
+  // ── 6: manager-RPG XP + level up ───────────────────────────────────────────
+  const prevManager =
+    (latest?.managerState as ManagerState | null | undefined) ??
+    initialManagerState();
+  const xpGains = weeklyXpGain({
+    matchOutcome: playerMatchOutcome,
+    thresholdCrossings: tickResult.thresholdCrossings,
+  });
+  const xpResult = applyXp(prevManager, xpGains);
+  let managerState = xpResult.state;
 
-  // ── 7: advance week ────────────────────────────────────────────────────────
+  // Career event (week 4 only in slice)
+  const standingsRows = await repo.getStandings(playthroughId);
+  const playerStandingsRow = standingsRows.find(
+    (r) => r.clubId === playthrough.managerClubId,
+  );
+  const position = playerStandingsRow?.position ?? 20;
+  const careerEvent = maybeGenerateCareerEvent({
+    week,
+    state: managerState,
+    currentPosition: position,
+  });
+  if (careerEvent) {
+    managerState = {
+      ...managerState,
+      careerEvents: [...managerState.careerEvents, careerEvent],
+    };
+  }
+
+  // ── 7: staff messages ──────────────────────────────────────────────────────
+  const staffMessages = generateStaffMessages({
+    week,
+    prevState: latest?.state ?? state,
+    nextState: state,
+    cascadeLog: tickResult.log,
+    thresholdCrossings: tickResult.thresholdCrossings,
+  });
+  if (staffMessages.length > 0) {
+    await repo.insertStaffMessages(
+      staffMessages.map((m) => ({
+        playthroughId,
+        week,
+        staffRole: m.staffRole,
+        staffTier: m.staffTier,
+        templateKey: m.templateKey,
+        body: m.body,
+        priority: m.priority,
+        causalNodeId: m.causalNodeId,
+      })),
+    );
+  }
+
+  // ── 8: persist snapshot ───────────────────────────────────────────────────
+  await repo.saveSnapshot(playthroughId, week, state, delayedBuffer, managerState);
+
+  // ── 9: advance week ────────────────────────────────────────────────────────
   await repo.advancePlaythroughWeek(playthroughId, week + 1);
 
   return {
@@ -160,6 +225,10 @@ export async function advanceOneWeek(
       delay: e.delay,
     })),
     events,
+    managerState,
+    managerXpGains: xpGains,
+    managerLeveledUp: xpResult.leveledUp,
+    staffMessages,
   };
 }
 

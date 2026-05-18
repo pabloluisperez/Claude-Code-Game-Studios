@@ -69,6 +69,7 @@ separada — el slice vive en `prototypes/` que ya está aislado).
 | 4 | 2026-05-18 | Drizzle schema (7 tables) + repo + fixture-gen + seed + docker-compose + migrations generated | drizzle-kit partial index syntax | 23/23 tests · 380-fixture round-robin works · DB layer ready but requires `docker compose up` to run live |
 | 5 | 2026-05-18 | advance() orchestrator + BullMQ advance-worker + event-system + smoke-db CLI | — | Single source of truth for weekly loop · workers ready (Redis required to run live) · event-system has 3 calendar events + 5 random pool |
 | 6 | 2026-05-18 | Match refactor: extracted runMatchTick + MatchSessionSnapshot · interactive start+resume · Hono API server · match controller | seedrandom `.state()` needs `{state:true}` option | 26/26 tests · **ADR-013 Option B verified**: pause@45 + resume === one-shot (identical scoreline + MPI + post-45 events) · JSON round-trip preserves rng |
+| 7 | 2026-05-18 | Manager-RPG (2 skills, XP curve, career event) + 3 staff observers (head_coach, fitness_coach, finance_director) with tier-1 templated messages · advance.ts integrates both | — | 34/34 tests · XP from match + threshold crossings · level-up grants skill point · career event fires W4 with position-aware body |
 
 ---
 
