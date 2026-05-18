@@ -70,6 +70,7 @@ separada — el slice vive en `prototypes/` que ya está aislado).
 | 5 | 2026-05-18 | advance() orchestrator + BullMQ advance-worker + event-system + smoke-db CLI | — | Single source of truth for weekly loop · workers ready (Redis required to run live) · event-system has 3 calendar events + 5 random pool |
 | 6 | 2026-05-18 | Match refactor: extracted runMatchTick + MatchSessionSnapshot · interactive start+resume · Hono API server · match controller | seedrandom `.state()` needs `{state:true}` option | 26/26 tests · **ADR-013 Option B verified**: pause@45 + resume === one-shot (identical scoreline + MPI + post-45 events) · JSON round-trip preserves rng |
 | 7 | 2026-05-18 | Manager-RPG (2 skills, XP curve, career event) + 3 staff observers (head_coach, fitness_coach, finance_director) with tier-1 templated messages · advance.ts integrates both | — | 34/34 tests · XP from match + threshold crossings · level-up grants skill point · career event fires W4 with position-aware body |
+| 8-10 | 2026-05-18 | SvelteKit UI: layout (tab bar + status header) + 6 routes (dashboard with decisions, calendar, squad/standings, staff inbox, finance, manager profile) · API client lib | Svelte 5: variable name `state` collides with `$state` rune (renamed to `pt`); `pt.snapshot?.state` access needs $derived.by() | svelte-check 0 errors · 252 files checked · All read panels wired to /api/advance/* |
 
 ---
 

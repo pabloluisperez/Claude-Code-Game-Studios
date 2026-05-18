@@ -1,0 +1,106 @@
+/* VERTICAL SLICE - NOT FOR PRODUCTION
+ * Design tokens — minimal set extracted from hud-ui.md.
+ * Date: 2026-05-18
+ */
+
+:root {
+  /* Palette — Football Manager-clásico inspired */
+  --bg: #0f1419;
+  --bg-2: #1a2128;
+  --bg-3: #232c35;
+  --fg: #e4e6eb;
+  --fg-dim: #9aa4af;
+  --accent: #4ade80; /* good */
+  --warn: #fbbf24; /* warning */
+  --bad: #f87171; /* bad */
+  --link: #60a5fa;
+  --border: #2c3742;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* Type */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+
+  /* Layout */
+  --tab-bar-height: 56px;
+  --status-header-height: 64px;
+
+  /* Priority colors (per hud-ui.md) */
+  --priority-blocking: var(--bad);
+  --priority-advisory: var(--warn);
+  --priority-routine: var(--fg-dim);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.4;
+  min-height: 100vh;
+}
+
+a {
+  color: var(--link);
+  text-decoration: none;
+}
+a:hover { text-decoration: underline; }
+
+h1, h2, h3, h4 { font-weight: 600; letter-spacing: -0.01em; }
+h1 { font-size: var(--text-xl); }
+h2 { font-size: var(--text-lg); }
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  background: var(--bg-3);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: var(--space-2) var(--space-4);
+}
+button:hover { background: var(--border); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.primary { background: var(--accent); color: #0f1419; border-color: var(--accent); }
+button.primary:hover { filter: brightness(1.1); }
+button.danger { background: var(--bad); color: #0f1419; border-color: var(--bad); }
+
+input[type="range"] {
+  width: 100%;
+}
+
+.panel {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: var(--space-4);
+}
+
+.metric-label { color: var(--fg-dim); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.05em; }
+.metric-value { font-size: var(--text-xl); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.good { color: var(--accent); }
+.bad { color: var(--bad); }
+.warn { color: var(--warn); }
+.dim { color: var(--fg-dim); }
