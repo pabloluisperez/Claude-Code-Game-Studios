@@ -5,6 +5,7 @@ Accepted
 
 ## Date
 2026-05-16 (Proposed) → 2026-05-16 (Accepted, post-architecture-review run 2)
+2026-05-18 (sync chore: division size 16 → 20 clubs to align with game-concept.md MVP scope; fixture/matchday/performance math recomputed)
 
 ## Engine Compatibility
 
@@ -15,7 +16,7 @@ Accepted
 | **Knowledge Risk** | LOW — PostgreSQL, Drizzle 0.36+ relational schema: all stable, verified in VERSION.md |
 | **References Consulted** | `docs/engine-reference/web/modules/backend.md`, `docs/engine-reference/web/current-best-practices.md`, `docs/engine-reference/web/VERSION.md` |
 | **Post-Cutoff APIs Used** | Drizzle `unique().on(cols)` composite constraint in table config callback — verified correct Drizzle 0.36+ syntax; `.$onUpdate(() => new Date())` — verified correct pattern for auto-updating timestamps |
-| **Verification Required** | Verify `drizzle-kit generate` emits composite UNIQUE constraint on standings(season_id, division_id, club_id); verify `fixturesRelations` allows `db.query.fixtures.findMany({ with: { homeClub, awayClub } })`; verify `generateRoundRobin` with 16 clubs produces 30 rounds × 8 fixtures each |
+| **Verification Required** | Verify `drizzle-kit generate` emits composite UNIQUE constraint on standings(season_id, division_id, club_id); verify `fixturesRelations` allows `db.query.fixtures.findMany({ with: { homeClub, awayClub } })`; verify `generateRoundRobin` with 20 clubs produces 38 rounds × 10 fixtures each |
 
 ## ADR Dependencies
 
@@ -39,8 +40,8 @@ The architecture review (2026-05-16) identified this as Priority 4 gap.
 
 ### Constraints
 
-- MVP scope: 1 league (`Liga Cascada`) · 2 divisions · ~16 clubs per division · 3-5 seasons (game-concept.md)
-- Clubs are static entities (~16 in MVP, AI-generated names/cities) — not user-created
+- MVP scope: 1 league (`Liga Cascada`) · 2 divisions · 20 clubs per division · 3-5 seasons (game-concept.md)
+- Clubs are static entities (40 in MVP — 20 per division, AI-generated names/cities) — not user-created
 - The fixture schedule must be deterministic (ADR-002: same seed → same fixtures for reproducibility)
 - `MatchOutcome.worldStateDeltas` (ADR-007) must be applied to WorldState — this ADR defines where match results live; the cascade application is handled by the existing advance() flow
 - Standings are read frequently (dashboard, HUD): query performance matters
@@ -48,7 +49,7 @@ The architecture review (2026-05-16) identified this as Priority 4 gap.
 
 ### Requirements
 
-- Fixtures pre-generated at season start (double round-robin, 30 matchdays for 16 clubs)
+- Fixtures pre-generated at season start (double round-robin, 38 matchdays for 20 clubs)
 - Standings table maintained post-match (fast reads, no aggregation query needed)
 - Composite unique constraint: one standings row per (club × division × season)
 - Promotion/relegation: automatic at season_end, swaps bottom N of div-1 with top N of div-2
@@ -71,7 +72,7 @@ Season Start
         INSERT fixtures (all matchdays)
         INSERT standings (one row per club, all zeros)
         INSERT calendar_events (type='match', priority='STOP', week=fixture.week,
-                                metadata={fixtureId}) × 30 matchdays
+                                metadata={fixtureId}) × 38 matchdays
 
 Match Day (advance() reaches 'match' calendar event)
   │
@@ -167,7 +168,7 @@ export const divisions = pgTable('divisions', {
     .references(() => leagues.id, { onDelete: 'cascade' }),
   tier: integer('tier').notNull(),   // 1 = top division, 2 = second division
   name: text('name').notNull(),
-  clubCount: integer('club_count').notNull().default(16),
+  clubCount: integer('club_count').notNull().default(20),
 });
 
 export const seasons = pgTable('seasons', {
@@ -361,13 +362,13 @@ export async function processSeasonEnd(
 ### Alternative 1: Compute standings on-demand from fixtures
 - **Description**: No standings table. Every table query runs SELECT + GROUP BY + SUM over fixtures.
 - **Pros**: Always accurate; no write on every match result.
-- **Cons**: For 16 clubs × 30 matchdays = 480 fixture rows per season + 2 divisions. Acceptable performance now, but becomes expensive at multiple seasons. HUD reads standings on every advance — this query runs very frequently.
-- **Rejection Reason**: The standings table is small (16 rows) and updated rarely (once per match). Maintaining it is trivial. Avoiding the aggregation query for frequent reads is worth it.
+- **Cons**: For 20 clubs in double round-robin = 380 fixture rows per season per division × 2 divisions = 760 per season. Acceptable performance now, but becomes expensive at multiple seasons. HUD reads standings on every advance — this query runs very frequently.
+- **Rejection Reason**: The standings table is small (20 rows per division) and updated rarely (once per match). Maintaining it is trivial. Avoiding the aggregation query for frequent reads is worth it.
 
 ### Alternative 2: Standings as WorldState nodes
 - **Description**: Store `league:position:clubId` as WorldState nodes (Map<NodeId, number>).
 - **Pros**: Uniform storage; positions automatically feed into cascade.
-- **Cons**: League positions are structured enumerable domain data, not cascade numeric values. Storing 16 position values as WorldState nodes pollutes the cascade namespace and requires the cascade engine to know about league structure.
+- **Cons**: League positions are structured enumerable domain data, not cascade numeric values. Storing 20 position values as WorldState nodes pollutes the cascade namespace and requires the cascade engine to know about league structure.
 - **Rejection Reason**: Single-responsibility. League standings are competition domain data; WorldState is cascade simulation state. These must not be coupled.
 
 ### Alternative 3: JSONB season blob
@@ -381,7 +382,7 @@ export async function processSeasonEnd(
 ### Positive
 - ADR-008 can now generate `type: 'match'` calendar events with real `fixtureId` references
 - `generateRoundRobin()` is deterministic + reproducible (same seed → same fixture schedule for debug)
-- Standings reads are fast (single SELECT ORDER BY points on 16 rows)
+- Standings reads are fast (single SELECT ORDER BY points on 20 rows per division)
 - The clubs table provides the shared entity that match sim, economy, and transfers all reference
 - Season-over-season progression (promotion/relegation) is fully automated
 
@@ -392,16 +393,16 @@ export async function processSeasonEnd(
 - Tiebreaker rules for standings (goals, head-to-head) are deferred to `league-system.md` GDD — the ADR defines the columns but not the sort order
 
 ### Risks
-- **R1 — Fixture generation correctness**: A bug in `generateRoundRobin()` produces incorrect fixture counts or repeated matchups. **Mitigation**: Unit tests with `N=4, 8, 16` clubs verifying: exact match count = N×(N-1), every pair plays exactly twice (home+away), no club plays itself.
+- **R1 — Fixture generation correctness**: A bug in `generateRoundRobin()` produces incorrect fixture counts or repeated matchups. **Mitigation**: Unit tests with `N=4, 8, 16, 20` clubs verifying: exact match count = N×(N-1), every pair plays exactly twice (home+away), no club plays itself. `N=20` is the MVP target.
 - **R2 — `clubs` as shared entity**: If `clubs` schema changes (new column added), multiple module repos must update. **Mitigation**: Forbidden pattern (added to registry): cross-module direct DB writes to clubs table. All club writes go through `club-service`.
-- **R3 — Season end data volume**: After 5 seasons × 2 divisions, the fixtures table has ~5×2×240=2400 rows. Manageable, but needs cleanup strategy for completed seasons. **Mitigation**: Index on `(season_id, week)` for fixture queries; completed seasons archived rather than deleted.
+- **R3 — Season end data volume**: After 5 seasons × 2 divisions, the fixtures table has ~5×2×380=3800 rows. Manageable, but needs cleanup strategy for completed seasons. **Mitigation**: Index on `(season_id, week)` for fixture queries; completed seasons archived rather than deleted.
 - **R4 — worldStateDeltas from MatchOutcome**: `updateStandingsAfterMatch()` is called within the advance() transaction, but applying `matchOutcome.worldStateDeltas` to the cascade WorldState is handled separately by `game-clock-service.advance()`. These two operations must both succeed or both fail. **Mitigation**: Both are within the same DB transaction in advance().
 
 ## GDD Requirements Addressed
 
 | GDD System | Requirement | How This ADR Addresses It |
 |------------|-------------|--------------------------|
-| game-concept.md | "1 liga + 1-2 divisiones, ~16 clubs" | `leagues` + `divisions.tier` (1/2) + `clubs` table with ~16 clubs per division |
+| game-concept.md | "1 liga + 2 divisiones, 20 clubs por división" | `leagues` + `divisions.tier` (1/2) + `clubs` table with 20 clubs per division |
 | game-concept.md | "3-5 temporadas jugables sin agotar contenido" | `seasons` table; season-end generates new season via promotion/relegation |
 | game-concept.md | "Ascensos/descensos" implied by "1-2 divisiones" | `processSeasonEnd()` swaps bottom 2 div-1 clubs with top 2 div-2 clubs |
 | game-concept.md | Skip-por-eventos: "semana de partido como unidad" | Fixtures populate `calendar_events(type='match', priority='STOP')` — every match is a STOP event |
@@ -409,18 +410,18 @@ export async function processSeasonEnd(
 
 ## Performance Implications
 
-- **CPU**: `generateRoundRobin()` for 16 clubs: O(N²) ≈ 240 operations. <1ms.
-- **Memory**: Full season fixtures in memory during generation: ~240 objects × ~200 bytes = ~48KB. Brief, discarded after INSERT.
+- **CPU**: `generateRoundRobin()` for 20 clubs: O(N²) ≈ 380 operations. <1ms.
+- **Memory**: Full season fixtures in memory during generation: ~380 objects × ~200 bytes = ~76KB. Brief, discarded after INSERT.
 - **Load Time**: Not applicable.
-- **Network**: Standings API response: 16 rows × ~200 bytes = ~3.2KB. Negligible.
-- **DB**: Season start: 240 INSERT fixtures + 16 INSERT standings + 240 INSERT calendar_events = 496 rows in one transaction. At ~1ms per batch insert: <100ms. One-time cost per season.
+- **Network**: Standings API response: 20 rows × ~200 bytes = ~4KB per division. Negligible.
+- **DB**: Season start (per division): 380 INSERT fixtures + 20 INSERT standings + 380 INSERT calendar_events = 780 rows in one transaction. With 2 divisions: ~1,560 rows. At ~1ms per batch insert: <100ms. One-time cost per season.
 
 ## Migration Plan
 
 No existing code to migrate. New tables.
 
 1. Create Drizzle migration for all 6 tables + Relations exports
-2. Seed initial clubs data (16 clubs per division) — static seed script
+2. Seed initial clubs data (20 clubs per division, 40 total) — static seed script
 3. Seed initial `leagues` + `divisions` records
 4. Implement `generateRoundRobin()` with unit tests before any season-start logic
 5. Implement `season-service.startSeason()` — generates fixtures + standings + calendar events
@@ -430,8 +431,8 @@ No existing code to migrate. New tables.
 
 ## Validation Criteria
 
-- `generateRoundRobin(ctx, 16 clubIds, startWeek=1)` returns exactly 240 fixtures (16×15×2/2×2=240): 30 matchdays × 8 matches. Every pair of clubs appears exactly twice (home+away). No club plays itself.
-- After `startSeason()`, `calendar_events` contains exactly 240 `type='match'` entries, each with a valid `metadata.fixtureId`.
+- `generateRoundRobin(ctx, 20 clubIds, startWeek=1)` returns exactly 380 fixtures (N×(N-1) = 20×19 = 380): 38 matchdays × 10 matches each. Every pair of clubs appears exactly twice (home+away). No club plays itself.
+- After `startSeason()` for one division, `calendar_events` contains exactly 380 `type='match'` entries, each with a valid `metadata.fixtureId`.
 - After simulating a match win for club A vs club B: `standings` for A shows +3 points, +1 win; standings for B shows +1 loss. Sum of `standings.played` across all clubs = 2× fixtures played.
 - After `processSeasonEnd()`: bottom 2 clubs of div-1 appear in div-2 `season_clubs` for new season; top 2 of div-2 appear in div-1.
 - Determinism: `generateRoundRobin` with same `ctx` seed produces identical fixture list on repeated calls.

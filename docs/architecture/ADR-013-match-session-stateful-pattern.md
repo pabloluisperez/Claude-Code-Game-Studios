@@ -5,6 +5,7 @@ Accepted
 
 ## Date
 2026-05-18 (created in match-simulation R2 review — resolves OQ-MATCH-01)
+2026-05-18 (sync chore: PRNG decision Option A → Option B; added `failed` state to FSM + UNIQUE INDEX for retry semantics)
 
 ## Engine Compatibility
 
@@ -99,21 +100,26 @@ interface MatchSessionSnapshot {
   homeMomentum: number;
   substitutionsUsed: number;          // shared pool (voluntary + forced by injury)
   yellowCardsByPlayerId: Record<string, number>;
-  state: 'pre_match' | 'in_progress' | 'paused_for_decision' | 'completed' | 'archived';
+  state: 'pre_match' | 'in_progress' | 'paused_for_decision' | 'completed' | 'failed' | 'archived';
   timeoutJobId: string | null;
-  // PRNG state: see PRNG Reproducibility section below
+  rngState: string;   // serialized seedrandom state — see PRNG Reproducibility section
 }
 ```
 
 ### PRNG Reproducibility
 
-ADR-002 guarantees that given the same seed + same decisions, `simulateMatch` produces identical output. For re-enqueue to be reproducible, one of these must hold:
+ADR-002 guarantees that given the same seed + same decisions, `simulateMatch` produces identical output. For re-enqueue to be reproducible across pause boundaries, the PRNG stream must survive the gap. Two strategies were evaluated:
 
-**Option A (preferred): Fixed RNG consumption per tick.** The football algorithm guarantees a fixed number of `ctx.rng()` calls per tick regardless of lineup composition. This means: given the same seed, running ticks 1-44, pausing, and resuming from tick 45 produces the same results as running all 90 ticks without pausing. The algorithm must be designed with this constraint in mind (e.g., always consume a fixed sequence of rng calls per tick even if some are unused).
+**Option A (rejected): Fixed RNG consumption per tick.** The football algorithm would guarantee a fixed number of `ctx.rng()` calls per tick regardless of lineup composition or branch path (always consume the same sequence per tick, discarding unused values). Resume-from-tick-45 then produces identical results to running all 90 ticks straight.
 
-**Option B (fallback): Persist PRNG state.** If fixed RNG consumption cannot be guaranteed, `MatchSessionSnapshot` must include the serialized PRNG state after each tick batch. `seedrandom` supports serialization. Use this if the algorithm cannot guarantee fixed calls.
+**Option B (chosen): Persist PRNG state.** `MatchSessionSnapshot` includes the serialized PRNG state (`rngState: string`) after each tick batch. On re-enqueue, the worker rehydrates the PRNG from `snapshot.rngState` before continuing. `seedrandom` supports serialization natively via `.state()` and `seedrandom('', { state })`.
 
-**Decision**: Implement Option A. If it proves infeasible during implementation, fall back to Option B and update this ADR.
+**Decision**: Implement **Option B**. Option A was rejected for two reasons:
+
+1. **Brittle invariant**: enforcing fixed rng() consumption per tick across every branch of the football algorithm is fragile — any future code change (new event type, new pause condition, refactor of the action resolver) could silently break determinism. The constraint is not statically checkable.
+2. **Negligible cost**: `seedrandom` state serializes to ~256 bytes. At expected concurrency (≤100 simultaneous matches), this adds <30KB of snapshot data — trivial compared to the existing `eventsAccumulated` and `currentLineup*` payloads.
+
+Option B is also more amenable to debugging: snapshot dumps include the exact PRNG state at any pause, enabling deterministic replay of a specific failure.
 
 ### Session Lock
 
@@ -122,8 +128,10 @@ Constraint at DB level prevents concurrent MatchSessions for the same playthroug
 ```sql
 CREATE UNIQUE INDEX match_sessions_active_playthrough
   ON match_sessions(playthrough_id)
-  WHERE state NOT IN ('completed', 'archived');
+  WHERE state NOT IN ('completed', 'archived', 'failed');
 ```
+
+The `'failed'` state is included in the WHERE clause exclusion so that a match that errored (worker exception, snapshot write failure, irrecoverable PRNG corruption) does NOT block the playthrough from starting a new match. A failed session is terminal — it can be archived but not resumed.
 
 `POST /matches/:id/start` returns `409 Conflict` with `{ error: 'match_already_in_progress' }` if this constraint is violated.
 
@@ -180,7 +188,7 @@ interface MatchEventEmitter {
 
 | Riesgo | Probabilidad | Impacto | Mitigación |
 |--------|--------------|---------|------------|
-| PRNG divergence after substitution | MEDIUM | HIGH | Implement fixed RNG consumption per tick (Option A); test with AC-02 |
+| PRNG divergence after substitution | LOW | HIGH | Persist `rngState` in snapshot (Option B); rehydrate seedrandom from state on every re-enqueue; test with AC-02 (replay determinism across pause boundary) |
 | Duplicate session creation (race condition) | LOW | HIGH | UNIQUE INDEX + 409 response |
 | Snapshot write fails mid-match | LOW | MEDIUM | Wrap snapshot write + job creation in DB transaction |
 
