@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cascada FC — Art Bible Validation Prototype</title>
+  <link rel="preconnect" href="https://rsms.me/">
+  <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ibm/plex@6.4.1/css/ibm-plex.min.css">
+  <style>
+    :root {
+      /* World palette — Tier 0 base (Art Bible §4.1) */
+      --c-tierra-seca: #5C3D1E;
+      --c-polvo-fachada: #8C6B47;
+      --c-cielo-encapotado: #A8A0A0;
+      --c-sombra-interior: #2E2018;
+      --c-madera-envejecida: #7A5230;
+      --c-hierba-agostada: #6B7A3A;
+      --c-ceniza-tejado: #504844;
+
+      /* Tier 1 additions */
+      --c-cesped-vivo: #4A9968;
+      --c-cesped-wear: #3D7A50;
+      --c-cal-fachada: #C4B49A;
+      --c-acento-neutro: #9E8B6E;
+
+      /* UI palette (Art Bible §4.4) */
+      --c-panel: #F5F0E8;
+      --c-panel-hover: #EDE5D5;
+      --c-modal-bg: #2E2018;
+      --c-success: #2D6A4F;
+      --c-warning: #8C5A00;
+      --c-error: #8B1A1A;
+      --c-info: #2C4A6B;
+      --c-disabled: #9A9590;
+
+      /* Example club colors */
+      --club-primary: #C0392B;
+      --club-secondary: #1A3A6B;
+      --club-accent: #F0F0F0;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 16px;
+      font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+      font-weight: 400;
+      background: #FAFAF7;
+      color: var(--c-sombra-interior);
+      line-height: 1.6;
+    }
+
+    h1 {
+      font-weight: 600;
+      font-size: 1.75rem;
+      margin: 0 0 8px;
+      color: var(--c-sombra-interior);
+    }
+
+    h2 {
+      font-weight: 600;
+      font-size: 1.25rem;
+      margin: 24px 0 8px;
+    }
+
+    .subtitle {
+      font-size: 0.875rem;
+      color: var(--c-polvo-fachada);
+      margin: 0 0 16px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      gap: 24px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .canvas-host {
+      background: var(--c-panel);
+      border-radius: 2px;
+      padding: 12px;
+    }
+
+    .canvas-host canvas {
+      display: block;
+      image-rendering: pixelated;
+      image-rendering: -moz-crisp-edges;
+      image-rendering: crisp-edges;
+      width: 100%;
+      height: auto;
+    }
+
+    .info-panel {
+      background: var(--c-panel);
+      border-radius: 2px;
+      padding: 16px;
+      font-size: 0.875rem;
+    }
+
+    .info-panel ul {
+      margin: 8px 0;
+      padding-left: 18px;
+    }
+
+    .info-panel li {
+      margin: 4px 0;
+    }
+
+    .controls {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      font-family: inherit;
+      font-size: 0.875rem;
+      font-weight: 500;
+      padding: 8px 16px;
+      border-radius: 2px;
+      border: none;
+      cursor: pointer;
+      min-height: 40px;
+      transition: background-color 100ms ease-out;
+    }
+
+    .btn-primary {
+      background: var(--club-primary);
+      color: var(--c-panel);
+    }
+
+    .btn-primary:hover {
+      background: #A02E22;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--c-sombra-interior);
+      border: 1px solid var(--c-sombra-interior);
+    }
+
+    .btn-secondary:hover {
+      background: var(--c-panel-hover);
+    }
+
+    .btn:focus-visible {
+      outline: 2px solid var(--c-info);
+      outline-offset: 2px;
+    }
+
+    .checklist {
+      font-size: 0.8125rem;
+    }
+
+    .checklist label {
+      display: block;
+      padding: 4px 0;
+      cursor: pointer;
+    }
+
+    .palette-info {
+      display: grid;
+      grid-template-columns: 24px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      font-size: 0.75rem;
+      padding: 2px 0;
+    }
+
+    .palette-info .swatch {
+      width: 24px;
+      height: 24px;
+      border-radius: 2px;
+      border: 1px solid var(--c-sombra-interior);
+    }
+
+    .palette-info code {
+      font-family: 'IBM Plex Mono', 'Courier New', monospace;
+      font-size: 0.75rem;
+    }
+
+    .note {
+      background: var(--c-panel-hover);
+      padding: 8px 12px;
+      border-left: 3px solid var(--c-info);
+      font-size: 0.8125rem;
+      margin: 12px 0;
+    }
+
+    footer {
+      max-width: 1400px;
+      margin: 24px auto 0;
+      padding-top: 16px;
+      border-top: 1px solid var(--c-panel-hover);
+      font-size: 0.75rem;
+      color: var(--c-polvo-fachada);
+    }
+  </style>
+</head>
+<body>
+  <h1>Cascada FC — Art Bible Validation Prototype</h1>
+  <p class="subtitle">PixiJS 8 placeholder scaffolding · Renders tile grid 32×16 + character 16×24 + building stack + paleta swatches per <code>design/art/art-bible.md</code></p>
+
+  <div class="layout">
+    <div class="canvas-host" id="canvas-host">
+      <!-- Pixi canvas mounts here -->
+    </div>
+
+    <aside class="info-panel">
+      <h2>Qué valida este prototipo</h2>
+      <ul>
+        <li><strong>§3.1</strong> Canon character 16×24 px (Habbo-chibi proportions)</li>
+        <li><strong>§3.2</strong> Tile huella 32×16 px + módulos 16 px</li>
+        <li><strong>§4.1</strong> Paleta Tier 0 (7 colores) renderizada correctamente</li>
+        <li><strong>§4.2.4</strong> Wear pattern — césped no uniforme</li>
+        <li><strong>§4.5</strong> Tinte día/noche vía PixiJS ColorMatrixFilter</li>
+        <li><strong>§8.1</strong> Tile size locked 32×16</li>
+        <li><strong>§8.7</strong> NEAREST scale mode (no antialiasing)</li>
+      </ul>
+
+      <div class="note">
+        <strong>Sprites son rectángulos placeholder</strong> en hex correcto de paleta. Validar dimensiones + colores + integración PixiJS, no detalle de pixel art (eso requiere artista).
+      </div>
+
+      <h2>Controles</h2>
+      <div class="controls">
+        <button class="btn btn-primary" id="btn-day">Día (5200K)</button>
+        <button class="btn btn-secondary" id="btn-dusk">Tarde (3000K)</button>
+        <button class="btn btn-secondary" id="btn-night">Noche (2200K)</button>
+      </div>
+
+      <h2>Paleta usada</h2>
+      <div class="palette-info"><div class="swatch" style="background: var(--c-tierra-seca)"></div><span>Tierra seca</span><code>#5C3D1E</code></div>
+      <div class="palette-info"><div class="swatch" style="background: var(--c-polvo-fachada)"></div><span>Polvo de fachada</span><code>#8C6B47</code></div>
+      <div class="palette-info"><div class="swatch" style="background: var(--c-cielo-encapotado)"></div><span>Cielo encapotado</span><code>#A8A0A0</code></div>
+      <div class="palette-info"><div class="swatch" style="background: var(--c-sombra-interior)"></div><span>Sombra interior</span><code>#2E2018</code></div>
+      <div class="palette-info"><div class="swatch" style="background: var(--c-madera-envejecida)"></div><span>Madera envejecida</span><code>#7A5230</code></div>
+      <div class="palette-info"><div class="swatch" style="background: var(--c-hierba-agostada)"></div><span>Hierba agostada</span><code>#6B7A3A</code></div>
+      <div class="palette-info"><div class="swatch" style="background: var(--c-ceniza-tejado)"></div><span>Ceniza de tejado</span><code>#504844</code></div>
+      <div class="palette-info"><div class="swatch" style="background: var(--c-cesped-vivo)"></div><span>Césped vivo (T1)</span><code>#4A9968</code></div>
+      <div class="palette-info"><div class="swatch" style="background: var(--c-cesped-wear)"></div><span>Césped wear (T1)</span><code>#3D7A50</code></div>
+      <div class="palette-info"><div class="swatch" style="background: var(--c-cal-fachada)"></div><span>Cal fachada (T1)</span><code>#C4B49A</code></div>
+
+      <h2>Validation checklist</h2>
+      <div class="checklist">
+        <label><input type="checkbox"> Tile diamond 32×16 px se ve correctamente en isométrico</label>
+        <label><input type="checkbox"> Character 16×24 px legible a scale ×4</label>
+        <label><input type="checkbox"> Wear pattern visible en zonas alto-tráfico</label>
+        <label><input type="checkbox"> 3 módulos × 16 px stack vertical correcto</label>
+        <label><input type="checkbox"> Crowd-tile 32×32 con densidad variable</label>
+        <label><input type="checkbox"> Tinte día/noche aplicado vía ColorMatrixFilter</label>
+        <label><input type="checkbox"> NEAREST scale — sin blur ni antialiasing en escalado</label>
+        <label><input type="checkbox"> Paleta hex coincide visualmente con specs §4.1</label>
+      </div>
+    </aside>
+  </div>
+
+  <footer>
+    Prototype 2026-05-17 · Cascada FC · Art Bible Validation · PixiJS 8 (CDN jsdelivr) · No build step required · <code>image-rendering: pixelated</code>
+  </footer>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "pixi.js": "https://cdn.jsdelivr.net/npm/pixi.js@8.6.6/dist/pixi.mjs"
+      }
+    }
+  </script>
+  <script type="module">
+    import { Application, Container, Graphics, ColorMatrixFilter } from 'pixi.js';
+
+    /**
+     * Cascada FC — Art Bible Validation Prototype
+     *
+     * Renders placeholder sprites at correct paleta and dimensions to validate:
+     * - Tile 32×16 isométrico (§3.2 + §8.1)
+     * - Character 16×24 (§3.1)
+     * - Building stack 3 módulos × 16px (§3.2)
+     * - Crowd-tile 32×32 density variants (§4.2.5)
+     * - Wear pattern césped (§4.2.4)
+     * - Day/night tint (§4.5) via ColorMatrixFilter
+     */
+
+    // Palette as hex numbers (PixiJS expects 0xRRGGBB)
+    const PALETTE = {
+      tierraSeca: 0x5C3D1E,
+      polvoFachada: 0x8C6B47,
+      cieloEncapotado: 0xA8A0A0,
+      sombraInterior: 0x2E2018,
+      maderaEnvejecida: 0x7A5230,
+      hierbaAgostada: 0x6B7A3A,
+      cenizaTejado: 0x504844,
+      cespedVivo: 0x4A9968,
+      cespedWear: 0x3D7A50,
+      calFachada: 0xC4B49A,
+      acentoNeutro: 0x9E8B6E,
+      clubPrimary: 0xC0392B,
+      clubSecondary: 0x1A3A6B,
+      // Character skin tones (§5.2 capa 1)
+      skin1: 0xFDDBB4,
+      skin2: 0xD4956A,
+      skin3: 0xA05C2C,
+    };
+
+    // Canvas dimensions — native pixel art space (will be scaled up by container)
+    const CANVAS_W = 800;
+    const CANVAS_H = 480;
+    const SCALE = 4; // visual scale factor — pixel art is tiny, scale up for viewing
+
+    const TILE_W = 32;
+    const TILE_H = 16;
+    const MODULE_H = 16;
+
+    const app = new Application();
+
+    await app.init({
+      width: CANVAS_W,
+      height: CANVAS_H,
+      background: PALETTE.cieloEncapotado, // sky color
+      antialias: false, // pixel art binding
+      resolution: 1,
+    });
+
+    document.getElementById('canvas-host').appendChild(app.canvas);
+
+    // Disable image smoothing on canvas for true pixel art
+    app.canvas.style.imageRendering = 'pixelated';
+
+    // Root container — all world content goes here
+    const worldContainer = new Container();
+    worldContainer.scale.set(SCALE);
+    app.stage.addChild(worldContainer);
+
+    // Day/night tint filter
+    const timeFilter = new ColorMatrixFilter();
+    worldContainer.filters = [timeFilter];
+
+    // --- Helper: isometric grid position to screen coords ---
+    function isoToScreen(col, row) {
+      return {
+        x: (col - row) * (TILE_W / 2),
+        y: (col + row) * (TILE_H / 2),
+      };
+    }
+
+    // --- Helper: draw an isometric diamond tile at (cx, cy) ---
+    function drawTile(g, cx, cy, color) {
+      g.poly([
+        cx + TILE_W / 2, cy,           // top
+        cx + TILE_W,     cy + TILE_H / 2, // right
+        cx + TILE_W / 2, cy + TILE_H,    // bottom
+        cx,              cy + TILE_H / 2, // left
+      ]).fill(color);
+    }
+
+    // --- Helper: draw a wear overlay on a tile ---
+    function drawTileWear(g, cx, cy, intensity) {
+      // intensity 0-3: 0 = pristine, 3 = heavy wear (center of field)
+      if (intensity === 0) return;
+      const wearColor = intensity >= 2 ? PALETTE.cespedWear : 0x3D7A50;
+      // Draw 1-3 small darker rectangles to suggest wear
+      const dots = [
+        [4, 6], [8, 10], [12, 4], [20, 8], [16, 12], [24, 6]
+      ];
+      for (let i = 0; i < intensity * 2; i++) {
+        const [dx, dy] = dots[i % dots.length];
+        g.rect(cx + dx, cy + dy, 2, 1).fill(wearColor);
+      }
+    }
+
+    // --- 1. Render: 5x5 tile grid with wear pattern (§4.2.4) ---
+    const gridContainer = new Container();
+    worldContainer.addChild(gridContainer);
+    gridContainer.x = 80;
+    gridContainer.y = 30;
+
+    const gridG = new Graphics();
+    gridContainer.addChild(gridG);
+
+    // Center of grid has heaviest wear
+    function wearAtPos(col, row) {
+      const center = 2;
+      const dist = Math.max(Math.abs(col - center), Math.abs(row - center));
+      if (dist === 0) return 3;       // center — heavy wear
+      if (dist === 1) return 2;       // mid
+      if (dist === 2) return 1;       // light
+      return 0;                        // corner — pristine
+    }
+
+    for (let row = 0; row < 5; row++) {
+      for (let col = 0; col < 5; col++) {
+        const { x, y } = isoToScreen(col, row);
+        // Base color: césped vivo for Tier 1
+        drawTile(gridG, x, y, PALETTE.cespedVivo);
+        drawTileWear(gridG, x, y, wearAtPos(col, row));
+      }
+    }
+
+    // --- 2. Render: Building stack — 3 módulos (§3.2 + §6.1) ---
+    const buildingContainer = new Container();
+    worldContainer.addChild(buildingContainer);
+    buildingContainer.x = 280;
+    buildingContainer.y = 40;
+
+    const bldG = new Graphics();
+    buildingContainer.addChild(bldG);
+
+    // Stack 3 modules vertically. Each is a "cuboid" — front face + roof
+    function drawBuildingModule(g, x, y, faceColor, sideColor, roofColor) {
+      // Front face (rectangle facing camera)
+      g.rect(x, y, TILE_W, MODULE_H).fill(faceColor);
+      // Top diamond (roof — only on top module)
+      if (roofColor) {
+        g.poly([
+          x + TILE_W / 2, y - TILE_H / 2,
+          x + TILE_W,     y,
+          x + TILE_W / 2, y + TILE_H / 2,
+          x,              y,
+        ]).fill(roofColor);
+      }
+    }
+
+    // Bottom module (planta baja — más oscura, sombra)
+    drawBuildingModule(bldG, 0, MODULE_H * 2, PALETTE.polvoFachada, null, null);
+    // Window (Tier 0 = persiana cerrada)
+    bldG.rect(8, MODULE_H * 2 + 4, 6, 6).fill(PALETTE.sombraInterior);
+    bldG.rect(18, MODULE_H * 2 + 4, 6, 6).fill(PALETTE.sombraInterior);
+
+    // Middle module
+    drawBuildingModule(bldG, 0, MODULE_H, PALETTE.polvoFachada, null, null);
+    bldG.rect(8, MODULE_H + 4, 6, 6).fill(PALETTE.sombraInterior);
+    bldG.rect(18, MODULE_H + 4, 6, 6).fill(PALETTE.sombraInterior);
+
+    // Top module with roof
+    drawBuildingModule(bldG, 0, 0, PALETTE.polvoFachada, null, PALETTE.cenizaTejado);
+
+    // Tier 1 detail: bandera in roof
+    bldG.rect(15, -8, 1, 8).fill(PALETTE.sombraInterior); // mástil
+    bldG.rect(16, -8, 4, 3).fill(PALETTE.clubPrimary);   // bandera
+
+    // --- 3. Render: Character 16×24 (§3.1 + §5.2) ---
+    const charContainer = new Container();
+    worldContainer.addChild(charContainer);
+    charContainer.x = 80;
+    charContainer.y = 110;
+
+    const charG = new Graphics();
+    charContainer.addChild(charG);
+
+    // Cabeza (6×6 px aprox, ocupa 30-35% de altura)
+    charG.rect(5, 0, 6, 6).fill(PALETTE.skin2);
+    // Pelo (encima de cabeza)
+    charG.rect(4, 0, 8, 2).fill(PALETTE.sombraInterior);
+    // Cuerpo (camiseta con --club-primary)
+    charG.rect(4, 6, 8, 10).fill(PALETTE.clubPrimary);
+    // Cuello + parte clara (camiseta detalle)
+    charG.rect(5, 6, 6, 1).fill(PALETTE.clubAccent || 0xF0F0F0);
+    // Piernas (pantalón corto)
+    charG.rect(4, 16, 3, 6).fill(PALETTE.sombraInterior);
+    charG.rect(9, 16, 3, 6).fill(PALETTE.sombraInterior);
+    // Pies
+    charG.rect(4, 22, 4, 2).fill(PALETTE.maderaEnvejecida);
+    charG.rect(8, 22, 4, 2).fill(PALETTE.maderaEnvejecida);
+
+    // Sombra de pie (suelo)
+    charG.ellipse(8, 23, 6, 1).fill({ color: PALETTE.sombraInterior, alpha: 0.5 });
+
+    // --- 4. Render: Crowd-tile 32×32 with density variants (§4.2.5) ---
+    const crowdContainer = new Container();
+    worldContainer.addChild(crowdContainer);
+    crowdContainer.x = 160;
+    crowdContainer.y = 110;
+
+    const crowdG = new Graphics();
+    crowdContainer.addChild(crowdG);
+
+    // 5 density variants side by side
+    function drawCrowdTile(g, x, y, density) {
+      // Tile background (grada)
+      g.rect(x, y, 32, 32).fill(PALETTE.polvoFachada);
+      // Líneas de asientos (banco)
+      for (let r = 0; r < 4; r++) {
+        g.rect(x, y + r * 8 + 6, 32, 1).fill(PALETTE.maderaEnvejecida);
+      }
+      // Cabezas según density (0-4)
+      const heads = [
+        [4, 4], [12, 4], [20, 4], [28, 4],
+        [4, 12], [12, 12], [20, 12], [28, 12],
+      ];
+      const headCount = density === 0 ? 0 : density === 1 ? 2 : density === 2 ? 4 : density === 3 ? 6 : 8;
+      for (let i = 0; i < headCount; i++) {
+        const [hx, hy] = heads[i];
+        g.rect(x + hx, y + hy, 4, 4).fill(PALETTE.skin2);
+        // Camiseta del color del club
+        g.rect(x + hx, y + hy + 4, 4, 2).fill(PALETTE.clubPrimary);
+      }
+    }
+
+    // Render 5 variants: Empty, Sparse, Normal, Full, Packed
+    drawCrowdTile(crowdG, 0,   0, 0); // Empty
+    drawCrowdTile(crowdG, 36,  0, 1); // Sparse
+    drawCrowdTile(crowdG, 72,  0, 2); // Normal
+    drawCrowdTile(crowdG, 108, 0, 3); // Full
+    drawCrowdTile(crowdG, 144, 0, 4); // Packed
+
+    // --- Day/Night tint controls ---
+    function setTint(matrix) {
+      timeFilter.matrix = matrix;
+    }
+
+    // Día neutro — sin tinte
+    const matrixDay = [1, 0, 0, 0, 0,  0, 1, 0, 0, 0,  0, 0, 1, 0, 0,  0, 0, 0, 1, 0];
+    // Tarde — tono dorado (+R, -B)
+    const matrixDusk = [1.1, 0, 0, 0, 0.1,  0, 0.95, 0, 0, 0,  0, 0, 0.7, 0, 0,  0, 0, 0, 1, 0];
+    // Noche — frío oscuro
+    const matrixNight = [0.5, 0, 0, 0, 0,  0, 0.5, 0, 0, 0,  0, 0, 0.65, 0, 0.05,  0, 0, 0, 1, 0];
+
+    document.getElementById('btn-day').onclick = () => setTint(matrixDay);
+    document.getElementById('btn-dusk').onclick = () => setTint(matrixDusk);
+    document.getElementById('btn-night').onclick = () => setTint(matrixNight);
+
+    setTint(matrixDay); // initial
+
+    console.log('Cascada FC Art Bible Validation Prototype — loaded');
+    console.log('PixiJS version:', app.renderer.type, '— canvas:', CANVAS_W, '×', CANVAS_H, '— scale:', SCALE);
+  </script>
+</body>
+</html>

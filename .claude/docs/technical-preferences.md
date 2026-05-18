@@ -6,87 +6,113 @@
 
 ## Engine & Language
 
-- **Engine**: [TO BE CONFIGURED — run /setup-engine for Godot/Unity/Unreal, or /setup-web-stack for Web]
-- **Language**: [TO BE CONFIGURED]
-- **Rendering**: [TO BE CONFIGURED]
-- **Physics**: [TO BE CONFIGURED]
+- **Engine**: Web (TypeScript full-stack monorepo)
+- **Stack Profile**: SvelteKit 2 + Svelte 5 (runes) + Hono 4 + Drizzle ORM + Socket.IO 4 + BullMQ
+- **Language**: TypeScript 5.4+ (strict mode, ESM throughout)
+- **Rendering**: PixiJS 8 (2D isometric, `$state.raw` for PixiJS instances)
+- **Physics**: N/A (simulation engine is pure TypeScript in `packages/shared/src/sim/`)
+- **Engine Reference**: `docs/engine-reference/web/` (pinned 2026-05-15)
 
-> Supported engine profiles: **Godot 4**, **Unity**, **Unreal Engine 5**, **Web** (TypeScript full-stack monorepo).
-> When Engine = Web, the "engine" refers to the framework + runtime
-> combination — see `docs/engine-reference/web/stack-overview.md`.
+> Engine = Web means the "engine" is a framework + runtime stack.
+> See `docs/engine-reference/web/stack-overview.md` for full details.
+> **Pinned versions**: see `docs/engine-reference/web/VERSION.md`
+
+## Package Scope
+
+- **npm scope**: `@smt`
+- **Packages**: `@smt/web` (SvelteKit) · `@smt/api` (Hono) · `@smt/shared` (types + sim) · `@smt/db` (Drizzle + auth)
+- **pnpm workspace**: monorepo root
 
 ## Input & Platform
 
-<!-- Written by /setup-engine. Read by /ux-design, /ux-review, /test-setup, /team-ui, and /dev-story -->
-<!-- to scope interaction specs, test helpers, and implementation to the correct input methods. -->
-
-- **Target Platforms**: [TO BE CONFIGURED — e.g., PC, Console, Mobile, Web]
-- **Input Methods**: [TO BE CONFIGURED — e.g., Keyboard/Mouse, Gamepad, Touch, Mixed]
-- **Primary Input**: [TO BE CONFIGURED — the dominant input for this game]
-- **Gamepad Support**: [TO BE CONFIGURED — Full / Partial / None]
-- **Touch Support**: [TO BE CONFIGURED — Full / Partial / None]
-- **Platform Notes**: [TO BE CONFIGURED — any platform-specific UX constraints]
+- **Target Platforms**: Web (browser) primary · Mobile PWA secondary
+- **Input Methods**: Keyboard + Mouse primary · Touch (PWA sessions)
+- **Primary Input**: Keyboard + Mouse (management UI focus)
+- **Gamepad Support**: None (MVP)
+- **Touch Support**: Partial (PWA-optimized layout, no gamepad-style touch)
+- **Platform Notes**: Mobile sessions are expected to be shorter (5-15 min); design UI to be functional at 375px width. No native install required.
 
 ## Naming Conventions
 
-- **Classes**: [TO BE CONFIGURED]
-- **Variables**: [TO BE CONFIGURED]
-- **Signals/Events**: [TO BE CONFIGURED]
-- **Files**: [TO BE CONFIGURED]
-- **Scenes/Prefabs**: [TO BE CONFIGURED]
-- **Constants**: [TO BE CONFIGURED]
+- **Classes/Types**: PascalCase (`Club`, `MatchResult`, `ManagerSkills`)
+- **Variables/Functions**: camelCase (`clubId`, `foundClub`, `getManagerClubs`)
+- **Signals/Events (Socket.IO)**: `entity:action` kebab-case (`club:updated`, `match:started`)
+- **Files**: kebab-case (`club-service.ts`, `match-sim.ts`, `+page.svelte`)
+- **Constants**: SCREAMING_SNAKE_CASE (`MAX_SQUAD_SIZE`, `SEASON_DURATION_DAYS`)
+- **DB columns**: snake_case (Drizzle maps to camelCase in TypeScript)
+- **Routes (Hono)**: kebab-case paths (`/clubs/:id`, `/auth/login`)
 
 ## Performance Budgets
 
-- **Target Framerate**: [TO BE CONFIGURED]
-- **Frame Budget**: [TO BE CONFIGURED]
-- **Draw Calls**: [TO BE CONFIGURED]
-- **Memory Ceiling**: [TO BE CONFIGURED]
+- **Target Framerate**: 60fps for PixiJS canvas scenes
+- **Frame Budget**: 16ms (PixiJS renders; management UI is DOM-driven, no frame budget)
+- **Bundle size (web)**: < 500kb initial JS (code-split routes for PixiJS)
+- **Memory Ceiling**: < 256MB server RAM (BullMQ + Hono + Socket.IO + Drizzle per process)
+- **API Response Time**: < 200ms for management actions (no game-loop critical path)
 
 ## Testing
 
-- **Framework**: [TO BE CONFIGURED]
-- **Minimum Coverage**: [TO BE CONFIGURED]
-- **Required Tests**: Balance formulas, gameplay systems, networking (if applicable)
+- **Framework**: Vitest 2 (unit + integration) · Playwright 1.48 (e2e)
+- **Minimum Coverage**: 80% for logic in `packages/shared/src/sim/` and `src/auth/`
+- **Required Tests**:
+  - All simulation engines in `packages/shared/src/sim/` (determinism tests)
+  - Auth session lifecycle (create, validate, slide, invalidate)
+  - Club domain CRUD + cascade trigger (integration, real DB)
+  - E2E: signup → login → club creation → game page loads
+
+## Port Configuration
+
+- **Postgres host port**: `5433` (internal container port still 5432)
+- **Redis host port**: `6379`
+- **Web dev server**: `5173`
+- **API dev server**: `3001`
+
+> **Why 5433 for Postgres?** Port 5432 on this dev machine was intercepted by another
+> service (likely a system Postgres or a Docker Desktop legacy proxy) that responded
+> to the PostgreSQL protocol but rejected our auth. Connections appeared to succeed
+> at the TCP level but never reached the Docker container. Switching the host port to
+> 5433 resolved the issue cleanly. The DATABASE_URL must use port 5433.
 
 ## Forbidden Patterns
 
-<!-- Add patterns that should never appear in this project's codebase -->
-- [None configured yet — add as architectural decisions are made]
+- Client-side game state mutations — all state lives server-side (server-authoritative)
+- `Math.random()` in simulation engines — use seeded PRNG passed as parameter
+- Cross-module direct DB access — each domain module only reads/writes its own tables
+- Stores-first Svelte reactivity — use `$state`/`$derived`/`$effect` runes (Svelte 5)
+- `on:click` event syntax — use `onclick={fn}` (Svelte 5 HTML-style)
+- Lucia auth library — deprecated; use hand-rolled sessions with `@oslojs/*`
 
 ## Allowed Libraries / Addons
 
-<!-- Add approved third-party dependencies here -->
-- [None configured yet — add as dependencies are approved]
+- `@oslojs/crypto` + `@oslojs/encoding` — session token crypto
+- `@node-rs/argon2` — password hashing
+- `zod` — validation (both sides)
+- `clsx` — conditional CSS class composition in Svelte
+- `pixi.js@8` — 2D canvas rendering
+- `socket.io` + `socket.io-client` — real-time (future MMO ready)
+- `bullmq` — background jobs + schedulers
+- `pino` — structured logging
+- `hono/zod-validator` — Hono Zod middleware
 
 ## Architecture Decisions Log
 
-<!-- Quick reference linking to full ADRs in docs/architecture/ -->
-- [No ADRs yet — use /architecture-decision to create one]
+- [ADR-001: Web stack adopted from template](../../docs/architecture/ADR-001-web-stack.md)
+- [ADR-013: Match Session Pattern (stateful re-enqueue)](../../docs/architecture/ADR-013-match-session-stateful-pattern.md)
 
 ## Engine Specialists
 
-<!-- Written by /setup-engine when engine is configured. -->
-<!-- Read by /code-review, /architecture-decision, /architecture-review, and team skills -->
-<!-- to know which specialist to spawn for engine-specific validation. -->
-
-- **Primary**: [TO BE CONFIGURED — run /setup-engine]
-- **Language/Code Specialist**: [TO BE CONFIGURED]
-- **Shader Specialist**: [TO BE CONFIGURED]
-- **UI Specialist**: [TO BE CONFIGURED]
-- **Additional Specialists**: [TO BE CONFIGURED]
-- **Routing Notes**: [TO BE CONFIGURED]
+- **Primary**: `web-specialist` (overall stack decisions, routing to sub-specialists)
+- **Frontend Specialist**: `web-frontend-specialist` (SvelteKit/Svelte/PixiJS)
+- **Backend Specialist**: `web-backend-specialist` (Hono/Drizzle/BullMQ/auth)
+- **Realtime Specialist**: `realtime-multiplayer-specialist` (Socket.IO/rooms/sync/MMO)
+- **Routing Notes**: Route by file location — `.svelte` → frontend, `server.ts`/`routes.ts`/`repo.ts`/`service.ts` → backend, `socket/` → realtime
 
 ### File Extension Routing
 
-<!-- Skills use this table to select the right specialist per file type. -->
-<!-- If a row says [TO BE CONFIGURED], fall back to Primary for that file type. -->
-
 | File Extension / Type | Specialist to Spawn |
 |-----------------------|---------------------|
-| Game code (primary language) | [TO BE CONFIGURED] |
-| Shader / material files | [TO BE CONFIGURED] |
-| UI / screen files | [TO BE CONFIGURED] |
-| Scene / prefab / level files | [TO BE CONFIGURED] |
-| Native extension / plugin files | [TO BE CONFIGURED] |
-| General architecture review | Primary |
+| `*.svelte`, `+page.ts`, `+layout.ts`, `hooks.server.ts` | `web-frontend-specialist` |
+| `*.ts` in `apps/api/`, `packages/db/` | `web-backend-specialist` |
+| `*.ts` in `apps/api/src/socket/`, `packages/shared/src/types/socket.ts` | `realtime-multiplayer-specialist` |
+| `*.ts` in `packages/shared/src/sim/` | `web-backend-specialist` (simulation core) |
+| General architecture review | `web-specialist` (Primary) |

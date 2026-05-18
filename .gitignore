@@ -131,6 +131,12 @@ secrets.json
 # *.exr
 # *.hdr
 
+# === Web Stack (pnpm + Turbo + SvelteKit) ===
+.turbo/
+.svelte-kit/
+.output/
+pnpm-lock.yaml.bak
+
 # === OS Generated ===
 ehthumbs.db
 ehthumbs_vista.db

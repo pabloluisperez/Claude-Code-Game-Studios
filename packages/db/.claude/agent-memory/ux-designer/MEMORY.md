@@ -1,0 +1,2 @@
+- [Cascada FC — Project UX Status](project_cascada_fc.md) — Football manager PWA; 4 BLOCKING UX issues found in adversarial review; no UX spec can be written until resolved
+- [User: Pablo Perez](user_pablo.md) — Creative director; communicates in Spanish; requests adversarial reviews not validation

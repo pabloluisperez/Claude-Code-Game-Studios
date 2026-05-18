@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<!--
+  PROTOTYPE - NOT FOR PRODUCTION
+  Question: ¿Es fun descubrir cadenas de causa-efecto ocultas en un manager de fútbol?
+  Date: 2026-05-16
+  Hypothesis: Si el jugador ajusta variables opacas y ve efectos en cascada
+  reportados via mensajes de empleados, querrá seguir experimentando voluntariamente.
+  Success: ≥3 ajustes en variables distintas en 10 min sin pedir explicación.
+-->
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cascada FC — Prototipo Motor de Cascadas</title>
+<style>
+  :root {
+    --bg: #0f1419;
+    --bg-2: #1a2128;
+    --bg-3: #232c35;
+    --fg: #e4e6eb;
+    --fg-dim: #9aa4af;
+    --accent: #4ade80;
+    --warn: #fbbf24;
+    --bad: #f87171;
+    --link: #60a5fa;
+    --border: #2c3742;
+    --shadow: 0 4px 12px rgba(0,0,0,0.4);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    min-height: 100vh;
+    padding: 16px;
+  }
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 16px;
+  }
+  header h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+  header .stats { display: flex; gap: 24px; font-size: 13px; }
+  header .stat { display: flex; flex-direction: column; align-items: flex-end; }
+  header .stat-label { color: var(--fg-dim); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+  header .stat-value { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .balance-pos { color: var(--accent); }
+  .balance-neg { color: var(--bad); }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 280px 1fr 380px;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  @media (max-width: 1100px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+  }
+  .panel h2 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--fg-dim);
+    margin-bottom: 14px;
+    font-weight: 600;
+  }
+
+  /* === STATE PANEL === */
+  .metric { margin-bottom: 12px; }
+  .metric-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; }
+  .metric-label { color: var(--fg-dim); }
+  .metric-bar {
+    height: 8px;
+    background: var(--bg-3);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+  .metric-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--bad) 0%, var(--warn) 40%, var(--accent) 70%);
+    transition: width 0.4s ease;
+  }
+  .injured-pill {
+    display: inline-block;
+    background: var(--bg-3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-size: 12px;
+    color: var(--fg-dim);
+    margin-top: 8px;
+  }
+  .injured-pill.warn { color: var(--warn); border-color: var(--warn); }
+  .injured-pill.bad { color: var(--bad); border-color: var(--bad); }
+
+  /* === SLIDERS PANEL === */
+  .sliders-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+  .slider-control { display: flex; flex-direction: column; gap: 6px; }
+  .slider-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--fg);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .slider-value {
+    font-size: 11px;
+    color: var(--fg-dim);
+    font-variant-numeric: tabular-nums;
+  }
+  input[type=range] {
+    width: 100%;
+    height: 8px;
+    -webkit-appearance: none;
+    background: var(--bg-3);
+    border-radius: 4px;
+    outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--link);
+    cursor: pointer;
+    border: 2px solid var(--bg);
+    box-shadow: var(--shadow);
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--link);
+    cursor: pointer;
+    border: 2px solid var(--bg);
+  }
+  .slider-hint {
+    font-size: 11px;
+    color: var(--fg-dim);
+    font-style: italic;
+  }
+  .slider-cost {
+    font-size: 11px;
+    color: var(--fg-dim);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* === MESSAGES PANEL === */
+  .messages { display: flex; flex-direction: column; gap: 10px; max-height: 520px; overflow-y: auto; }
+  .message {
+    background: var(--bg-3);
+    border-left: 3px solid var(--link);
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .message .from {
+    font-weight: 600;
+    color: var(--link);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 3px;
+    display: block;
+  }
+  .message.match { border-left-color: var(--accent); background: rgba(74,222,128,0.08); }
+  .message.match.loss { border-left-color: var(--bad); background: rgba(248,113,113,0.08); }
+  .message.match.draw { border-left-color: var(--warn); background: rgba(251,191,36,0.08); }
+  .message.event { border-left-color: var(--warn); background: rgba(251,191,36,0.08); }
+  .message.finance { border-left-color: var(--fg-dim); }
+  .message.discovery { border-left-color: #c084fc; background: rgba(192,132,252,0.1); }
+
+  /* === ADVANCE === */
+  .advance-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 20px;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 16px;
+  }
+  .advance-bar .summary {
+    color: var(--fg-dim);
+    font-size: 13px;
+  }
+  .advance-bar .summary strong { color: var(--fg); }
+  button.advance {
+    background: var(--accent);
+    color: #052e16;
+    font-weight: 700;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: transform 0.1s ease, background 0.2s ease;
+  }
+  button.advance:hover { background: #22c55e; transform: translateY(-1px); }
+  button.advance:active { transform: translateY(0); }
+
+  /* === HISTORY === */
+  .history-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .history-table th, .history-table td {
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .history-table th {
+    color: var(--fg-dim);
+    text-transform: uppercase;
+    font-size: 10px;
+    letter-spacing: 0.05em;
+  }
+  .history-table td.win { color: var(--accent); font-weight: 600; }
+  .history-table td.draw { color: var(--warn); font-weight: 600; }
+  .history-table td.loss { color: var(--bad); font-weight: 600; }
+
+  .empty-msgs {
+    color: var(--fg-dim);
+    font-style: italic;
+    font-size: 13px;
+    text-align: center;
+    padding: 20px;
+  }
+
+  .footer-note {
+    text-align: center;
+    color: var(--fg-dim);
+    font-size: 11px;
+    padding: 16px;
+    font-style: italic;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚽ Cascada FC — Manager Prototype</h1>
+  <div class="stats">
+    <div class="stat">
+      <span class="stat-label">Semana</span>
+      <span class="stat-value" id="week-display">1</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">División</span>
+      <span class="stat-value">Quinta</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Balance</span>
+      <span class="stat-value" id="balance-display">15.000€</span>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+  <!-- LEFT: CLUB STATE -->
+  <div class="panel">
+    <h2>Estado del Club</h2>
+    <div id="metrics"></div>
+    <div id="injured-display" class="injured-pill">Sin lesiones</div>
+  </div>
+
+  <!-- CENTER: CONTROLS -->
+  <div class="panel">
+    <h2>Tus decisiones esta semana</h2>
+    <div class="sliders-grid" id="sliders"></div>
+  </div>
+
+  <!-- RIGHT: MESSAGES -->
+  <div class="panel">
+    <h2>Esta semana</h2>
+    <div class="messages" id="messages">
+      <div class="empty-msgs">
+        Ajusta lo que quieras y pulsa <strong>Avanzar Semana</strong>.<br>
+        Tu equipo, tu staff y la ciudad reaccionarán.<br>
+        Algunos efectos tardarán semanas en aparecer.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADVANCE BAR -->
+<div class="advance-bar">
+  <div class="summary" id="advance-summary">Pulsa el botón cuando estés listo. Tus cambios surtirán efecto este fin de semana — y en los siguientes.</div>
+  <button class="advance" onclick="advanceWeek()">Avanzar Semana ▶</button>
+</div>
+
+<!-- HISTORY -->
+<div class="panel">
+  <h2>Historial (últimas 5 semanas)</h2>
+  <table class="history-table" id="history">
+    <thead>
+      <tr>
+        <th>Sem</th>
+        <th>Resultado</th>
+        <th>Asistencia</th>
+        <th>Lesionados</th>
+        <th>Balance semanal</th>
+        <th>Eventos</th>
+      </tr>
+    </thead>
+    <tbody id="history-body">
+      <tr><td colspan="6" style="color: var(--fg-dim); text-align: center; padding: 20px;">Sin historial todavía.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="footer-note">
+  Prototipo desechable — no para producción · Algunos efectos son retardados o aleatorios · Experimenta libremente
+</div>
+
+<script>
+// ============================================================
+// GAME STATE
+// ============================================================
+const state = {
+  week: 1,
+  balance: 15000,
+
+  // Internal (hidden from player)
+  field_quality: 50,
+  team_fitness: 70,
+  team_skill: 55,
+  staff_morale: 65,
+  fan_attendance_last: 250,
+
+  // Player sliders (0-100)
+  sliders: {
+    groundskeeper: 50,
+    intensity: 50,
+    tickets: 50,
+    catering: 50,
+    scouting: 50,
+    rest: 50,
+  },
+
+  // Pending delayed effects
+  pending: {
+    field_delta: 0,            // applied next week (1w delay)
+    fitness_apply: 0,          // applied next week (this was queued 1w ago)
+    fitness_queue: 0,          // queued this week, applied in 2 weeks
+    morale_delta: 0,           // applied next week (1w delay)
+    scout_arriving: false,     // a player arrives next week
+  },
+
+  // Injuries
+  injured_players: 0,
+
+  // Scouting accumulator (resets when a player is found)
+  scouting_points: 0,
+
+  // History
+  history: [],
+
+  // Tracking for analytics (logged to console)
+  total_adjustments: 0,
+  unique_sliders_used: new Set(),
+  start_time: Date.now(),
+};
+
+// ============================================================
+// SLIDERS CONFIG (with opaque labels — NO direct cause explained)
+// ============================================================
+const SLIDER_CONFIG = [
+  { id: 'groundskeeper', label: 'Presupuesto de jardinería', cost: 20 },
+  { id: 'intensity',     label: 'Intensidad de entrenamiento', cost: 5 },
+  { id: 'tickets',       label: 'Precio de entradas',         cost: 0 },
+  { id: 'catering',      label: 'Catering del comedor',       cost: 15 },
+  { id: 'scouting',      label: 'Presupuesto de scouting',    cost: 10 },
+  { id: 'rest',          label: 'Horas de descanso semanal',  cost: 0 },
+];
+
+// ============================================================
+// RANDOM EVENTS
+// ============================================================
+const RANDOM_EVENTS = [
+  { id: 'rain',     label: '🌧️ Lluvia intensa toda la semana' },
+  { id: 'flu',      label: '🤒 Brote de gripe en el vestuario' },
+  { id: 'festival', label: '🎉 Fiestas del barrio cerca del estadio' },
+  { id: 'rivals_tv',label: '📺 El rival juega en TV el mismo día' },
+  { id: 'sunny',    label: '☀️ Semana de tiempo esplendoroso' },
+  { id: 'tip',      label: '📋 Un contacto pasa un soplo de un talento' },
+];
+
+// ============================================================
+// HELPERS
+// ============================================================
+const clamp = (v, mn, mx) => Math.max(mn, Math.min(mx, v));
+const fmt = (n) => Math.round(n).toLocaleString('es-ES');
+const rand = (min, max) => min + Math.random() * (max - min);
+const pickOne = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+// ============================================================
+// WEEK ADVANCE LOGIC
+// ============================================================
+function advanceWeek() {
+  const s = state;
+  const sl = s.sliders;
+  const msgs = [];
+
+  // Reset weekly event flags
+  const evFlags = { rain: false, flu: false, festival: false, rivals_tv: false, sunny: false, tip: false };
+  const eventsThisWeek = [];
+
+  // --- Roll random events (50% chance of 1, 20% chance of 2nd) ---
+  const eventPool = [...RANDOM_EVENTS];
+  if (Math.random() < 0.55) {
+    const ev = eventPool.splice(Math.floor(Math.random() * eventPool.length), 1)[0];
+    evFlags[ev.id] = true;
+    eventsThisWeek.push(ev);
+  }
+  if (Math.random() < 0.25) {
+    const ev = eventPool.splice(Math.floor(Math.random() * eventPool.length), 1)[0];
+    evFlags[ev.id] = true;
+    eventsThisWeek.push(ev);
+  }
+
+  // --- Apply DELAYED effects from PREVIOUS weeks first ---
+  s.field_quality = clamp(s.field_quality + s.pending.field_delta, 0, 100);
+  s.team_fitness  = clamp(s.team_fitness  + s.pending.fitness_apply, 20, 100);
+  s.staff_morale  = clamp(s.staff_morale  + s.pending.morale_delta, 10, 100);
+
+  // Roll forward the fitness queue
+  s.pending.fitness_apply = s.pending.fitness_queue;
+  s.pending.fitness_queue = 0;
+
+  // Scouting arrival
+  if (s.pending.scout_arriving) {
+    const skill_boost = 4 + Math.floor(Math.random() * 7);
+    s.team_skill = clamp(s.team_skill + skill_boost, 0, 100);
+    msgs.push({ from: 'OJEADOR', text: `🌟 ¡El nuevo fichaje se ha incorporado al equipo! Lleva un par de sesiones entrenando con el grupo y se nota su calidad.`, kind: 'discovery' });
+    s.pending.scout_arriving = false;
+  }
+
+  // --- CASCADE 1: GROUNDSKEEPER → FIELD QUALITY (delayed 1 week, affected by weather) ---
+  let field_effect = (sl.groundskeeper - 50) * 0.4;
+  if (evFlags.rain) field_effect -= 14;
+  if (evFlags.sunny) field_effect += 5;
+  field_effect += rand(-3, 3); // small natural variance
+  s.pending.field_delta = field_effect;
+
+  // --- CASCADE 2: TRAINING × REST → FITNESS / INJURIES ---
+  // injuries: high intensity + low rest = injury risk
+  const injury_risk = (sl.intensity - 50) * 0.35 - (sl.rest - 50) * 0.30;
+  let new_injuries = 0;
+  if (injury_risk > 18) new_injuries = 2 + (Math.random() < 0.4 ? 1 : 0);
+  else if (injury_risk > 8) new_injuries = 1;
+  else if (injury_risk > -5) new_injuries = Math.random() < 0.15 ? 1 : 0;
+  // Recovery
+  let recovered = 0;
+  if (s.injured_players > 0 && sl.rest > 55) recovered = 1;
+  if (s.injured_players > 0 && sl.rest > 80) recovered = 2;
+
+  if (evFlags.flu) new_injuries += 1; // flu outbreak
+
+  s.injured_players = clamp(s.injured_players + new_injuries - recovered, 0, 7);
+
+  // fitness (2-week delay)
+  let fitness_q = 0;
+  if (sl.intensity > 30 && sl.intensity < 78 && sl.rest > 35) {
+    fitness_q = ((sl.intensity - 30) * 0.18) + ((sl.rest - 50) * 0.08);
+  } else if (sl.intensity >= 78) {
+    fitness_q = -3; // overtraining hurts fitness
+  } else if (sl.intensity < 30) {
+    fitness_q = -2; // not enough training
+  }
+  s.pending.fitness_queue = fitness_q;
+
+  // --- CASCADE 3: TICKETS → ATTENDANCE × INCOME × ATMOSPHERE ---
+  // Higher ticket price = more income per fan, but fewer fans
+  const ticket_factor = sl.tickets / 100; // 0 to 1
+  let base_attendance = 220 + (1 - ticket_factor) * 220 + (s.staff_morale - 50) * 1.0;
+  if (evFlags.festival) base_attendance *= 1.25;
+  if (evFlags.rivals_tv) base_attendance *= 0.72;
+  base_attendance += rand(-25, 25);
+  const final_attendance = Math.round(clamp(base_attendance, 50, 800));
+  s.fan_attendance_last = final_attendance;
+
+  const ticket_unit_price = 50 + sl.tickets * 0.8; // 50€ at slider 0, 130€ at slider 100
+  const ticket_income = final_attendance * ticket_unit_price;
+
+  // atmosphere bonus (more fans + relatively cheap = good ambience)
+  const atmosphere = final_attendance / 400; // 0.5-2.0 range
+  const atmos_bonus = (atmosphere - 1) * 8;
+
+  // --- CASCADE 4: CATERING → MORALE (1 week delay) ---
+  const morale_effect = (sl.catering - 50) * 0.32;
+  s.pending.morale_delta = morale_effect;
+
+  // --- CASCADE 5: SCOUTING → POINTS → NEW PLAYER (3+ weeks) ---
+  s.scouting_points += sl.scouting * 0.45 + rand(-2, 2);
+  if (evFlags.tip) s.scouting_points += 25;
+  const threshold = 105 + Math.random() * 25;
+  if (s.scouting_points >= threshold) {
+    s.pending.scout_arriving = true;
+    s.scouting_points = 0;
+    msgs.push({ from: 'OJEADOR', text: `¡Jefe! He visto a un chaval en el filial de los Pinos que tiene algo especial. La semana que viene se incorpora a prueba.`, kind: 'discovery' });
+  }
+
+  // --- MATCH RESULT ---
+  const available_players = 11 - Math.min(s.injured_players, 6);
+  const squad_ratio = available_players / 11;
+  const field_bonus = (s.field_quality - 50) * 0.15;
+  const fitness_factor = s.team_fitness * 0.30;
+  const skill_factor = s.team_skill * 0.40;
+  const morale_factor = (s.staff_morale - 50) * 0.10;
+
+  let performance =
+    skill_factor +
+    fitness_factor +
+    squad_ratio * 25 +
+    field_bonus +
+    morale_factor +
+    atmos_bonus;
+  performance *= rand(0.78, 1.18); // random factor — same setup can produce different results
+
+  let result, score, match_income;
+  if (performance > 64) {
+    const g = 1 + Math.floor(Math.random() * 3);
+    const cg = Math.floor(Math.random() * Math.max(1, g - 1));
+    result = 'win';
+    score = `${g + Math.floor(Math.random() * 2)}-${cg}`;
+    match_income = 2200;
+  } else if (performance > 46) {
+    result = 'draw';
+    score = pickOne(['0-0','1-1','2-2']);
+    match_income = 600;
+  } else {
+    const cg = 1 + Math.floor(Math.random() * 2);
+    const ourg = Math.floor(Math.random() * cg);
+    result = 'loss';
+    score = `${ourg}-${cg}`;
+    match_income = 0;
+  }
+
+  // --- INCOME & EXPENSES ---
+  const total_income = ticket_income + match_income + 3500; // sponsorship base
+  let total_expenses = 0;
+  SLIDER_CONFIG.forEach(c => { total_expenses += sl[c.id] * c.cost; });
+  total_expenses += 5500; // player salaries (flat for prototype)
+  const profit = Math.round(total_income - total_expenses);
+  s.balance += profit;
+
+  // --- BUILD MESSAGES (in narrative order: events → staff → match → finances) ---
+
+  // Event banners first
+  eventsThisWeek.forEach(ev => {
+    msgs.unshift({ from: 'EVENTO', text: ev.label, kind: 'event' });
+  });
+
+  // Staff messages (contextual to the cascade their domain just triggered)
+  // Jardinero
+  if (evFlags.rain && sl.groundskeeper < 55) {
+    msgs.push({ from: 'JARDINERO', text: 'Jefe, con la lluvia que ha caído y el presupuesto que tengo, el campo está hecho un barrizal. Va a ser difícil que esté en condiciones el fin de semana.' });
+  } else if (evFlags.rain && sl.groundskeeper >= 70) {
+    msgs.push({ from: 'JARDINERO', text: 'A pesar de la lluvia, hemos mantenido el campo en buenas condiciones. El drenaje y los trabajos extra han valido la pena.' });
+  } else if (s.field_quality > 75) {
+    msgs.push({ from: 'JARDINERO', text: '¡El campo está espectacular! Los jugadores me lo agradecen cada entrenamiento. Da gusto verlo así.' });
+  } else if (s.field_quality < 35) {
+    msgs.push({ from: 'JARDINERO', text: 'Señor, el terreno está cada vez peor. Si seguimos con este presupuesto, los jugadores acabarán quejándose y los rivales se aprovecharán.' });
+  } else if (sl.groundskeeper < 25) {
+    msgs.push({ from: 'JARDINERO', text: 'Con lo justo que voy, jefe, es lo que hay. Hago lo que puedo, pero no espere milagros.' });
+  } else if (sl.groundskeeper > 85) {
+    msgs.push({ from: 'JARDINERO', text: 'Con esta inversión hemos podido renovar bastante el campo. ¡Estamos como los grandes!' });
+  }
+
+  // Preparador físico
+  if (new_injuries >= 2) {
+    msgs.push({ from: 'PREPARADOR FÍSICO', text: `Mister, tenemos ${new_injuries} bajas nuevas esta semana. ${sl.intensity > 72 ? 'La carga de entrenamiento les está pasando factura.' : 'Han sido lesiones de mala suerte sobre todo.'}` });
+  } else if (new_injuries === 1 && injury_risk > 10) {
+    msgs.push({ from: 'PREPARADOR FÍSICO', text: `Tenemos un lesionado más esta semana. La intensidad y el descanso no están del todo equilibrados. Hay que vigilarlo.` });
+  } else if (sl.intensity > 80 && sl.rest < 40) {
+    msgs.push({ from: 'PREPARADOR FÍSICO', text: 'Jefe, vamos a explotar a los chavales. Mucha intensidad y poco descanso. Esto acabará mal.' });
+  } else if (recovered >= 1 && s.injured_players === 0) {
+    msgs.push({ from: 'PREPARADOR FÍSICO', text: 'Buenas noticias: tenemos a todos disponibles esta semana. El descanso está dando frutos.' });
+  } else if (sl.rest > 80 && sl.intensity < 35) {
+    msgs.push({ from: 'PREPARADOR FÍSICO', text: 'Mucho descansito tienen los chicos. Buenas piernas, pero les falta chispa. No estamos progresando físicamente.' });
+  }
+
+  // Taquillero / ambiente
+  if (evFlags.festival && final_attendance > 300) {
+    msgs.push({ from: 'TAQUILLERO', text: '¡Llenazo aprovechando las fiestas del barrio! Hemos vendido hasta entradas de pie. El ambiente va a ser tremendo.' });
+  } else if (sl.tickets > 80 && final_attendance < 200) {
+    msgs.push({ from: 'TAQUILLERO', text: 'Señor, las entradas están muy caras. Muchas familias se están quedando en casa. Recaudamos más por entrada pero el campo se ve medio vacío.' });
+  } else if (sl.tickets < 25 && final_attendance > 350) {
+    msgs.push({ from: 'TAQUILLERO', text: '¡Hoy nos quedaba la mitad de gente fuera! Bajamos demasiado el precio, pero la atmósfera del estadio era brutal.' });
+  } else if (evFlags.rivals_tv && final_attendance < 250) {
+    msgs.push({ from: 'TAQUILLERO', text: 'Poca gente hoy, jefe. El partido del rival en televisión se ha llevado mucho público.' });
+  } else if (final_attendance > 450) {
+    msgs.push({ from: 'TAQUILLERO', text: 'Buena entrada esta semana. El estadio se ha llenado bien.' });
+  }
+
+  // Cocinero
+  if (sl.catering > 80) {
+    msgs.push({ from: 'COCINERO', text: '¡Los jugadores están como reyes! El presupuesto que tengo me llega para platos serios. El ambiente del vestuario es inmejorable.' });
+  } else if (sl.catering < 25) {
+    msgs.push({ from: 'COCINERO', text: 'Jefe, con este presupuesto solo puedo poner bocata y agua. Algunos jugadores ya traen el tupper de casa. El vestuario está agrio.' });
+  } else if (s.staff_morale < 35) {
+    msgs.push({ from: 'COCINERO', text: 'No sé qué pasa, pero el vestuario lleva semanas serio. La comida quizá tenga algo que ver, pero el ambiente general también arrastra.' });
+  } else if (s.staff_morale > 80) {
+    msgs.push({ from: 'COCINERO', text: 'El vestuario está alegre, jefe. Se nota mucho en la comida y en cómo se ríen los chicos.' });
+  }
+
+  // Médico (when many injuries)
+  if (s.injured_players >= 4) {
+    msgs.push({ from: 'MÉDICO', text: `Tenemos ${s.injured_players} jugadores en la enfermería. ${evFlags.flu ? 'La gripe ha hecho estragos.' : 'Hay que hacer algo, el equipo no puede jugar así.'}` });
+  }
+
+  // --- MATCH MESSAGE ---
+  const match_texts = {
+    win: [
+      `¡Victoria! ${score}. El equipo salió a por todas.`,
+      `¡Tres puntos! ${score}. Tarde redonda.`,
+      `¡Ganamos ${score}! ${final_attendance > 350 ? 'El estadio empujó como nunca.' : 'A pesar de la afición tibia, sacamos los tres puntos.'}`,
+    ],
+    draw: [
+      `Empate, ${score}. Hay que seguir trabajando.`,
+      `Un punto, ${score}. Ni para nosotros ni para ellos.`,
+      `Empate en casa, ${score}. ${s.injured_players > 2 ? 'Con tantas bajas, no se podía pedir más.' : 'Sabemos que se pudo más, pero no salió.'}`,
+    ],
+    loss: [
+      `Derrota dolorosa, ${score}. ${s.field_quality < 40 ? 'El campo no ayudó nada.' : 'No fue nuestra tarde.'}`,
+      `Mala tarde. ${score}. ${s.injured_players > 2 ? 'Las bajas pesaron mucho.' : ''}`,
+      `Perdimos ${score}. ${s.team_fitness < 50 ? 'El equipo se quedó sin gasolina en la segunda parte.' : 'No salió nada.'}`,
+    ],
+  };
+  msgs.push({
+    from: 'PARTIDO',
+    text: `${pickOne(match_texts[result])} (Asistencia: ${final_attendance} aficionados)`,
+    kind: 'match ' + result,
+  });
+
+  // Finance
+  msgs.push({
+    from: 'CUENTAS',
+    text: `Ingresos: ${fmt(total_income)}€ · Gastos: ${fmt(total_expenses)}€ · Balance semanal: ${profit >= 0 ? '+' : ''}${fmt(profit)}€`,
+    kind: 'finance',
+  });
+
+  // --- HISTORY ---
+  s.history.unshift({
+    week: s.week,
+    result,
+    score,
+    attendance: final_attendance,
+    injured: s.injured_players,
+    profit,
+    events: eventsThisWeek.map(e => e.label),
+  });
+  if (s.history.length > 5) s.history.pop();
+
+  s.week++;
+
+  // Re-render
+  render();
+  renderMessages(msgs);
+
+  // Analytics log (for prototype evaluation)
+  console.log(`[Week ${s.week - 1}] adjustments: ${s.total_adjustments} · unique sliders: ${s.unique_sliders_used.size} · elapsed: ${Math.round((Date.now() - s.start_time) / 1000)}s`);
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function render() {
+  document.getElementById('week-display').textContent = state.week;
+  const balEl = document.getElementById('balance-display');
+  balEl.textContent = (state.balance >= 0 ? '' : '-') + fmt(Math.abs(state.balance)) + '€';
+  balEl.className = 'stat-value ' + (state.balance >= 0 ? 'balance-pos' : 'balance-neg');
+
+  // Metrics panel
+  const metrics = [
+    { label: 'Habilidad del equipo', value: state.team_skill },
+    { label: 'Forma física',         value: state.team_fitness },
+    { label: 'Calidad del campo',    value: state.field_quality },
+    { label: 'Moral del vestuario',  value: state.staff_morale },
+    { label: 'Última asistencia',    value: Math.min(100, state.fan_attendance_last / 6), display: state.fan_attendance_last + ' aficionados' },
+  ];
+  document.getElementById('metrics').innerHTML = metrics.map(m => `
+    <div class="metric">
+      <div class="metric-row">
+        <span class="metric-label">${m.label}</span>
+        <span>${m.display ?? Math.round(m.value)}</span>
+      </div>
+      <div class="metric-bar"><div class="metric-fill" style="width: ${clamp(m.value, 0, 100)}%"></div></div>
+    </div>
+  `).join('');
+
+  // Injured pill
+  const ip = document.getElementById('injured-display');
+  if (state.injured_players === 0) {
+    ip.textContent = '🟢 Sin lesiones';
+    ip.className = 'injured-pill';
+  } else if (state.injured_players <= 2) {
+    ip.textContent = `🟡 ${state.injured_players} lesionado${state.injured_players === 1 ? '' : 's'}`;
+    ip.className = 'injured-pill warn';
+  } else {
+    ip.textContent = `🔴 ${state.injured_players} lesionados — equipo diezmado`;
+    ip.className = 'injured-pill bad';
+  }
+
+  // History
+  const tbody = document.getElementById('history-body');
+  if (state.history.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="color: var(--fg-dim); text-align: center; padding: 20px;">Sin historial todavía.</td></tr>';
+  } else {
+    tbody.innerHTML = state.history.map(h => `
+      <tr>
+        <td>${h.week}</td>
+        <td class="${h.result}">${h.result === 'win' ? `Victoria ${h.score}` : h.result === 'draw' ? `Empate ${h.score}` : `Derrota ${h.score}`}</td>
+        <td>${h.attendance}</td>
+        <td>${h.injured}</td>
+        <td style="color: ${h.profit >= 0 ? 'var(--accent)' : 'var(--bad)'}">${h.profit >= 0 ? '+' : ''}${fmt(h.profit)}€</td>
+        <td style="color: var(--fg-dim); font-size: 11px">${h.events.join(' · ') || '—'}</td>
+      </tr>
+    `).join('');
+  }
+}
+
+function renderMessages(msgs) {
+  const cont = document.getElementById('messages');
+  if (!msgs || msgs.length === 0) {
+    cont.innerHTML = '<div class="empty-msgs">Sin reportes nuevos esta semana.</div>';
+    return;
+  }
+  cont.innerHTML = msgs.map(m => `
+    <div class="message ${m.kind || ''}">
+      <span class="from">${m.from}</span>
+      ${m.text}
+    </div>
+  `).join('');
+  cont.scrollTop = 0;
+}
+
+// ============================================================
+// SLIDERS INIT
+// ============================================================
+function initSliders() {
+  const container = document.getElementById('sliders');
+  container.innerHTML = SLIDER_CONFIG.map(c => `
+    <div class="slider-control">
+      <label class="slider-label">
+        <span>${c.label}</span>
+        <span class="slider-value" id="val-${c.id}">${state.sliders[c.id]}</span>
+      </label>
+      <input type="range" min="0" max="100" value="${state.sliders[c.id]}"
+             oninput="updateSlider('${c.id}', this.value)" />
+      <span class="slider-cost">${c.cost > 0 ? `Coste semanal: ${fmt(state.sliders[c.id] * c.cost)}€` : 'Sin coste directo'}</span>
+    </div>
+  `).join('');
+}
+
+function updateSlider(id, value) {
+  const v = parseInt(value, 10);
+  state.sliders[id] = v;
+  document.getElementById('val-' + id).textContent = v;
+
+  // Update cost display
+  const cfg = SLIDER_CONFIG.find(c => c.id === id);
+  if (cfg && cfg.cost > 0) {
+    const costEl = document.querySelector(`#sliders input[oninput*="${id}"]`).nextElementSibling;
+    if (costEl) costEl.textContent = `Coste semanal: ${fmt(v * cfg.cost)}€`;
+  }
+
+  // Track engagement
+  state.total_adjustments++;
+  state.unique_sliders_used.add(id);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+initSliders();
+render();
+console.log('🎮 Cascada FC prototype loaded. Tracking adjustments for hypothesis validation.');
+console.log('Hypothesis: ≥3 adjustments on different sliders within 10 min = CONFIRMED');
+</script>
+
+</body>
+</html>
