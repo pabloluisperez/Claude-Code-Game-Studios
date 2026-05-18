@@ -7,3 +7,15 @@ export { CASCADE_EDGES, THRESHOLDS } from "./cascade-graph.js";
 export { runTick, mergeDelayedBuffer } from "./cascade-engine.js";
 export { REAL_PUEBLO_INITIAL, SLICE_SEED, SLICE_SCHEDULE } from "./seed-data.js";
 export type { SliceWeek } from "./seed-data.js";
+export {
+  simulateMatch,
+  effectiveFitness,
+  effectiveRating,
+} from "./match-simulation.js";
+export {
+  generateLineup,
+  REAL_PUEBLO,
+  RIVALS,
+  SLICE_HOME_FLAGS,
+} from "./player-gen.js";
+export type { ClubConfig } from "./player-gen.js";

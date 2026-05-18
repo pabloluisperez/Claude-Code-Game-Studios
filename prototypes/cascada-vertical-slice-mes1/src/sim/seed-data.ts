@@ -24,6 +24,7 @@ export const REAL_PUEBLO_INITIAL: WorldState = {
   fan_momentum: 35, // default 60 → afición desencantada tras descenso ficticio
   fan_attendance: 30, // default 40 → poca gente en el estadio
   match_performance_index: 50, // neutral default (cascade-engine.md catalog); set per-week by match-sim or synthetic in smoke
+  injury_risk: 25, // default 20 → ligeramente arriba por plantilla cansada de pretemporada
 
   // Static context — read-only this slice (no chains write to these)
   field_quality: 40, // default 50 → campo descuidado pero no peligroso
