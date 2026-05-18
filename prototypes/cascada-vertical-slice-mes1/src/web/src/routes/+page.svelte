@@ -6,6 +6,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
+  import RangeSlider from "svelte-range-slider-pips";
+  import "svelte-range-slider-pips/style.css";
   import { getState, postAdvance, type StateDto, type AdvanceResponse } from "$lib/api";
   import {
     formatAttendance,
@@ -48,11 +50,29 @@
 
   let pt: StateDto | null = $state(null);
   let intensityBucket: IntensityBucket = $state("normal");
-  let ticketPriceEur = $state(MARKET_TICKET_EUR);
+  // svelte-range-slider-pips uses array of values (single-handle = 1-element array)
+  let priceValues = $state<[number]>([MARKET_TICKET_EUR]);
+  const ticketPriceEur = $derived(priceValues[0]);
   let lastResult: AdvanceResponse | null = $state(null);
   let pending = $state(false);
   let error = $state<string | null>(null);
   let showOnboarding = $state(true);
+
+  // Pip labels — football language, no engine jargon
+  const PRICE_LABELS: Record<number, string> = {
+    0: "Gratis",
+    5: "Barato",
+    10: "Mercado",
+    15: "Caro",
+    20: "Muy caro",
+    25: "Carísimo",
+  };
+  function formatPip(v: number): string {
+    return `${v}€\n${PRICE_LABELS[v] ?? ""}`;
+  }
+  function formatHandle(v: number): string {
+    return `${v}€ · ${PRICE_LABELS[v] ?? ""}`;
+  }
 
   const trainingIntensity = $derived(
     INTENSITY_BUCKETS.find((b) => b.id === intensityBucket)?.index ?? 50,
@@ -71,7 +91,7 @@
           ).id;
         // Hydrate price euros from the persisted index (snap to step)
         const persistedPriceIndex = pt.snapshot.state.ticket_price_index ?? 50;
-        ticketPriceEur = snapToStep(indexToEuros(persistedPriceIndex));
+        priceValues = [snapToStep(indexToEuros(persistedPriceIndex))];
       }
       // Auto-redirect to end-of-month when mes 1 has closed
       if (pt.playthrough.currentWeek > 4) {
@@ -215,49 +235,24 @@
       </p>
     </div>
 
-    <!-- Precio: slider en €, step 5€, max contextual -->
+    <!-- Precio: library slider con color zones + pips en domain language -->
     <div class="decision-row">
-      <div class="metric-label">
-        Precio de la entrada ·
-        <strong class="current">{ticketPriceEur}€</strong>
-        {#if ticketPriceEur === 0}
-          <span class="dim">· entrada gratis</span>
-        {:else if ticketPriceEur <= 5}
-          <span class="dim">· barato</span>
-        {:else if ticketPriceEur === MARKET_TICKET_EUR}
-          <span class="good">· precio del mercado</span>
-        {:else if ticketPriceEur === 15}
-          <span class="warn">· caro</span>
-        {:else if ticketPriceEur === 20}
-          <span class="warn">· muy caro</span>
-        {:else if ticketPriceEur >= 25}
-          <span class="bad">· carísimo</span>
-        {/if}
-      </div>
-      <div class="slider-wrap">
-        <input
-          type="range"
-          min="0"
+      <div class="metric-label">Precio de la entrada</div>
+      <div class="price-slider-wrap">
+        <RangeSlider
+          bind:values={priceValues}
+          min={0}
           max={MAX_TICKET_EUR}
           step={TICKET_STEP_EUR}
-          bind:value={ticketPriceEur}
+          pips
+          pipstep={1}
+          all="label"
+          float
+          springValues={{ stiffness: 0.18, damping: 0.55 }}
+          formatter={formatPip}
+          handleFormatter={formatHandle}
+          ariaLabels={["Precio de la entrada"]}
         />
-        <div class="slider-anchors">
-          {#each [{ eur: 0, label: "gratis" }, { eur: 5, label: "barato" }, { eur: 10, label: "mercado" }, { eur: 15, label: "caro" }, { eur: 20, label: "muy caro" }, { eur: 25, label: "carísimo" }] as a}
-            <span
-              class="anchor"
-              class:sweet={a.eur === MARKET_TICKET_EUR}
-              class:warn-anchor={a.eur === 15 || a.eur === 20}
-              class:danger={a.eur >= 25}
-              style="left: {(a.eur / MAX_TICKET_EUR) * 100}%"
-            >
-              <span class="tick"></span>
-              <span class="anchor-label">
-                {a.eur}€<br>{a.label}
-              </span>
-            </span>
-          {/each}
-        </div>
       </div>
       <p class="hint dim">
         El mercado de Segunda humilde es <strong>{MARKET_TICKET_EUR}€</strong>.
@@ -325,7 +320,6 @@
   .metric-sub { font-size: var(--text-sm); margin-top: 2px; }
   .decisions { display: flex; flex-direction: column; gap: var(--space-5); }
   .decision-row { display: flex; flex-direction: column; gap: var(--space-1); }
-  .decision-row .current { color: var(--accent); font-size: var(--text-lg); font-variant-numeric: tabular-nums; }
 
   /* Button group (segmented control) for categorical decisions */
   .bucket-group {
@@ -357,37 +351,64 @@
   .bucket-group button.active.warn { color: var(--warn); border: 1px solid var(--warn); }
   .bucket-group button.active.bad { color: var(--bad); border: 1px solid var(--bad); }
 
-  /* Discrete euro slider */
-  .slider-wrap { position: relative; padding-bottom: 32px; }
-  .slider-wrap input[type="range"] { width: 100%; margin: 0; }
-  .slider-anchors { position: relative; height: 28px; margin-top: -2px; }
-  .anchor {
-    position: absolute;
-    top: 0;
-    transform: translateX(-50%);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    pointer-events: none;
-  }
-  .anchor .tick {
-    width: 1px;
-    height: 6px;
-    background: var(--border);
-  }
-  .anchor.sweet .tick { background: var(--accent); width: 2px; }
-  .anchor.danger .tick { background: var(--bad); width: 2px; }
-  .anchor-label {
-    font-size: 10px;
-    color: var(--fg-dim);
-    white-space: nowrap;
-    margin-top: 2px;
-    text-align: center;
-    line-height: 1.1;
-  }
-  .anchor.sweet .anchor-label { color: var(--accent); font-weight: 600; }
-  .anchor.warn-anchor .tick { background: var(--warn); width: 1px; }
-  .anchor.warn-anchor .anchor-label { color: var(--warn); }
-  .anchor.danger .anchor-label { color: var(--bad); font-weight: 600; }
   .hint { font-size: var(--text-sm); margin-top: var(--space-2); }
+
+  /* ── svelte-range-slider-pips: dark theme + color zones ─────────────── */
+  .price-slider-wrap {
+    padding: var(--space-5) var(--space-3) var(--space-2);
+    --range-slider: var(--bg-3);
+    --range-handle-inactive: var(--fg-dim);
+    --range-handle: var(--fg);
+    --range-handle-focus: var(--accent);
+    --range-handle-border: var(--border);
+    --range-range-inactive: var(--border);
+    --range-range: transparent;     /* we paint the bar via gradient below */
+    --range-float-inactive: var(--bg-2);
+    --range-float: var(--accent);
+    --range-float-text: var(--bg);
+    --range-pip: var(--fg-dim);
+    --range-pip-text: var(--fg-dim);
+    --range-pip-active: var(--fg);
+    --range-pip-active-text: var(--fg);
+    --range-pip-hover: var(--fg);
+    --range-pip-hover-text: var(--fg);
+    --range-pip-in-range: var(--accent);
+    --range-pip-in-range-text: var(--fg);
+  }
+  /* Color zones on the bar: green at gratis-mercado, accent at promoción-mercado, warn at caro, bad at carísimo */
+  .price-slider-wrap :global(.rangeSlider) {
+    background: linear-gradient(
+      to right,
+      rgba(74, 222, 128, 0.55) 0%,        /* 0€ gratis  */
+      rgba(74, 222, 128, 0.65) 20%,       /* 5€ barato  */
+      rgba(74, 222, 128, 0.85) 40%,       /* 10€ mercado (peak green) */
+      rgba(251, 191, 36, 0.55) 60%,       /* 15€ caro   */
+      rgba(248, 113, 113, 0.6) 80%,       /* 20€ muy caro */
+      rgba(248, 113, 113, 0.85) 100%      /* 25€ carísimo */
+    );
+    height: 10px;
+    border-radius: 5px;
+    overflow: visible;
+  }
+  .price-slider-wrap :global(.rangeFloat) {
+    font-weight: 600;
+    white-space: nowrap;
+    transform: translateY(-2px);
+  }
+  .price-slider-wrap :global(.rangePips) {
+    margin-top: 4px;
+  }
+  .price-slider-wrap :global(.pipVal) {
+    font-size: 10px;
+    white-space: pre-line;
+    line-height: 1.1;
+    text-align: center;
+  }
+  .price-slider-wrap :global(.rangeHandle) {
+    transition: transform 0.15s ease;
+  }
+  .price-slider-wrap :global(.rangeHandle):focus-within,
+  .price-slider-wrap :global(.rangeHandle):hover {
+    transform: scale(1.15);
+  }
 </style>

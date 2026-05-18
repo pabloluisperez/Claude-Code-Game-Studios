@@ -40,14 +40,37 @@
   let pendingDecision = $state(false);
   let modal: DramaticModal | null = $state(null);
   let confettiActive = $state(false);
+  let teaser: { text: string; severity: "warn" | "good" | "bad" } | null = $state(null);
 
   const TICK_INTERVAL_MS = 100;
+  const TEASER_HOLD_MS = 900;        // tension buildup before the reveal
   const MODAL_GOAL_HOLD_MS = 1800;
   const MODAL_VAR_REVIEW_MS = 2200;
   const MODAL_VAR_RESOLVE_MS = 1500;
   const MODAL_INJURY_HOLD_MS = 1500;
   const VAR_PROBABILITY = 0.30;
   const VAR_OVERTURN_PROBABILITY = 0.10; // 10% of VARs overturn — overturned goals stay scored for slice (visual only)
+
+  // Teaser pools — neutral wording so they don't reveal the outcome
+  const GOAL_TEASERS = [
+    "⚡ ¡Algo está pasando!",
+    "👀 Atento al área...",
+    "🔥 Se calienta el partido",
+    "💥 ¡Hay peligro!",
+    "😱 ¡Ojo, ojo, ojo!",
+    "⚠ Atento al ataque",
+    "🎯 Llega con peligro",
+  ];
+  const INJURY_TEASERS = [
+    "🩹 Un jugador en el suelo...",
+    "😬 Espera, algo no va bien",
+    "⚠ Pausa para asistencia",
+    "🤕 Algo se ha torcido",
+  ];
+
+  function pickRandom<T>(arr: readonly T[]): T {
+    return arr[Math.floor(Math.random() * arr.length)]!;
+  }
 
   async function loadState() {
     try {
@@ -105,7 +128,11 @@
     const isPlayerTeam = e.team === session?.playerClubSide;
 
     if (e.type === "goal") {
-      // Update score immediately so it shows in the modal
+      // 1. Teaser buildup — tension before reveal (neutral wording — doesn't telegraph the outcome)
+      teaser = { text: pickRandom(GOAL_TEASERS), severity: "warn" };
+      await sleep(TEASER_HOLD_MS);
+
+      // 2. Update score + open the dramatic modal
       if (e.team === "home") homeGoals++;
       else if (e.team === "away") awayGoals++;
 
@@ -114,25 +141,29 @@
         kind: "goal",
         event: e,
         isPlayerTeam,
-        varPhase: goesToVar ? "reviewing" : "none",
+        varPhase: "none",
       };
       if (isPlayerTeam) {
         confettiActive = true;
         // Confetti auto-clears after a few seconds
         setTimeout(() => (confettiActive = false), 3500);
       }
+      teaser = null;
       await sleep(MODAL_GOAL_HOLD_MS);
 
+      // 3. Optional VAR theater
       if (goesToVar) {
+        modal = { ...modal, varPhase: "reviewing" } as DramaticModal;
         await sleep(MODAL_VAR_REVIEW_MS);
         const overturned = Math.random() < VAR_OVERTURN_PROBABILITY;
-        if (modal && modal.kind === "goal") {
-          modal = { ...modal, varPhase: overturned ? "overturned" : "upheld" };
-        }
+        modal = { ...modal, varPhase: overturned ? "overturned" : "upheld" } as DramaticModal;
         await sleep(MODAL_VAR_RESOLVE_MS);
       }
     } else if (e.type === "injury") {
+      teaser = { text: pickRandom(INJURY_TEASERS), severity: "bad" };
+      await sleep(TEASER_HOLD_MS);
       modal = { kind: "injury", event: e, isPlayerTeam };
+      teaser = null;
       await sleep(MODAL_INJURY_HOLD_MS);
     }
 
@@ -292,6 +323,19 @@
   </div>
 {/if}
 
+<!-- Tension teaser — appears briefly before the dramatic modal -->
+{#if teaser}
+  <div
+    class="teaser-banner"
+    class:teaser-warn={teaser.severity === "warn"}
+    class:teaser-bad={teaser.severity === "bad"}
+    class:teaser-good={teaser.severity === "good"}
+    aria-live="polite"
+  >
+    {teaser.text}
+  </div>
+{/if}
+
 <!-- Dramatic event modal -->
 {#if modal}
   <div
@@ -368,6 +412,29 @@
   .events ul li.injury { color: var(--bad); }
   .button-link { display: inline-block; margin-top: var(--space-3); padding: var(--space-2) var(--space-4); border: 1px solid var(--border); border-radius: 6px; }
 
+  /* ── Tension teaser banner (drama buildup) ──────────────────── */
+  .teaser-banner {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-2);
+    border-radius: 999px;
+    padding: var(--space-3) var(--space-5);
+    font-size: var(--text-lg);
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    z-index: 105;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+    animation: teaser-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    border: 2px solid var(--border);
+    white-space: nowrap;
+    max-width: calc(100vw - var(--space-4) * 2);
+  }
+  .teaser-banner.teaser-warn { border-color: var(--warn); color: var(--warn); }
+  .teaser-banner.teaser-bad { border-color: var(--bad); color: var(--bad); }
+  .teaser-banner.teaser-good { border-color: var(--accent); color: var(--accent); }
+
   /* ── Dramatic modal ──────────────────────────────────────────── */
   .modal-backdrop {
     position: fixed;
@@ -377,7 +444,7 @@
     align-items: center;
     justify-content: center;
     z-index: 100;
-    backdrop-filter: blur(4px);
+    /* No backdrop-filter — confetti must stay crisp on top */
     animation: fade-in 0.2s ease-out;
   }
   .modal-card {
@@ -389,6 +456,8 @@
     max-width: 90vw;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
     animation: pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    z-index: 120;     /* above confetti container (110) so the message reads clearly */
   }
   .goal-card.player-goal { border-color: var(--accent); box-shadow: 0 0 60px rgba(74, 222, 128, 0.4); }
   .goal-card.rival-goal { border-color: var(--bad); }
@@ -414,11 +483,13 @@
   }
 
   /* ── Confetti rain ──────────────────────────────────────────── */
+  /* z-index 110 = ABOVE the modal backdrop (100) so confetti is crisp,
+     not dimmed/blurred. Modal card sits at 120 — confetti rains around it. */
   .confetti-container {
     position: fixed;
     inset: 0;
     pointer-events: none;
-    z-index: 90;
+    z-index: 110;
     overflow: hidden;
   }
   .confetti-piece {
@@ -453,5 +524,10 @@
       transform: translate(var(--drift, 0px), 110vh) rotate(720deg);
       opacity: 0;
     }
+  }
+  @keyframes teaser-pop {
+    0% { transform: translate(-50%, -120%) scale(0.6); opacity: 0; }
+    60% { transform: translate(-50%, 0) scale(1.05); opacity: 1; }
+    100% { transform: translate(-50%, 0) scale(1); opacity: 1; }
   }
 </style>
