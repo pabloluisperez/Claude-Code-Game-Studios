@@ -1,6 +1,6 @@
 // VERTICAL SLICE - NOT FOR PRODUCTION
-// Validation Question: Does the deterministic 90-tick football sim produce credible MPI/score outputs from real player stats?
-// Date: 2026-05-18
+// Validation Question: Does the 90-tick sim split cleanly at tick 45 with rng state preserved?
+// Date: 2026-05-18 (Day 6 refactor — extracted runMatchTick + snapshot interface for re-enqueue)
 
 import seedrandom from "seedrandom";
 import type {
@@ -9,29 +9,7 @@ import type {
   MatchInput,
   MatchOutcome,
   PlayerStats,
-  WorldState,
 } from "./types.js";
-
-/**
- * simulateMatch — pure function (ADR-007 contract, slice subset).
- *
- * Skips for Day 3 slice (added later):
- *   - Manager pauses + substitutions (Day 6 — interactive match, re-enqueue per ADR-013)
- *   - VAR overturns
- *   - Red cards
- *   - Formation variants (4-4-2 only; mods = 1.0)
- *   - Manager instructions (no PRESS_HIGH/HOLD_SHAPE/COUNTER)
- *   - Rival AI tactical changes
- *
- * Implements:
- *   - F1 effective_fitness, F2 effective_rating
- *   - F3 momentum_initial, F4 momentum_delta
- *   - F5 P_attack, F6 P_shot, F7 P_goal
- *   - F8 MPI delta, F9 injury_risk delta
- *   - F10 per-player match_rating (output for player-management)
- *   - Card detection at multiples of 15 (yellow only)
- *   - Injury detection on goal/card ticks + ticks 45 and 90
- */
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -56,14 +34,12 @@ function byPosition(lineup: Lineup, pos: PlayerStats["position"]): PlayerStats[]
   return lineup.filter((p) => p.position === pos);
 }
 
-// ── F1: Fitness efectiva durante el partido ──────────────────────────────────
+// ── Formulas (F1, F2, F4-F9) ────────────────────────────────────────────────
 
 export function effectiveFitness(player: PlayerStats, t: number): number {
   const decay = (t / 90) * (1 - player.stamina / 100) * FITNESS_DECAY_MAX;
   return Math.max(0, player.fitness - decay);
 }
-
-// ── F2: Rating efectivo del jugador ──────────────────────────────────────────
 
 export function effectiveRating(player: PlayerStats, t: number): number {
   return (
@@ -74,17 +50,13 @@ export function effectiveRating(player: PlayerStats, t: number): number {
   );
 }
 
-// ── F3: Momentum inicial del partido ─────────────────────────────────────────
-
-function initialMomentum(worldState: Readonly<WorldState>): number {
+function initialMomentum(worldState: { field_quality: number; fan_attendance: number }): number {
   return (
     50 +
     ((worldState.field_quality - 50) / 100) * 5 +
     ((worldState.fan_attendance - 50) / 100) * 5
   );
 }
-
-// ── F4: Delta de momentum por tick ───────────────────────────────────────────
 
 function momentumDelta(
   homeMids: PlayerStats[],
@@ -102,17 +74,10 @@ function momentumDelta(
   );
 }
 
-// ── F5: P_attack ─────────────────────────────────────────────────────────────
-
-function pAttack(
-  fwds: PlayerStats[],
-  momentumNormalized: number,
-): number {
+function pAttack(fwds: PlayerStats[], momentumNormalized: number): number {
   const avgSpeed = avg(fwds.map((f) => f.speed ?? 50));
   return BASE_ATTACK_RATE * momentumNormalized + (avgSpeed / 100) * 0.03;
 }
-
-// ── F6: P_shot ───────────────────────────────────────────────────────────────
 
 function pShot(
   attacker: PlayerStats,
@@ -132,8 +97,6 @@ function pShot(
   return clamp((attCtx / sum) * 0.8, 0.1, 0.7);
 }
 
-// ── F7: P_goal ───────────────────────────────────────────────────────────────
-
 function pGoal(attacker: PlayerStats, keeper: PlayerStats, t: number): number {
   const goalAtt =
     ((attacker.finishing ?? 50) * 0.6 + effectiveRating(attacker, t) * 0.4) / 100;
@@ -147,8 +110,6 @@ function pGoal(attacker: PlayerStats, keeper: PlayerStats, t: number): number {
   return clamp((goalAtt / sum) * 0.65, 0.05, 0.45);
 }
 
-// ── F8: MPI delta ────────────────────────────────────────────────────────────
-
 function mpiDelta(args: {
   homeScore: number;
   awayScore: number;
@@ -159,22 +120,12 @@ function mpiDelta(args: {
   const playerScore = isHome ? homeScore : awayScore;
   const oppScore = isHome ? awayScore : homeScore;
   const goalDiff = Math.abs(homeScore - awayScore);
-
   let delta: number;
-  if (playerScore > oppScore) {
-    // Win
-    delta = 10 + goalDiff * 5;
-  } else if (playerScore < oppScore) {
-    // Loss
-    delta = -10 - goalDiff * 5;
-  } else {
-    // Draw
-    delta = isHome ? -3 : +1;
-  }
+  if (playerScore > oppScore) delta = 10 + goalDiff * 5;
+  else if (playerScore < oppScore) delta = -10 - goalDiff * 5;
+  else delta = isHome ? -3 : +1;
   return clamp(delta, -30, 30);
 }
-
-// ── F9: injury_risk delta ────────────────────────────────────────────────────
 
 function injuryRiskDelta(events: readonly MatchEvent[]): number {
   const injuryCount = events.filter((e) => e.type === "injury").length;
@@ -185,149 +136,7 @@ function injuryRiskDelta(events: readonly MatchEvent[]): number {
   return clamp(delta, 0, 15);
 }
 
-// ── F10: per-player match rating ─────────────────────────────────────────────
-
-function buildPlayerRatings(
-  lineup: Lineup,
-  minutesPlayed: Map<string, number>,
-): Record<string, number> {
-  const out: Record<string, number> = {};
-  for (const p of lineup) {
-    const mins = minutesPlayed.get(p.id) ?? 90;
-    if (mins < 30) continue;
-    out[p.id] = effectiveRating(p, 90);
-  }
-  return out;
-}
-
-// ── Main entry ───────────────────────────────────────────────────────────────
-
-/**
- * Pure deterministic simulation of one match.
- * Given the same MatchInput, returns the same MatchOutcome.
- */
-export function simulateMatch(input: MatchInput): MatchOutcome {
-  const rngFactory = seedrandom(input.seed);
-  const rng = (): number => rngFactory.double();
-
-  const homeFwds = byPosition(input.homeLineup, "FWD");
-  const homeMids = byPosition(input.homeLineup, "MID");
-  const homeDefs = byPosition(input.homeLineup, "DEF");
-  const homeGk = byPosition(input.homeLineup, "GK")[0]!;
-  const awayFwds = byPosition(input.awayLineup, "FWD");
-  const awayMids = byPosition(input.awayLineup, "MID");
-  const awayDefs = byPosition(input.awayLineup, "DEF");
-  const awayGk = byPosition(input.awayLineup, "GK")[0]!;
-
-  let momentum = clamp(initialMomentum(input.worldState), 20, 80);
-  let homeScore = 0;
-  let awayScore = 0;
-  const events: MatchEvent[] = [];
-  const yellowsByPlayer = new Map<string, number>();
-  const minutesPlayed = new Map<string, number>();
-  for (const p of input.homeLineup) minutesPlayed.set(p.id, 90);
-  for (const p of input.awayLineup) minutesPlayed.set(p.id, 90);
-
-  events.push({ type: "match_start", minute: 0 });
-
-  for (let t = 1; t <= 90; t++) {
-    // ── F4: momentum tick ──────────────────────────────────────────────────
-    momentum = clamp(momentum + momentumDelta(homeMids, awayMids, rng), 20, 80);
-
-    // ── F5: attack roll ────────────────────────────────────────────────────
-    const pHome = pAttack(homeFwds, momentum / 100);
-    const pAway = pAttack(awayFwds, 1 - momentum / 100);
-    const attackRoll = rng();
-
-    let attackingSide: "home" | "away" | null = null;
-    if (attackRoll < pHome) attackingSide = "home";
-    else if (attackRoll < pHome + pAway) attackingSide = "away";
-
-    if (attackingSide) {
-      const attFwds = attackingSide === "home" ? homeFwds : awayFwds;
-      const attMids = attackingSide === "home" ? homeMids : awayMids;
-      const defDefs = attackingSide === "home" ? awayDefs : homeDefs;
-      const defGk = attackingSide === "home" ? awayGk : homeGk;
-
-      // Pick attacker (highest-rated FWD) and main defender (highest-rated DEF)
-      const attacker = pickBest(attFwds, t);
-      const defender = pickBest(defDefs, t);
-
-      // ── F6: shot? ────────────────────────────────────────────────────────
-      const shotProb = pShot(attacker, attMids, defender, t);
-      if (rng() < shotProb) {
-        // ── F7: goal? ───────────────────────────────────────────────────────
-        const goalProb = pGoal(attacker, defGk, t);
-        if (rng() < goalProb) {
-          events.push({
-            type: "goal",
-            minute: t,
-            team: attackingSide,
-            playerId: attacker.id,
-          });
-          if (attackingSide === "home") homeScore++;
-          else awayScore++;
-          // Injury check on goal ticks
-          maybeInjury(t, attackingSide, attFwds, defDefs, input, events, rng);
-        }
-      }
-    }
-
-    // ── CARDS: tarjetas en ticks 15/30/45/60/75/90 cuando hubo ataque rival ─
-    if (t % 15 === 0 && attackingSide !== null) {
-      const cardSide = attackingSide === "home" ? "away" : "home";
-      const cardDefs = cardSide === "home" ? homeDefs : awayDefs;
-      const def = pickBest(cardDefs, t);
-      const fitness = effectiveFitness(def, t);
-      const pYellow =
-        (1 - (def.tackling ?? 50) / 100) * 0.12 * (fitness < 40 ? 1.5 : 1.0);
-      if (rng() < pYellow) {
-        const prev = yellowsByPlayer.get(def.id) ?? 0;
-        yellowsByPlayer.set(def.id, prev + 1);
-        events.push({
-          type: "yellow_card",
-          minute: t,
-          team: cardSide,
-          playerId: def.id,
-        });
-        maybeInjury(t, cardSide, [], cardDefs, input, events, rng);
-      }
-    }
-
-    // ── INJURIES: en ticks 45 y 90 ────────────────────────────────────────
-    if (t === 45 || t === 90) {
-      maybeInjury(t, "home", homeFwds.concat(homeMids, homeDefs), [], input, events, rng);
-      maybeInjury(t, "away", awayFwds.concat(awayMids, awayDefs), [], input, events, rng);
-    }
-
-    if (t === 45) events.push({ type: "half_time", minute: 45 });
-  }
-
-  events.push({ type: "full_time", minute: 90 });
-
-  const winner = homeScore > awayScore ? "home" : awayScore > homeScore ? "away" : "draw";
-  const mpi = mpiDelta({ homeScore, awayScore, playerClubSide: input.playerClubSide });
-  const injuryDelta = injuryRiskDelta(events);
-
-  const playerLineup =
-    input.playerClubSide === "home" ? input.homeLineup : input.awayLineup;
-  const playerRatings = buildPlayerRatings(playerLineup, minutesPlayed);
-
-  return {
-    homeScore,
-    awayScore,
-    winner,
-    events,
-    worldStateDeltas: {
-      match_performance_index: mpi,
-      injury_risk: injuryDelta,
-    },
-    playerRatings,
-  };
-}
-
 function pickBest(players: PlayerStats[], t: number): PlayerStats {
-  // Deterministic: take highest effective rating. Ties broken by id order.
   let best = players[0]!;
   let bestRating = effectiveRating(best, t);
   for (let i = 1; i < players.length; i++) {
@@ -341,23 +150,123 @@ function pickBest(players: PlayerStats[], t: number): PlayerStats {
   return best;
 }
 
+// ── Match State + per-tick step ──────────────────────────────────────────────
+
+/**
+ * Internal match state — captured in MatchSessionSnapshot for re-enqueue.
+ * All fields must be JSON-serializable (no Map; arrays/records only).
+ */
+export interface MatchState {
+  homeLineup: PlayerStats[];
+  awayLineup: PlayerStats[];
+  homeScore: number;
+  awayScore: number;
+  momentum: number;
+  events: MatchEvent[];
+  yellowsByPlayer: Record<string, number>;
+  /** Player ID → minutes played so far. */
+  minutesPlayed: Record<string, number>;
+}
+
+/**
+ * One match tick. Mutates state in place (helper context, isolated to slice
+ * — production would use immutable updates per ADR-002 SimContext discipline).
+ */
+function runMatchTick(args: {
+  state: MatchState;
+  t: number;
+  rng: () => number;
+  worldState: Readonly<{ field_quality: number; fan_attendance: number; injury_risk: number }>;
+  playerClubSide: "home" | "away";
+}): void {
+  const { state, t, rng, worldState, playerClubSide } = args;
+  const homeFwds = byPosition(state.homeLineup, "FWD");
+  const homeMids = byPosition(state.homeLineup, "MID");
+  const homeDefs = byPosition(state.homeLineup, "DEF");
+  const homeGk = byPosition(state.homeLineup, "GK")[0]!;
+  const awayFwds = byPosition(state.awayLineup, "FWD");
+  const awayMids = byPosition(state.awayLineup, "MID");
+  const awayDefs = byPosition(state.awayLineup, "DEF");
+  const awayGk = byPosition(state.awayLineup, "GK")[0]!;
+
+  // F4: momentum
+  state.momentum = clamp(state.momentum + momentumDelta(homeMids, awayMids, rng), 20, 80);
+
+  // F5: attack roll
+  const pHome = pAttack(homeFwds, state.momentum / 100);
+  const pAway = pAttack(awayFwds, 1 - state.momentum / 100);
+  const attackRoll = rng();
+  let attackingSide: "home" | "away" | null = null;
+  if (attackRoll < pHome) attackingSide = "home";
+  else if (attackRoll < pHome + pAway) attackingSide = "away";
+
+  if (attackingSide) {
+    const attFwds = attackingSide === "home" ? homeFwds : awayFwds;
+    const attMids = attackingSide === "home" ? homeMids : awayMids;
+    const defDefs = attackingSide === "home" ? awayDefs : homeDefs;
+    const defGk = attackingSide === "home" ? awayGk : homeGk;
+
+    const attacker = pickBest(attFwds, t);
+    const defender = pickBest(defDefs, t);
+
+    if (rng() < pShot(attacker, attMids, defender, t)) {
+      if (rng() < pGoal(attacker, defGk, t)) {
+        state.events.push({
+          type: "goal",
+          minute: t,
+          team: attackingSide,
+          playerId: attacker.id,
+        });
+        if (attackingSide === "home") state.homeScore++;
+        else state.awayScore++;
+        // Injury check on goal ticks
+        maybeInjury(t, attackingSide, attFwds, worldState, playerClubSide, state.events, rng);
+      }
+    }
+  }
+
+  // Cards check (every 15 ticks if there was an attack)
+  if (t % 15 === 0 && attackingSide !== null) {
+    const cardSide: "home" | "away" = attackingSide === "home" ? "away" : "home";
+    const cardDefs = cardSide === "home" ? homeDefs : awayDefs;
+    const def = pickBest(cardDefs, t);
+    const fitness = effectiveFitness(def, t);
+    const pYellow =
+      (1 - (def.tackling ?? 50) / 100) * 0.12 * (fitness < 40 ? 1.5 : 1.0);
+    if (rng() < pYellow) {
+      const prev = state.yellowsByPlayer[def.id] ?? 0;
+      state.yellowsByPlayer[def.id] = prev + 1;
+      state.events.push({
+        type: "yellow_card",
+        minute: t,
+        team: cardSide,
+        playerId: def.id,
+      });
+      maybeInjury(t, cardSide, cardDefs, worldState, playerClubSide, state.events, rng);
+    }
+  }
+
+  // Injury checks at ticks 45 and 90
+  if (t === 45 || t === 90) {
+    maybeInjury(t, "home", homeFwds.concat(homeMids, homeDefs), worldState, playerClubSide, state.events, rng);
+    maybeInjury(t, "away", awayFwds.concat(awayMids, awayDefs), worldState, playerClubSide, state.events, rng);
+  }
+
+  if (t === 45) state.events.push({ type: "half_time", minute: 45 });
+}
+
 function maybeInjury(
   t: number,
   side: "home" | "away",
   candidates: PlayerStats[],
-  _otherDefs: PlayerStats[],
-  input: MatchInput,
+  worldState: Readonly<{ injury_risk: number }>,
+  playerClubSide: "home" | "away",
   events: MatchEvent[],
   rng: () => number,
 ): void {
   if (candidates.length === 0) return;
-  // Player club uses WorldState.injury_risk; rival uses constant 50 per F9 / match-sim spec
-  const playerSide = input.playerClubSide;
-  const isPlayerSide = side === playerSide;
-  const injuryRiskCtx = isPlayerSide
-    ? input.worldState.injury_risk
-    : RIVAL_INJURY_RISK_CONST;
-  // Pick the candidate with lowest effective_fitness — most likely to break
+  const isPlayerSide = side === playerClubSide;
+  const injuryRiskCtx = isPlayerSide ? worldState.injury_risk : RIVAL_INJURY_RISK_CONST;
   let worst = candidates[0]!;
   let worstFit = effectiveFitness(worst, t);
   for (let i = 1; i < candidates.length; i++) {
@@ -378,4 +287,195 @@ function maybeInjury(
       severity: rng() < 0.3 ? "major" : "minor",
     });
   }
+}
+
+// ── Entry points ─────────────────────────────────────────────────────────────
+
+/**
+ * One-shot simulation. Pure: same MatchInput → same MatchOutcome.
+ */
+export function simulateMatch(input: MatchInput): MatchOutcome {
+  const rngFactory = seedrandom(input.seed, { state: true });
+  const rng = (): number => rngFactory.double();
+  const state = buildInitialState(input);
+
+  state.events.push({ type: "match_start", minute: 0 });
+  for (let t = 1; t <= 90; t++) {
+    runMatchTick({
+      state,
+      t,
+      rng,
+      worldState: input.worldState,
+      playerClubSide: input.playerClubSide,
+    });
+  }
+  state.events.push({ type: "full_time", minute: 90 });
+
+  return finalizeOutcome(state, input);
+}
+
+function buildInitialState(input: MatchInput): MatchState {
+  const minutes: Record<string, number> = {};
+  for (const p of input.homeLineup) minutes[p.id] = 90;
+  for (const p of input.awayLineup) minutes[p.id] = 90;
+  return {
+    homeLineup: [...input.homeLineup],
+    awayLineup: [...input.awayLineup],
+    homeScore: 0,
+    awayScore: 0,
+    momentum: clamp(initialMomentum(input.worldState), 20, 80),
+    events: [],
+    yellowsByPlayer: {},
+    minutesPlayed: minutes,
+  };
+}
+
+function finalizeOutcome(state: MatchState, input: MatchInput): MatchOutcome {
+  const winner =
+    state.homeScore > state.awayScore
+      ? "home"
+      : state.awayScore > state.homeScore
+        ? "away"
+        : "draw";
+  const mpi = mpiDelta({
+    homeScore: state.homeScore,
+    awayScore: state.awayScore,
+    playerClubSide: input.playerClubSide,
+  });
+  const injury = injuryRiskDelta(state.events);
+
+  // Per-player ratings (F10): only the player's team, ≥30 minutes
+  const playerLineup =
+    input.playerClubSide === "home" ? state.homeLineup : state.awayLineup;
+  const playerRatings: Record<string, number> = {};
+  for (const p of playerLineup) {
+    const mins = state.minutesPlayed[p.id] ?? 90;
+    if (mins < 30) continue;
+    playerRatings[p.id] = effectiveRating(p, 90);
+  }
+
+  return {
+    homeScore: state.homeScore,
+    awayScore: state.awayScore,
+    winner,
+    events: state.events,
+    worldStateDeltas: {
+      match_performance_index: mpi,
+      injury_risk: injury,
+    },
+    playerRatings,
+  };
+}
+
+// ── Interactive flow (Day 6 — re-enqueue pattern) ───────────────────────────
+
+/**
+ * MatchSessionSnapshot per ADR-013 (slice subset).
+ * JSON-serializable for round-tripping through the BullMQ queue / DB.
+ */
+export interface MatchSessionSnapshot {
+  currentTick: number;
+  state: MatchState;
+  /** seedrandom serialized state — Option B per ADR-013. */
+  rngState: string;
+  /** When the snapshot was last paused for a decision. */
+  pausedAt: number | null;
+}
+
+const PAUSE_TICK = 45; // Slice only pauses at half-time
+
+/**
+ * Run from tick 1 until the first pause point (tick 45).
+ * Returns a snapshot ready for re-enqueue.
+ */
+export function startInteractiveMatch(input: MatchInput): MatchSessionSnapshot {
+  const rngFactory = seedrandom(input.seed, { state: true });
+  const rng = (): number => rngFactory.double();
+  const state = buildInitialState(input);
+  state.events.push({ type: "match_start", minute: 0 });
+
+  for (let t = 1; t <= PAUSE_TICK; t++) {
+    runMatchTick({
+      state,
+      t,
+      rng,
+      worldState: input.worldState,
+      playerClubSide: input.playerClubSide,
+    });
+  }
+  // Inject the substitution_window signal event
+  state.events.push({
+    type: "half_time",
+    minute: PAUSE_TICK,
+  });
+
+  return {
+    currentTick: PAUSE_TICK,
+    state,
+    rngState: JSON.stringify((rngFactory as unknown as { state: () => unknown }).state()),
+    pausedAt: PAUSE_TICK,
+  };
+}
+
+export interface SubstitutionDecision {
+  side: "home" | "away";
+  playerOutId: string;
+  playerInStats: PlayerStats; // synthetic bench player
+}
+
+/**
+ * Resume from snapshot, applying any substitution decision, until tick 90.
+ * Returns the final outcome.
+ */
+export function resumeInteractiveMatch(args: {
+  snapshot: MatchSessionSnapshot;
+  decision: SubstitutionDecision | null;
+  input: MatchInput;
+}): MatchOutcome {
+  const { snapshot, decision, input } = args;
+  const state: MatchState = {
+    homeLineup: [...snapshot.state.homeLineup],
+    awayLineup: [...snapshot.state.awayLineup],
+    homeScore: snapshot.state.homeScore,
+    awayScore: snapshot.state.awayScore,
+    momentum: snapshot.state.momentum,
+    events: [...snapshot.state.events],
+    yellowsByPlayer: { ...snapshot.state.yellowsByPlayer },
+    minutesPlayed: { ...snapshot.state.minutesPlayed },
+  };
+
+  // Apply substitution decision
+  if (decision) {
+    const lineup = decision.side === "home" ? state.homeLineup : state.awayLineup;
+    const idx = lineup.findIndex((p) => p.id === decision.playerOutId);
+    if (idx >= 0) {
+      lineup[idx] = decision.playerInStats;
+      state.events.push({
+        type: "yellow_card", // placeholder — slice doesn't have a 'substitution' event type yet
+        minute: snapshot.currentTick,
+        team: decision.side,
+        playerId: decision.playerInStats.id,
+      });
+      // The out-player loses minutes past the sub; in player_in stats are fresh
+      state.minutesPlayed[decision.playerOutId] = snapshot.currentTick;
+      state.minutesPlayed[decision.playerInStats.id] = 90 - snapshot.currentTick;
+    }
+  }
+
+  // Restore RNG state (ADR-013 Option B)
+  const rngFactory = seedrandom("", { state: JSON.parse(snapshot.rngState) });
+  const rng = (): number => rngFactory.double();
+
+  for (let t = snapshot.currentTick + 1; t <= 90; t++) {
+    runMatchTick({
+      state,
+      t,
+      rng,
+      worldState: input.worldState,
+      playerClubSide: input.playerClubSide,
+    });
+  }
+  state.events.push({ type: "full_time", minute: 90 });
+
+  return finalizeOutcome(state, input);
 }

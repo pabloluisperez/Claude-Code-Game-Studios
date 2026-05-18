@@ -68,6 +68,7 @@ separada — el slice vive en `prototypes/` que ya está aislado).
 | 3 | 2026-05-18 | match-simulation pure function (F1-F10) + player-gen + smoke integration | injury_risk missing from slice NodeId catalog; added | **Sunk-cost gate PASS** · 15/15 tests · Real matches drive MPI deltas · Real Pueblo loses 4 in a row → fan_momentum 35→0 |
 | 4 | 2026-05-18 | Drizzle schema (7 tables) + repo + fixture-gen + seed + docker-compose + migrations generated | drizzle-kit partial index syntax | 23/23 tests · 380-fixture round-robin works · DB layer ready but requires `docker compose up` to run live |
 | 5 | 2026-05-18 | advance() orchestrator + BullMQ advance-worker + event-system + smoke-db CLI | — | Single source of truth for weekly loop · workers ready (Redis required to run live) · event-system has 3 calendar events + 5 random pool |
+| 6 | 2026-05-18 | Match refactor: extracted runMatchTick + MatchSessionSnapshot · interactive start+resume · Hono API server · match controller | seedrandom `.state()` needs `{state:true}` option | 26/26 tests · **ADR-013 Option B verified**: pause@45 + resume === one-shot (identical scoreline + MPI + post-45 events) · JSON round-trip preserves rng |
 
 ---
 
