@@ -7,7 +7,7 @@
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import RangeSlider from "svelte-range-slider-pips";
-  import "svelte-range-slider-pips/style.css";
+  import "svelte-range-slider-pips/dist/range-slider-pips.css";
   import { getState, postAdvance, type StateDto, type AdvanceResponse } from "$lib/api";
   import {
     formatAttendance,

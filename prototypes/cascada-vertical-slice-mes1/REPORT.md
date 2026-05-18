@@ -112,6 +112,27 @@ Socket.IO server-pushed events per ADR-013 implementation guidance.
 - The end-of-month resolution was reached cleanly (auto-redirect worked).
 - The cascade chains' consequences were legible without dev explanation.
 
+### Post-PROCEED design feedback (registered as production OQs)
+
+The slice's polish iteration surfaced design insights that propagate to the
+production design docs. These are NOT slice failures — they are validated
+design directions captured for the production sprint:
+
+| Origin | Production OQ | Scope |
+|---|---|---|
+| Slider 0-100 felt unnatural | **hud-ui.md OQ-HUD-09** (input control taxonomy: button group / € slider / select) | MVP — formalize in /ux-design |
+| Raw numbers (fan=35) felt statty | **hud-ui.md OQ-HUD-10** (domain-language formatting buckets) | MVP — formalize buckets in /ux-design |
+| Match needs visual feedback | **hud-ui.md OQ-HUD-11** (match event pixel-art animations: ball-hits-net for goals, stretcher for injuries, sliding tackle for red cards) | MVP — open /ux-design match-events. **NOTE**: these are sprite/Lottie inside DOM `<img>` tags, NOT canvas — does NOT violate scope-mvp.md DOM-only constraint. |
+| Match modal pacing | **hud-ui.md OQ-HUD-12** (teaser buildup + 10s countdown + skip button + no blur on backdrop) | MVP — formalize in /ux-design match-events |
+| Hardcoded €8 market | **economy.md OQ-ECO-06** (MAX_TICKET_EUR formula by club context) | MVP — pre-sprint UI |
+| Rich event narrative ("subió el defensa Pepito a rematar un córner...") | **narrative-ai.md** (deferred — v1.2+) | **v1.2+ AI narrative** — slice provides position-keyed templates (`GOAL_FLAVOR_BY_POSITION`) as fixed-template middle ground until AI is integrated |
+
+The slice itself ships with **partial implementations** of OQ-HUD-10/11/12
+(domain labels + emoji confetti + 10s countdown + position-flavored event
+descriptions) so that the production design has working precedent to point
+at — but these are **slice-only spike code**. Production reimplementation
+must follow the full UX spec from /ux-design, not copy the slice.
+
 ---
 
 ## Core Loop Validation

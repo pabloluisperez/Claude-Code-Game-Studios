@@ -9,6 +9,7 @@
     decideMatch,
     getState,
     startMatch,
+    type LineupPlayerLite,
     type MatchEventDto,
     type StateDto,
   } from "$lib/api";
@@ -22,7 +23,66 @@
     homeClubName: string;
     awayClubName: string;
     playerClubSide: "home" | "away";
+    homeLineup: LineupPlayerLite[];
+    awayLineup: LineupPlayerLite[];
   };
+
+  /** Lookup table built on session start. */
+  let playersById = $state<Record<string, LineupPlayerLite>>({});
+
+  // Flavor text pools by position — slice-level placeholder until v1.2+ AI narrative.
+  // See REPORT.md "Production carry-forward" for v1.2+ scope.
+  const GOAL_FLAVOR_BY_POSITION: Record<LineupPlayerLite["position"], readonly string[]> = {
+    GK: [
+      "salió del área a despejar y la pegó tan fuerte que sorprendió al portero rival",
+    ],
+    DEF: [
+      "subió a rematar un córner de cabeza y la encontró en el segundo palo",
+      "remató de cabeza tras una falta lateral, sin oposición",
+      "apareció en el área como un delantero y empujó la pelota a la red",
+      "se incorporó al ataque y firmó un cabezazo picado imparable",
+    ],
+    MID: [
+      "robó la pelota en el centro y soltó un zurdazo seco al palo largo",
+      "armó la jugada, recortó al defensa y la metió al primer palo",
+      "le sentó al medio con un caño y fusiló al portero a un palmo",
+      "encontró un hueco entre líneas y golpeó al palo largo desde la frontal",
+    ],
+    FWD: [
+      "le ganó al defensa en el cuerpo a cuerpo y picó el balón sobre el portero",
+      "remató al primer toque tras un centro raso al área pequeña",
+      "se llevó la pelota controlada hasta la frontal y la colocó al palo largo",
+      "punteó el balón antes de que saliera el portero",
+      "se zafó del marcador con un sombrero y la cruzó al palo largo",
+    ],
+  };
+
+  const INJURY_FLAVOR: readonly string[] = [
+    "queda tumbado en el césped tras una caída fea",
+    "se duele de la pierna izquierda y pide el cambio inmediatamente",
+    "siente un tirón en el isquio y se retira por su propio pie",
+    "choca con un rival y queda aturdido en el suelo",
+  ];
+
+  function pickFlavor(seedKey: string, pool: readonly string[]): string {
+    // Stable per-event flavor — same seedKey always picks the same line.
+    let h = 0;
+    for (let i = 0; i < seedKey.length; i++) h = (h * 31 + seedKey.charCodeAt(i)) >>> 0;
+    return pool[h % pool.length]!;
+  }
+
+  function positionIcon(pos: LineupPlayerLite["position"]): string {
+    if (pos === "GK") return "🧤";
+    if (pos === "DEF") return "🛡";
+    if (pos === "MID") return "🎯";
+    return "⚡";
+  }
+  function positionLabel(pos: LineupPlayerLite["position"]): string {
+    if (pos === "GK") return "portero";
+    if (pos === "DEF") return "defensa";
+    if (pos === "MID") return "centrocampista";
+    return "delantero";
+  }
 
   type DramaticModal =
     | { kind: "goal"; event: MatchEventDto; isPlayerTeam: boolean; varPhase: "none" | "reviewing" | "upheld" | "overturned" }
@@ -44,12 +104,43 @@
 
   const TICK_INTERVAL_MS = 100;
   const TEASER_HOLD_MS = 900;        // tension buildup before the reveal
-  const MODAL_GOAL_HOLD_MS = 1800;
+  const MODAL_GOAL_HOLD_MS = 10000;  // 10s — player can read & enjoy; can skip with button
   const MODAL_VAR_REVIEW_MS = 2200;
-  const MODAL_VAR_RESOLVE_MS = 1500;
-  const MODAL_INJURY_HOLD_MS = 1500;
+  const MODAL_VAR_RESOLVE_MS = 2500;
+  const MODAL_INJURY_HOLD_MS = 5000; // 5s — injuries need less dwell time than goals
   const VAR_PROBABILITY = 0.30;
   const VAR_OVERTURN_PROBABILITY = 0.10; // 10% of VARs overturn — overturned goals stay scored for slice (visual only)
+
+  let modalCountdown = $state(0);
+  let modalSkipRequested = $state(false);
+
+  // Reactive flavor texts computed when modal opens.
+  const goalFlavor = $derived.by(() => {
+    if (!modal || modal.kind !== "goal") return null;
+    return goalFlavorFor(modal.event);
+  });
+  const injuryFlavor = $derived.by(() => {
+    if (!modal || modal.kind !== "injury") return null;
+    return injuryFlavorFor(modal.event);
+  });
+
+  async function holdModal(ms: number): Promise<void> {
+    modalSkipRequested = false;
+    const tickMs = 100;
+    let elapsed = 0;
+    modalCountdown = Math.ceil(ms / 1000);
+    while (elapsed < ms && !modalSkipRequested) {
+      await sleep(tickMs);
+      elapsed += tickMs;
+      modalCountdown = Math.max(0, Math.ceil((ms - elapsed) / 1000));
+    }
+    modalSkipRequested = false;
+    modalCountdown = 0;
+  }
+
+  function skipModal(): void {
+    modalSkipRequested = true;
+  }
 
   // Teaser pools — neutral wording so they don't reveal the outcome
   const GOAL_TEASERS = [
@@ -84,6 +175,12 @@
     error = null;
     try {
       session = await startMatch();
+      // Build player lookup so events can show name + position
+      const map: Record<string, LineupPlayerLite> = {};
+      for (const p of session.homeLineup) map[p.id] = p;
+      for (const p of session.awayLineup) map[p.id] = p;
+      playersById = map;
+
       renderedEvents = [];
       currentMinute = 0;
       homeGoals = 0;
@@ -149,7 +246,7 @@
         setTimeout(() => (confettiActive = false), 3500);
       }
       teaser = null;
-      await sleep(MODAL_GOAL_HOLD_MS);
+      await holdModal(MODAL_GOAL_HOLD_MS);
 
       // 3. Optional VAR theater
       if (goesToVar) {
@@ -164,14 +261,15 @@
       await sleep(TEASER_HOLD_MS);
       modal = { kind: "injury", event: e, isPlayerTeam };
       teaser = null;
-      await sleep(MODAL_INJURY_HOLD_MS);
+      await holdModal(MODAL_INJURY_HOLD_MS);
     }
 
     modal = null;
   }
 
   function dismissModal(): void {
-    modal = null;
+    // Skip the modal hold loop so the next event can render
+    modalSkipRequested = true;
   }
 
   async function decideAndResume(useSub: boolean) {
@@ -224,17 +322,44 @@
     return new Promise((res) => setTimeout(res, ms));
   }
 
+  function playerLabel(playerId: string | undefined): string {
+    if (!playerId) return "";
+    const p = playersById[playerId];
+    if (!p) return playerId;
+    return `${positionIcon(p.position)} ${p.name}`;
+  }
+
   function formatEvent(e: MatchEventDto): string {
     if (e.type === "match_start") return "Comienza el partido.";
     if (e.type === "half_time") return "─── DESCANSO ───";
     if (e.type === "full_time") return "─── FINAL ───";
-    if (e.type === "goal")
-      return `⚽ ${e.minute}' GOL ${e.team === "home" ? "(local)" : "(visitante)"}${e.playerId ? ` — ${e.playerId}` : ""}`;
-    if (e.type === "yellow_card")
-      return `🟨 ${e.minute}' Amarilla ${e.team === "home" ? "(local)" : "(visitante)"}`;
+    if (e.type === "goal") {
+      const side = e.team === "home" ? "local" : "visitante";
+      return `⚽ ${e.minute}' GOL ${side} — ${playerLabel(e.playerId)}`;
+    }
+    if (e.type === "yellow_card") {
+      const side = e.team === "home" ? "local" : "visitante";
+      return `🟨 ${e.minute}' Amarilla ${side} — ${playerLabel(e.playerId)}`;
+    }
     if (e.type === "injury")
-      return `🏥 ${e.minute}' Lesión ${e.severity === "major" ? "grave" : "leve"}`;
+      return `🏥 ${e.minute}' Lesión ${e.severity === "major" ? "grave" : "leve"} — ${playerLabel(e.playerId)}`;
     return `${e.minute}' ${e.type}`;
+  }
+
+  function goalFlavorFor(e: MatchEventDto): string | null {
+    if (!e.playerId) return null;
+    const player = playersById[e.playerId];
+    if (!player) return null;
+    const flavor = pickFlavor(`${e.minute}:${e.playerId}`, GOAL_FLAVOR_BY_POSITION[player.position]);
+    return `${player.name} (${positionLabel(player.position)}) ${flavor}.`;
+  }
+
+  function injuryFlavorFor(e: MatchEventDto): string | null {
+    if (!e.playerId) return null;
+    const player = playersById[e.playerId];
+    if (!player) return null;
+    const flavor = pickFlavor(`inj:${e.minute}:${e.playerId}`, INJURY_FLAVOR);
+    return `${player.name} (${positionLabel(player.position)}) ${flavor}.`;
   }
 
   // Confetti: 60 emoji rain pieces with random delays/positions
@@ -343,12 +468,17 @@
     role="dialog"
     aria-modal="true"
     aria-label="Evento del partido"
-    onclick={dismissModal}
     onkeydown={(e) => e.key === "Escape" && dismissModal()}
     tabindex="-1"
   >
     {#if modal.kind === "goal"}
       <div class="modal-card goal-card" class:player-goal={modal.isPlayerTeam} class:rival-goal={!modal.isPlayerTeam}>
+        <button
+          class="modal-close"
+          aria-label="Cerrar y continuar"
+          onclick={dismissModal}
+        >✕</button>
+
         {#if modal.varPhase === "reviewing"}
           <div class="var-spinner">🎯</div>
           <h2>VAR REVISANDO</h2>
@@ -368,17 +498,33 @@
             {modal.isPlayerTeam ? "Real Pueblo CF" : "Rival"} · minuto {modal.event.minute}'
           </p>
           <p class="score-flash">{homeGoals}-{awayGoals}</p>
+          {#if goalFlavor}
+            <p class="flavor-text">{goalFlavor}</p>
+          {/if}
+        {/if}
+
+        {#if modalCountdown > 0 && modal.varPhase === "none"}
+          <button class="modal-continue" onclick={dismissModal}>
+            Continuar → <span class="countdown">{modalCountdown}s</span>
+          </button>
         {/if}
       </div>
     {:else if modal.kind === "injury"}
       <div class="modal-card injury-card">
+        <button class="modal-close" aria-label="Cerrar y continuar" onclick={dismissModal}>✕</button>
         <div class="goal-icon">🏥</div>
         <h2>LESIÓN</h2>
-        <p>
-          {modal.isPlayerTeam ? "Un jugador de Real Pueblo" : "El rival"} cae al
-          césped · minuto {modal.event.minute}' ·
-          <strong>{modal.event.severity === "major" ? "grave" : "leve"}</strong>
+        <p class="mega-sub">
+          {modal.isPlayerTeam ? "Un jugador de Real Pueblo" : "El rival"} · minuto {modal.event.minute}' · <strong>{modal.event.severity === "major" ? "grave" : "leve"}</strong>
         </p>
+        {#if injuryFlavor}
+          <p class="flavor-text">{injuryFlavor}</p>
+        {/if}
+        {#if modalCountdown > 0}
+          <button class="modal-continue" onclick={dismissModal}>
+            Continuar → <span class="countdown">{modalCountdown}s</span>
+          </button>
+        {/if}
       </div>
     {/if}
   </div>
@@ -481,6 +627,63 @@
     margin-bottom: var(--space-3);
     animation: spin 1.4s linear infinite;
   }
+  .flavor-text {
+    margin-top: var(--space-4);
+    font-style: italic;
+    color: var(--fg-dim);
+    font-size: var(--text-base);
+    line-height: 1.4;
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .modal-close {
+    position: absolute;
+    top: var(--space-3);
+    right: var(--space-3);
+    background: var(--bg-3);
+    border: 1px solid var(--border);
+    color: var(--fg-dim);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    padding: 0;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
+  }
+  .modal-close:hover {
+    background: var(--bad);
+    color: var(--bg);
+  }
+  .modal-continue {
+    margin-top: var(--space-5);
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    padding: var(--space-3) var(--space-5);
+    border-radius: 8px;
+    font-size: var(--text-base);
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .modal-continue:hover { filter: brightness(1.1); }
+  .modal-continue .countdown {
+    opacity: 0.8;
+    font-variant-numeric: tabular-nums;
+    font-size: var(--text-sm);
+    padding: 2px 6px;
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+  }
+  .rival-goal .modal-continue { background: var(--bad); color: var(--fg); }
+  .injury-card .modal-continue { background: var(--bad); color: var(--fg); }
 
   /* ── Confetti rain ──────────────────────────────────────────── */
   /* z-index 110 = ABOVE the modal backdrop (100) so confetti is crisp,

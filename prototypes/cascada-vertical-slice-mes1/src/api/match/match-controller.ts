@@ -22,6 +22,12 @@ import type { DelayedEffect, MatchOutcome, PlayerDecisions, WorldState } from ".
  * Start an interactive match for a playthrough's current-week fixture
  * involving the player's club. Persists a paused MatchSession at tick 45.
  */
+export interface LineupPlayerLite {
+  id: string;
+  name: string;
+  position: "GK" | "DEF" | "MID" | "FWD";
+}
+
 export async function startMatch(playthroughId: string): Promise<{
   sessionId: string;
   pausedAtTick: number;
@@ -32,6 +38,9 @@ export async function startMatch(playthroughId: string): Promise<{
   homeClubName: string;
   awayClubName: string;
   playerClubSide: "home" | "away";
+  /** Minimal lineup info so the client can show player name + position in events. */
+  homeLineup: LineupPlayerLite[];
+  awayLineup: LineupPlayerLite[];
 }> {
   const playthrough = await repo.getPlaythrough(playthroughId);
   if (!playthrough) throw new Error("playthrough_not_found");
@@ -88,6 +97,9 @@ export async function startMatch(playthroughId: string): Promise<{
     snapshot,
   });
 
+  const lineupLite = (lineup: typeof homeLineup): LineupPlayerLite[] =>
+    lineup.map((p) => ({ id: p.id, name: p.name, position: p.position }));
+
   return {
     sessionId,
     pausedAtTick: snapshot.currentTick,
@@ -100,6 +112,8 @@ export async function startMatch(playthroughId: string): Promise<{
     homeClubName: homeClub.slug, // production: load name from clubs table
     awayClubName: awayClub.slug,
     playerClubSide: input.playerClubSide,
+    homeLineup: lineupLite(homeLineup),
+    awayLineup: lineupLite(awayLineup),
   };
 }
 

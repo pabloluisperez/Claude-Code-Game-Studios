@@ -153,6 +153,12 @@ export interface MatchEventDto {
   severity?: string;
 }
 
+export interface LineupPlayerLite {
+  id: string;
+  name: string;
+  position: "GK" | "DEF" | "MID" | "FWD";
+}
+
 export function startMatch(
   playthroughId = SLICE_PLAYTHROUGH_ID,
 ): Promise<{
@@ -164,6 +170,8 @@ export function startMatch(
   homeClubName: string;
   awayClubName: string;
   playerClubSide: "home" | "away";
+  homeLineup: LineupPlayerLite[];
+  awayLineup: LineupPlayerLite[];
 }> {
   return http("POST", "/api/matches/start", { playthroughId });
 }
