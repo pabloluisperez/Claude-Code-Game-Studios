@@ -73,6 +73,7 @@ separada — el slice vive en `prototypes/` que ya está aislado).
 | 8-10 | 2026-05-18 | SvelteKit UI: layout (tab bar + status header) + 6 routes (dashboard with decisions, calendar, squad/standings, staff inbox, finance, manager profile) · API client lib | Svelte 5: variable name `state` collides with `$state` rune (renamed to `pt`); `pt.snapshot?.state` access needs $derived.by() | svelte-check 0 errors · 252 files checked · All read panels wired to /api/advance/* |
 | 11 | 2026-05-18 | Live match UI route /match — animated event playback (100ms/tick) with pause modal at half-time + sub decision | Used client-side animation instead of Socket.IO streaming (throwaway-acceptable for slice) | svelte-check 0 errors · Pause at 45 → POST decision → resume animation |
 | 12 | 2026-05-18 | /end-of-month route (4-week resolution screen) + playtest-notes-day12.md (code-trace silent walkthrough) | Real human playtest deferred to Day 14 — agent walkthrough is approximation | 10 friction items identified; 5 prioritized for Day 13 fixes |
+| 13 | 2026-05-18 | 5 critical fixes from Day 12 notes: (1) onboarding banner, (2) auto-redirect to /end-of-month when week>4, (3) match-week dashboard prompt, (4) calendar announcements on /calendar, (5) clickable skill-point allocation + POST /api/advance/allocate-skill | $derived narrowing on .playthrough needed by() form | 34/34 backend tests · svelte-check 0/256 |
 
 ---
 

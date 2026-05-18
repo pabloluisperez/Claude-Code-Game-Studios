@@ -1,10 +1,11 @@
 <!--
   VERTICAL SLICE - NOT FOR PRODUCTION
-  Dashboard — Day 8 placeholder. Day 9 wires the decisions panel here.
+  Dashboard — Day 13 polish: onboarding banner, match-week prompt, end-of-month auto-redirect.
   Date: 2026-05-18
 -->
 <script lang="ts">
   import { onMount } from "svelte";
+  import { goto } from "$app/navigation";
   import { getState, postAdvance, type StateDto, type AdvanceResponse } from "$lib/api";
 
   let pt: StateDto | null = $state(null);
@@ -13,6 +14,7 @@
   let lastResult: AdvanceResponse | null = $state(null);
   let pending = $state(false);
   let error = $state<string | null>(null);
+  let showOnboarding = $state(true);
 
   async function refresh() {
     try {
@@ -21,6 +23,13 @@
         trainingIntensity = pt.snapshot.state.training_intensity ?? 50;
         ticketPriceIndex = pt.snapshot.state.ticket_price_index ?? 50;
       }
+      // Auto-redirect to end-of-month when mes 1 has closed
+      if (pt.playthrough.currentWeek > 4) {
+        await goto("/end-of-month");
+        return;
+      }
+      // Hide onboarding once we have a snapshot beyond week 1
+      if ((pt.snapshot?.week ?? 0) > 0) showOnboarding = false;
     } catch (err) {
       error = `API: ${(err as Error).message}`;
     }
@@ -29,6 +38,7 @@
   async function advance() {
     pending = true;
     error = null;
+    showOnboarding = false;
     try {
       lastResult = await postAdvance({
         training_intensity: trainingIntensity,
@@ -42,6 +52,12 @@
     }
   }
 
+  // Match weeks in this slice: every week has a fixture for Real Pueblo (1..4)
+  const isMatchWeek = $derived.by(() => {
+    const w = pt?.playthrough?.currentWeek ?? 0;
+    return w >= 1 && w <= 4;
+  });
+
   onMount(refresh);
 </script>
 
@@ -53,7 +69,39 @@
   </div>
 {/if}
 
-{#if pt}
+{#if showOnboarding}
+  <div class="panel onboarding">
+    <h2>Bienvenido al Real Pueblo CF</h2>
+    <p>
+      Acabas de aterrizar en la oficina de un club humilde en <strong>Segunda
+      División</strong>. La afición está desencantada (fan_momentum=35), las
+      finanzas justas, y tienes 4 jornadas para empezar a dar señales.
+    </p>
+    <p>
+      Cada semana decides dos cosas: <strong>cómo entrenar</strong> y
+      <strong>cuánto cobrar la entrada</strong>. El staff te avisará si ve
+      algo raro. Las cascadas son reales — y a veces contraintuitivas.
+    </p>
+    <p class="dim">
+      Toma una decisión y pulsa <em>Avanzar semana</em>. No hay reloj — el
+      tiempo se detiene hasta que tú lo decidas. Calma.
+    </p>
+    <button onclick={() => (showOnboarding = false)}>Empezar</button>
+  </div>
+{/if}
+
+{#if pt && !showOnboarding}
+  {#if isMatchWeek}
+    <div class="panel match-prompt">
+      <h2>🎮 Hay partido esta semana</h2>
+      <p class="dim">
+        Puedes jugar el partido en directo (con decisión de cambio al descanso),
+        o avanzar directamente y dejar que el equipo lo juegue solo.
+      </p>
+      <a href="/match" class="button-link primary-link">Jugar partido en directo →</a>
+    </div>
+  {/if}
+
   <div class="metrics-grid">
     <div class="panel">
       <div class="metric-label">Semana</div>
@@ -90,6 +138,10 @@
           <strong>{trainingIntensity}</strong>
           <span>(carga máxima) 100</span>
         </div>
+        <p class="hint dim">
+          Sweet spot ~50. El extremo bajo (descanso total) y el extremo alto (sobrecarga)
+          tienen efectos diferentes — el staff te lo dirá si ve algo.
+        </p>
       </label>
     </div>
     <div class="decision-row">
@@ -101,6 +153,9 @@
           <strong>{ticketPriceIndex}</strong>
           <span>(carísimo) 100</span>
         </div>
+        <p class="hint dim">
+          50 = precio del mercado. Subirlo genera ingresos pero la afición tiene memoria.
+        </p>
       </label>
     </div>
     <button class="primary" disabled={pending} onclick={advance}>
@@ -118,35 +173,44 @@
             {lastResult.playerMatchOutcome.homeScore}-{lastResult.playerMatchOutcome.awayScore}
           </strong>
           ·
-          {lastResult.playerMatchOutcome.winner}
+          {lastResult.playerMatchOutcome.winner === "draw"
+            ? "empate"
+            : lastResult.playerMatchOutcome.winner === "home"
+              ? "victoria local"
+              : "victoria visitante"}
           · ∆MPI {lastResult.playerMatchOutcome.worldStateDeltas.match_performance_index}
         </p>
       {/if}
       {#if lastResult.thresholdCrossings.length}
-        <p class="warn">⚠ {lastResult.thresholdCrossings.length} threshold(s) cruzado(s).</p>
+        <p class="warn">⚠ {lastResult.thresholdCrossings.length} umbral(es) cruzados — revisa /staff.</p>
       {/if}
       {#if lastResult.managerLeveledUp}
-        <p class="good">⬆ ¡Has subido de nivel! ({lastResult.managerState.level})</p>
+        <p class="good">⬆ ¡Has subido de nivel! (Lvl {lastResult.managerState.level})</p>
       {/if}
+      <p class="dim">
+        <a href="/staff">Ver lo que dice el staff →</a>
+      </p>
     </div>
   {/if}
-{:else}
+{:else if !pt}
   <p class="dim">Cargando estado…</p>
 {/if}
 
 <style>
+  .onboarding { border-color: var(--accent); margin-bottom: var(--space-4); }
+  .onboarding p { margin-bottom: var(--space-2); }
+  .match-prompt { border-color: var(--warn); margin-bottom: var(--space-4); }
+  .button-link { display: inline-block; padding: var(--space-2) var(--space-4); border: 1px solid var(--border); border-radius: 6px; text-decoration: none; }
+  .button-link.primary-link { background: var(--accent); color: var(--bg); border-color: var(--accent); }
   .metrics-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: var(--space-3);
     margin-bottom: var(--space-4);
   }
-  .decisions {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
+  .decisions { display: flex; flex-direction: column; gap: var(--space-4); }
   .decision-row label { display: block; }
+  .hint { font-size: var(--text-sm); margin-top: var(--space-1); }
   .value-row {
     display: flex;
     justify-content: space-between;

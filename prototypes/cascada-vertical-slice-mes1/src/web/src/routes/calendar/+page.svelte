@@ -7,11 +7,38 @@
   import { onMount } from "svelte";
   import { getFixturesForWeek, getState, type FixtureDto, type StateDto } from "$lib/api";
 
+  interface CalendarAnnouncement {
+    week: number;
+    title: string;
+    body: string;
+  }
+
+  // Mirror of CALENDAR_EVENTS in src/sim/event-system.ts.
+  // Slice trade-off: hardcoded here to avoid importing sim code into the web bundle.
+  const CALENDAR_ANNOUNCEMENTS: readonly CalendarAnnouncement[] = [
+    {
+      week: 3,
+      title: "Fiesta del barrio el domingo",
+      body: "El director comercial avisa: la asistencia puede caer si el partido coincide.",
+    },
+    {
+      week: 3,
+      title: "Semana de derbi",
+      body: "Monte Real es el rival histórico. Una victoria aquí pesa el doble en fan_momentum.",
+    },
+    {
+      week: 4,
+      title: "Visitamos al líder",
+      body: "Equipo de Primera con presupuesto 3× el nuestro. El staff sugiere bajar la intensidad esta semana.",
+    },
+  ];
+
   interface WeekRow {
     week: number;
     label: string;
     fixtures: FixtureDto[];
     isCurrent: boolean;
+    announcements: CalendarAnnouncement[];
   }
 
   let weeks: WeekRow[] = $state([]);
@@ -30,6 +57,7 @@
           label: `Semana ${w}`,
           fixtures,
           isCurrent: w === current,
+          announcements: CALENDAR_ANNOUNCEMENTS.filter((a) => a.week === w),
         });
       }
       weeks = out;
@@ -72,6 +100,20 @@
       </ul>
       <p class="dim">+ {week.fixtures.length - 1} otros partidos de la liga.</p>
     {/if}
+
+    {#if week.announcements.length > 0}
+      <div class="announcements">
+        <h3>📌 Avisos para esta semana</h3>
+        <ul>
+          {#each week.announcements as a}
+            <li>
+              <strong>{a.title}</strong>
+              <p class="dim">{a.body}</p>
+            </li>
+          {/each}
+        </ul>
+      </div>
+    {/if}
   </div>
 {/each}
 
@@ -90,4 +132,9 @@
   }
   ul.fixtures { list-style: none; }
   ul.fixtures li { padding: var(--space-1) 0; font-size: var(--text-sm); }
+  .announcements { margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border); }
+  .announcements h3 { font-size: var(--text-sm); color: var(--warn); margin-bottom: var(--space-2); }
+  .announcements ul { list-style: none; display: flex; flex-direction: column; gap: var(--space-2); }
+  .announcements li strong { font-size: var(--text-sm); }
+  .announcements .dim { font-size: var(--text-sm); margin-top: 2px; }
 </style>

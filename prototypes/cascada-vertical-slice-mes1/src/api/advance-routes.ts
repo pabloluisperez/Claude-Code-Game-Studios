@@ -5,6 +5,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { advanceOneWeek } from "./advance.js";
 import * as repo from "../db/repo.js";
+import { allocateSkillPoint, type ManagerSkillId, type ManagerState } from "../sim/manager-rpg.js";
 
 export const advanceRoutes = new Hono();
 
@@ -52,4 +53,26 @@ advanceRoutes.get("/fixtures/:playthroughId/week/:week", async (c) => {
   const week = Number(c.req.param("week"));
   const fixtures = await repo.getFixturesForWeek(id, week);
   return c.json(fixtures);
+});
+
+const AllocateBody = z.object({
+  playthroughId: z.string().min(1),
+  skill: z.enum(["tactics", "finance"]),
+});
+
+advanceRoutes.post("/allocate-skill", async (c) => {
+  const body = AllocateBody.parse(await c.req.json());
+  const latest = await repo.loadLatestSnapshot(body.playthroughId);
+  if (!latest) return c.json({ error: "no_snapshot" }, 400);
+  const mgr = latest.managerState as ManagerState | null;
+  if (!mgr) return c.json({ error: "no_manager_state" }, 400);
+  const updated = allocateSkillPoint(mgr, body.skill as ManagerSkillId);
+  await repo.saveSnapshot(
+    body.playthroughId,
+    latest.week,
+    latest.state,
+    latest.delayedBuffer,
+    updated,
+  );
+  return c.json({ managerState: updated });
 });

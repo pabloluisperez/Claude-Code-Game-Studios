@@ -5,7 +5,7 @@
 -->
 <script lang="ts">
   import { onMount } from "svelte";
-  import { getState, type StateDto } from "$lib/api";
+  import { allocateSkill, getState, type StateDto } from "$lib/api";
 
   interface ManagerSnapshot {
     level: number;
@@ -28,6 +28,15 @@
       pt = await getState();
     } catch (err) {
       error = `API: ${(err as Error).message}`;
+    }
+  }
+
+  async function allocate(skill: "tactics" | "finance") {
+    try {
+      await allocateSkill(skill);
+      await load();
+    } catch (err) {
+      error = `Allocate failed: ${(err as Error).message}`;
     }
   }
 
@@ -64,6 +73,9 @@
 
   <div class="panel" style="margin-top: var(--space-3);">
     <h2>Habilidades</h2>
+    {#if mgr.pendingSkillPoints > 0}
+      <p class="good">¡Tienes {mgr.pendingSkillPoints} punto(s) por gastar! Pulsa "Subir" en la habilidad que quieras mejorar.</p>
+    {/if}
     <ul class="skills">
       <li>
         <div class="skill-name">Tácticas</div>
@@ -73,6 +85,12 @@
           {/each}
         </div>
         <div class="skill-level">{mgr.skills.tactics}/4</div>
+        <button
+          disabled={mgr.pendingSkillPoints === 0 || mgr.skills.tactics >= 4}
+          onclick={() => allocate("tactics")}
+        >
+          ⬆ Subir
+        </button>
       </li>
       <li>
         <div class="skill-name">Finanzas</div>
@@ -82,6 +100,12 @@
           {/each}
         </div>
         <div class="skill-level">{mgr.skills.finance}/4</div>
+        <button
+          disabled={mgr.pendingSkillPoints === 0 || mgr.skills.finance >= 4}
+          onclick={() => allocate("finance")}
+        >
+          ⬆ Subir
+        </button>
       </li>
     </ul>
   </div>
@@ -109,7 +133,7 @@
   .xp-fill { height: 100%; background: var(--accent); transition: width 0.4s ease; }
 
   ul.skills { list-style: none; display: flex; flex-direction: column; gap: var(--space-3); }
-  ul.skills li { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: var(--space-3); }
+  ul.skills li { display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: var(--space-3); }
   .skill-pips { display: flex; gap: 4px; }
   .pip { width: 18px; height: 18px; border-radius: 4px; background: var(--bg-3); border: 1px solid var(--border); }
   .pip.on { background: var(--accent); border-color: var(--accent); }

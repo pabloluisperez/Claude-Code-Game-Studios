@@ -151,6 +151,13 @@ export function startMatch(
   return http("POST", "/api/matches/start", { playthroughId });
 }
 
+export function allocateSkill(
+  skill: "tactics" | "finance",
+  playthroughId = SLICE_PLAYTHROUGH_ID,
+): Promise<{ managerState: unknown }> {
+  return http("POST", "/api/advance/allocate-skill", { playthroughId, skill });
+}
+
 export function decideMatch(args: {
   sessionId: string;
   decision: null | {
