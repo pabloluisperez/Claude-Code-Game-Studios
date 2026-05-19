@@ -1,6 +1,7 @@
 ---
 Story: CASCADE-ENGINE-007
-Status: Pending
+Status: Complete
+Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: AC-ADD-01 (multi-writer team_fitness) + cascade-engine.md §C2, §C3, §C13
 Governing ADR: ADR-002, ADR-003
@@ -74,9 +75,52 @@ In `packages/shared/src/sim/cascade-graph.ts`:
 
 **1.5 days.** Simpler than C1 (no counterintuitive flag, no piecewise). The noise-bound test (AC #4) is the main novelty here — it pioneers the rng-injection pattern that C4 / C9a / C14 will all reuse.
 
+## QA Test Cases
+
+**Test file**: `packages/shared/tests/cascade-engine/chains-c2-c3-c13.test.ts`
+_(Use `packages/shared/tests/cascade-engine/` not `tests/unit/cascade-engine/`)_
+
+**Estimated test count**: ~20 unit tests
+
+### C2 — injury_risk → squad_available_pct (delay 1, noisy)
+- `test_chain_c2_baseline_zero_noise`: injury_risk=50, rng()=0.5 → delta=-9.0 (AC #1)
+- `test_chain_c2_noise_positive_rng_1`: rng()=1.0 → delta=-8.0 (AC #1)
+- `test_chain_c2_noise_negative_rng_0`: rng()=0.0 → delta=-10.0 (AC #1)
+- `test_chain_c2_at_base_zero_delta`: injury_risk=20, rng()=0.5 → delta=0.0 (AC #2)
+- `test_chain_c2_below_base_positive_recovery`: injury_risk=10, rng()=0.5 → delta=+3.0 (AC #3)
+- `test_chain_c2_noise_bound_1000_seeds`: |noisy_delta - base| ≤ NOISE_C2_AMP/2 across 1000 seeds (AC #4)
+- `test_chain_c2_delay_routing_applyAt_correct`: evaluated at W=3 → applyAt=4 (AC #5)
+
+### C3 — field_quality → team_fitness (threshold)
+- `test_chain_c3_below_threshold_negative`: field_quality=25 → delta=-1.5 (AC #6)
+- `test_chain_c3_at_threshold_zero`: field_quality=40 → delta=0.0 (AC #7)
+- `test_chain_c3_above_threshold_zero`: field_quality=60 → delta=0.0 (AC #7)
+- `test_chain_c3_floor_at_zero_field`: field_quality=0 → delta=-4.0 (AC #8)
+
+### C13 — squad_available_pct → team_fitness (sweet spot)
+- `test_chain_c13_below_sweet_spot_negative`: squad_available_pct=60 → delta=-0.75 (AC #9)
+- `test_chain_c13_at_sweet_spot_zero`: squad_available_pct=75 → delta=0.0 (AC #10)
+- `test_chain_c13_at_max_positive`: squad_available_pct=100 → delta=+1.25 (AC #11)
+- `test_chain_c13_at_min_negative`: squad_available_pct=0 → delta=-3.75 (AC #12)
+- `test_chain_c13_delay_routing_applyAt_correct`: evaluated at W=2 → applyAt=3 (AC #13)
+
+### Integration
+- `test_chain_c0_c3_additive_composition_net_zero_this_tick`: team_fitness=50, field_quality=30, squad=60 → C0+C3 net = 0 this tick; C13 delayed to W+1 (AC #14)
+- `test_chain_c2_determinism_same_seed_same_noise`: two runTick calls with same seedrandom state → identical C2 delta including noise (AC #15)
+
 ## Notes / Gotchas
 
 - **Rng injection pattern**: To test C2 with `ctx.rng()` returning exactly 0.5 (or 0.0, 1.0), construct a `ctx` with `rng: () => 0.5`. Do NOT use `Math.random()` here (control-manifest forbidden). For multi-call edges, a stateful generator: `let i=0; const seq=[0.5,0.3,0.7]; ctx.rng=()=>seq[i++]`.
 - The noise term is `(rng() - 0.5) × AMP`, which gives a symmetric ±AMP/2 swing. For NOISE_C2_AMP=2.0, swing is ±1.0. Verify the formula matches cascade-engine.md §Formulas head-note ("Cuando se indica `noise(AMP)`, se usa `(ctx.rng() - 0.5) * AMP`").
 - C3's `max(0, ...)` clamp means good fields produce zero delta — they don't help team_fitness, they just stop hurting it. This is intentional asymmetry (matches the project's pattern: positive states are silent; negative states are loud).
 - C13's denominator is `100` (the constant); the formula `(SQ - 75) / 100` produces a `[-0.75, +0.25]` ratio multiplied by `K_squad_fit=5.0` → `[-3.75, +1.25]` range. Spot-check matches GDD §C13 rango.
+
+## Completion Notes
+**Completed**: 2026-05-19
+**Criteria**: 15/15 passing
+**Deviations**:
+  - ADVISORY: AC#4 test uses 1001 linear values instead of seedrandom — stronger coverage (no PRNG period concerns), documented.
+  - ADVISORY: AC#14 W+1 arrival test uses C13_ONLY isolation instead of full C0+C3+C13 scenario — verifies mechanical invariant; full fan-in in story 017.
+  - OUT OF SCOPE (valid): graph-topology.test.ts placeholder guard updated (same pattern as story 006).
+**Test Evidence**: Logic — `packages/shared/tests/cascade-engine/chains-c2-c3-c13.test.ts` — 21/21 passing (187/187 suite)
+**Code Review**: Complete — APPROVED WITH SUGGESTIONS (2026-05-19, max-value overflow test added)
