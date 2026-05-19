@@ -1,6 +1,7 @@
 ---
 Story: CASCADE-ENGINE-004
-Status: Pending
+Status: Complete
+Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: cascade-engine.md §States and Transitions (Steps 1–6 of the weekly tick) + AC-ADD-01, AC-ADD-02, AC-CLM-01 through AC-CLM-05
 Governing ADR: ADR-002 (determinism), ADR-003 (Rule 3 prevState-only, Rule 4 additive composition, Rule 5 delays)
@@ -89,3 +90,10 @@ Helper exported alongside `runTick`:
 - The `clampToRange` helper goes in this file, not in `cascade-types.ts`, because clamping is engine behavior (Rule 4 final step), not type metadata.
 - Per ADR-003 Rule 4: clamping applies to the FINAL accumulated value, NOT to individual edge deltas. AC-ADD-03 is the canonical test for this: 98 + 2.7 + 0.55 = 101.25 → clamped to 100. If clamping applied per-edge, the math would be wrong.
 - Do NOT write to `cascade-engine.ts` for balance constants. They live in `cascade-graph.ts` (story 002). Per control-manifest: "Touching `cascade-engine.ts` for balance changes is forbidden."
+
+## Completion Notes
+**Completed**: 2026-05-19
+**Criteria**: 9/9 passing
+**Deviations**: None
+**Test Evidence**: Logic — unit test at `packages/shared/tests/cascade-engine/runtick-skeleton.test.ts` — 20/20 passing (130/130 suite)
+**Code Review**: Complete — APPROVED WITH SUGGESTIONS (2026-05-19, all suggestions applied: removed redundant spread, test() → it() consistency, AC #3 discriminant test added)
