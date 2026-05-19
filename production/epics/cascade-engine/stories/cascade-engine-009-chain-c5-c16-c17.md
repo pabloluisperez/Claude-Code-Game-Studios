@@ -78,6 +78,40 @@ In `packages/shared/src/sim/cascade-graph.ts`:
 
 **1.5 days.** Five chains but all have identical structural shape (linear-ish, no piecewise, no noise). The C16b guard test is the most novel — verifies the guard skip path in the engine (story 005's machinery).
 
+## QA Test Cases
+
+**Test file**: `packages/shared/tests/cascade-engine/chains-c5-c16-c17.test.ts`
+_(Use `packages/shared/tests/cascade-engine/` not `tests/unit/cascade-engine/`)_
+
+**Estimated test count**: ~18 unit tests
+
+### C5a + C5b — catering cluster (delay 1)
+- `test_chain_c5a_positive_above_50`: catering_budget=80 → delta=+1.8 (AC #1)
+- `test_chain_c5a_negative_below_50`: catering_budget=20 → delta=-1.8 (AC #2)
+- `test_chain_c5a_equilibrium_at_50`: catering_budget=50 → delta=0.0 (AC #3)
+- `test_chain_c5b_negative_below_50`: catering_budget=20 → delta=-2.4 (AC #4)
+- `test_chain_c5b_greater_magnitude_than_c5a`: |C5b delta| > |C5a delta| for same catering_budget (AC #5)
+
+### C16a — player_happiness → team_fitness (always fires)
+- `test_chain_c16a_positive_above_50`: player_happiness=80 → delta=+2.4 (AC #6)
+- `test_chain_c16a_negative_below_50`: player_happiness=20 → delta=-2.4 (AC #7)
+- `test_chain_c16a_fires_on_non_match_week`: hasMatchThisWeek=false → C16a still fires (AC #14)
+
+### C16b — player_happiness → match_performance_index (hasMatchThisWeek guard)
+- `test_chain_c16b_fires_with_match_this_week`: player_happiness=20, hasMatchThisWeek=true → delta=-4.2 (AC #8)
+- `test_chain_c16b_does_not_fire_without_match`: hasMatchThisWeek=false → log has 'guarded' entry; MPI unchanged (AC #9)
+- `test_chain_c16b_positive_happy_squad_with_match`: player_happiness=80, hasMatchThisWeek=true → delta=+4.2 (AC #10)
+
+### C17 — sponsor_quality → player_happiness (delay 1, monotonic)
+- `test_chain_c17_baseline`: sponsor_quality=60 → delta=+3.0 (AC #11)
+- `test_chain_c17_zero_sponsor`: sponsor_quality=0 → delta=0.0 (AC #12)
+- `test_chain_c17_monotonic_non_negative_all_values`: delta ≥ 0 for sponsor_quality ∈ [0,100] (AC #13)
+
+### Delay routing + determinism
+- `test_chain_c5a_c5b_c17_delay_routing`: C5a/C5b/C17 produce applyAt=currentWeek+1; C16a/C16b write deltaMap directly (AC #15)
+- `test_chain_all_pure_no_rng`: none of the 5 transferFns call ctx.rng() (AC #16)
+- `test_chain_determinism_same_inputs`: two runTick calls → identical deltas (AC #16)
+
 ## Notes / Gotchas
 
 - The split of C16 into C16a + C16b is documented in cascade-engine.md catalog and reaffirmed by the GDD's R3+R4 fixes. C16a always evaluates (fitness is built daily, including non-match weeks); C16b only on match weeks (player happiness shows up in performance only when there's a performance to show up in).

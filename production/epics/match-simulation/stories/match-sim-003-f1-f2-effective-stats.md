@@ -57,6 +57,33 @@ These helpers MUST be used by every downstream formula — no direct `player.pas
 - [ ] **Pure functions**: no `ctx.rng()` calls, no `Math.random()`, no `Date.now()`. Grep test on the file.
 - [ ] **Default helpers**: `getPassing({ passing: undefined })` returns `50` (no `NaN`). All accessors handle undefined cleanly.
 
+## QA Test Cases
+
+**Test file**: `packages/shared/tests/match-sim/effective-stats.test.ts`
+_(Use `packages/shared/tests/match-sim/` not `tests/unit/match-sim/`)_
+
+**Estimated test count**: ~12 unit tests
+
+### F1 — effectiveFitness
+- `test_f1_normal_case_exact_float`: effectiveFitness({fitness:72, stamina:65}, 90) = 66.75 (AC-MATCH-07)
+- `test_f1_stamina_100_no_decay`: effectiveFitness({fitness:80, stamina:100}, t) = 80 for t=1,45,90
+- `test_f1_clamp_to_zero_negative_unclamped`: effectiveFitness({fitness:8, stamina:40}, 90) = 0 (clamped from -1.0)
+- `test_f1_never_returns_negative_across_player_range`: random 10,000 valid players → result ≥ 0
+
+### F2 — effectiveRating
+- `test_f2_composite_formula_exact_float`: effectiveRating with known values → 65.08 (AC-MATCH-08, tolerance 0.01)
+- `test_f2_skill_weight_is_0_35`: +1 skill → +0.35 rating (linearity)
+- `test_f2_form_weight_is_0_20`: +1 form → +0.20 rating
+- `test_f2_output_range_invariant_10000_samples`: effectiveRating ∈ [13, 96.25] for valid player params
+
+### Position-specific accessors
+- `test_stat_helpers_return_50_for_undefined`: getPassing({passing: undefined}) = 50 (no NaN)
+- `test_emergency_gk_reflexes_derived_as_skill_times_04`: position='DEFENDER', assignedAs='GOALKEEPER', skill=70 → getReflexes=28 (AC-MATCH-17)
+- `test_emergency_gk_handling_derived_as_skill_times_03`: getHandling=21
+
+### Purity
+- `test_f1_f2_no_rng_or_date_calls`: no ctx.rng(), no Math.random(), no Date.now() in football-formulas.ts
+
 ## Implementation Notes
 
 *From GDD F1 + F2:*

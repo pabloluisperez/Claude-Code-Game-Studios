@@ -48,6 +48,29 @@ In `packages/shared/src/sim/sports/football/football-constants.ts` (new — refe
 - [ ] **Clamp invariant**: `applyMomentumDelta(80, +10)` = `80`. `applyMomentumDelta(20, -10)` = `20`. `applyMomentumDelta(50, 0)` = `50`.
 - [ ] **Empty-MIDs guard**: if `homeMids.length === 0` (edge: all home MIDs sent off), the `avg()` helper returns 0 (per the slice's helper convention); `pass_home = 0`; the delta still computes without `NaN`.
 
+## QA Test Cases
+
+**Test file**: `packages/shared/tests/match-sim/momentum.test.ts`
+_(Use `packages/shared/tests/match-sim/` not `tests/unit/match-sim/`)_
+
+**Estimated test count**: ~12 unit tests
+
+### F3 — homeMomentumInitial
+- `test_f3_exact_value_known_inputs`: homeMomentumInitial({field_quality:70, fan_attendance:60}) = 51.5 (AC-MATCH-09)
+- `test_f3_range_invariant_10000_random_pairs`: output ∈ [45, 55] for field_quality, fan_attendance ∈ [0,100]
+
+### F4 — momentumDelta + applyMomentumDelta
+- `test_f4_example_from_gdd_implementation_notes`: pass=65, away_pass=60, vis=60, away_vis=57, rng=0.6, 4-4-2 → delta=0.41
+- `test_f4_90_tick_simulation_hard_clamp`: dominant vs weak — all momentum values ∈ [20, 80] (AC-MATCH-10)
+- `test_f4_352_amplifier_is_1_1x_vs_442`: same MID stats, 3-5-2 → 1.1× the 4-4-2 technique component (noise=0)
+- `test_f4_352_applies_to_home_only`: awayFormation='3-5-2' → no amplifier on away contribution
+- `test_f4_single_rng_call_per_tick`: vi.fn spy on ctx.rng → called exactly once per momentumDelta call (CRITICAL for AC-MATCH-01/02)
+- `test_f4_noise_rng_0_gives_minus_1`: noise = -1.0 with rng()=0
+- `test_f4_noise_rng_1_gives_plus_1`: noise ≈ +1.0 with rng()=0.999
+- `test_f4_clamp_at_max`: applyMomentumDelta(80, +10) = 80
+- `test_f4_clamp_at_min`: applyMomentumDelta(20, -10) = 20
+- `test_f4_no_nan_when_home_mids_empty`: homeMids=[] → delta computes without NaN
+
 ## Implementation Notes
 
 *From GDD F3 + F4:*

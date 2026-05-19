@@ -495,18 +495,24 @@ describe('cascade graph — getEdgesByTarget()', () => {
 // ── AC #10: transferFn throws for unimplemented stories ──────────────────────
 
 describe('cascade graph — transferFn placeholder behaviour', () => {
-  it('test_cascade_graph_c0_transferFn_throws_with_story_reference', () => {
+  it('test_cascade_graph_c0_transferFn_implemented_by_story_006', () => {
+    // C0 was implemented in CASCADE-ENGINE-006 (natural decay toward equilibrium 70).
+    // It must no longer throw — calling it with a valid prevState returns a number.
     const e = CASCADA_FC_GRAPH.find((x) => x.id === 'C0')!;
-    expect(() =>
-      e.transferFn({} as Parameters<CascadeEdgeDef['transferFn']>[0], {} as Parameters<CascadeEdgeDef['transferFn']>[1])
-    ).toThrowError(/CASCADE-ENGINE-006/);
+    const prevState = { team_fitness: 90 } as Parameters<CascadeEdgeDef['transferFn']>[0];
+    const ctx = {} as Parameters<CascadeEdgeDef['transferFn']>[1];
+    expect(() => e.transferFn(prevState, ctx)).not.toThrow();
+    expect(typeof e.transferFn(prevState, ctx)).toBe('number');
   });
 
-  it('test_cascade_graph_c2_transferFn_throws_with_story_reference', () => {
+  it('test_cascade_graph_c2_transferFn_implemented_by_story_007', () => {
+    // C2 was implemented in CASCADE-ENGINE-007 (injury_risk → squad_available_pct).
+    // It must no longer throw — calling it with a valid prevState + ctx returns a number.
     const e = CASCADA_FC_GRAPH.find((x) => x.id === 'C2')!;
-    expect(() =>
-      e.transferFn({} as Parameters<CascadeEdgeDef['transferFn']>[0], {} as Parameters<CascadeEdgeDef['transferFn']>[1])
-    ).toThrowError(/CASCADE-ENGINE-007/);
+    const prevState = { injury_risk: 50 } as Parameters<CascadeEdgeDef['transferFn']>[0];
+    const ctx = { rng: () => 0.5 } as Parameters<CascadeEdgeDef['transferFn']>[1];
+    expect(() => e.transferFn(prevState, ctx)).not.toThrow();
+    expect(typeof e.transferFn(prevState, ctx)).toBe('number');
   });
 
   it('test_cascade_graph_c6_transferFn_throws_with_story_reference', () => {
