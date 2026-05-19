@@ -1,12 +1,28 @@
 ---
 Story: CASCADE-ENGINE-001
-Status: Pending
+Status: Done
+StatusUpdated: 2026-05-19
 Type: Logic
 GDD Requirement: AC-DET-01, AC-DET-02 (preconditions — WorldState shape) + NodeId Catalog (cascade-engine.md §Catálogo de Nodos)
 Governing ADR: ADR-002, ADR-003
 Control Manifest: 2026-05-19
-Test Evidence: tests/unit/cascade-engine/types.test.ts
+Test Evidence: packages/shared/tests/cascade-types.test.ts (15/15 passing 2026-05-19)
+ImplementedAt: packages/shared/src/sim/cascade-types.ts
+ActualDays: 0.5 (vs estimate 1.0 — pure-typing story, no surprises)
 ---
+
+## Implementation Notes (Done — 2026-05-19)
+
+- Code at `packages/shared/src/sim/cascade-types.ts` — 20 NodeIds matching GDD §Catálogo de Nodos verbatim, `NODE_RANGES` constant, `defaultWorldState()`, `SimContext`, `PlayerDecision`, plus forward refs for `DelayedEffect` / `CascadeLog` / `ThresholdCrossing` / `TickResult` (full bodies in stories 003 + 014).
+- Test at `packages/shared/tests/cascade-types.test.ts` — 15 tests covering: catalog cardinality (20), verbatim GDD match, defaults spot-checks (team_fitness=70, fan_momentum=60, injury_risk=20, fan_attendance=40, scouting_budget=30, streaks max=10), `defaultWorldState()` correctness + distinct instances, JSON round-trip + no-Map regression guard.
+- `tsc --noEmit -p packages/shared/tsconfig.json` clean (0 errors).
+- `vitest run` 15/15 passing (520ms).
+- **Path correction**: original "Test Evidence" pointed to `tests/unit/cascade-engine/...` (older convention); project uses per-workspace tests per `tests/README.md`. Frontmatter updated.
+- All 5 ACs verified.
+
+### Velocity Note
+
+Estimate was 1.0 day; actual was ~0.5 day. Calibration for Sprint 1 update: this was the cheapest story in the sprint (pure typing). Don't extrapolate — story 002 (graph topology + named constants) is more involved.
 
 # Story: WorldState + NodeId Catalog + SimContext Types
 
