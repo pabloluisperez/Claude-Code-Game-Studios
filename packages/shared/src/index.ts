@@ -25,6 +25,21 @@ export { runTick } from './sim/cascade-engine.js';
 export { CASCADA_FC_GRAPH, type CascadeEdgeDef } from './sim/cascade-graph.js';
 export type { DelayedEffectsBuffer } from './sim/delayed-effects.js';
 
+// League content generators (AI clubs + double round-robin fixtures).
+export {
+  generateAiClubs,
+  generateDoubleRoundRobin,
+  type AiClubSeed,
+  type FixturePair,
+} from './sim/league-gen.js';
+
+// Quick batch match simulator — used for AI-vs-AI fixtures on advance week.
+export {
+  quickSimulateMatch,
+  type QuickPlayerInput,
+  type QuickMatchResult,
+} from './sim/quick-match.js';
+
 // Player management exports (Story PM-003..009)
 export {
   computeSkill,

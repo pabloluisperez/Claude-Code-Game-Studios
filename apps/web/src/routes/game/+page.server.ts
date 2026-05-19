@@ -2,14 +2,16 @@
  * Onboarding hub — list user's playthroughs + form action to create a new career.
  *
  * The "create career" action bootstraps everything a new MVP run needs:
- *   1. club row (manager = current user, division: fifth)
- *   2. playthrough row (links user ↔ club, currentWeek = 0)
- *   3. 25-player roster via @smt/shared world-gen (deterministic PRNG seeded
- *      by playthrough id)
- *   4. initial worldSnapshot at week 0 with defaultWorldState
- *   5. manager profile (5 skills at level 1, 0 XP)
+ *   1. user's club + 25-player roster + manager profile
+ *   2. 11 AI clubs (each with an 18-player roster) so the league is even (12)
+ *   3. league + division (D5) + active season (matchdays 1..22 → weeks 1..22)
+ *   4. double round-robin fixture schedule (132 fixtures)
+ *   5. 12 standings rows (all zeros)
+ *   6. initial worldSnapshot at week 0 + manager profile
  *
- * Story: Onboarding (HUD-UI follow-up)
+ * Everything runs in a single transaction so partial failures roll back cleanly.
+ *
+ * Story: Onboarding + league seeding (HUD-UI / LEAGUE-SYSTEM follow-up)
  * Control Manifest: 2026-05-19
  */
 
@@ -22,15 +24,25 @@ import {
   players,
   worldSnapshots,
   managerProfiles,
+  leagues,
+  divisions,
+  seasons,
+  fixtures,
+  standings,
   eq,
   desc,
 } from '@smt/db';
 import {
   defaultWorldState,
   generateRoster,
+  generateAiClubs,
+  generateDoubleRoundRobin,
   initManagerSkills,
   createSeededRng,
 } from '@smt/shared';
+
+const AI_CLUB_COUNT = 11; // user + 11 = 12 clubs (even, needed for round-robin)
+const SEASON_START_WEEK = 1;
 
 export const load: PageServerLoad = async ({ parent }) => {
   const { user } = await parent();
@@ -72,6 +84,7 @@ export const actions: Actions = {
     const userName = locals.user.username;
 
     const newPlaythroughId = await db.transaction(async (tx) => {
+      // ── 1. User club + playthrough ────────────────────────────────────
       const [newClub] = await tx
         .insert(clubs)
         .values({
@@ -89,49 +102,148 @@ export const actions: Actions = {
 
       const [newPlaythrough] = await tx
         .insert(playthroughs)
-        .values({
-          userId,
-          clubId: newClub.id,
-          currentWeek: 0,
-        })
+        .values({ userId, clubId: newClub.id, currentWeek: 0 })
         .returning({ id: playthroughs.id });
 
       const rng = createSeededRng(newPlaythrough.id);
-      const roster = generateRoster({
-        ctx: {
-          rng,
-          currentWeek: 0,
-          hasMatchThisWeek: false,
-          prevState: defaultWorldState(),
-        },
+
+      // ── 2. User roster ────────────────────────────────────────────────
+      const userRoster = generateRoster({
+        ctx: { rng, currentWeek: 0, hasMatchThisWeek: false, prevState: defaultWorldState() },
         clubBaseSkill: 50,
         clubSlug: clubName.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
         currentWeek: 0,
       });
 
-      if (roster.length > 0) {
-        await tx.insert(players).values(
-          roster.map((p) => ({
-            clubId: newClub.id,
-            playthroughId: newPlaythrough.id,
-            firstName: p.firstName,
-            lastName: p.lastName,
-            nationality: p.nationality,
-            birthWeek: p.birthWeek,
-            position: p.position,
-            skill: p.skill,
-            fitness: p.fitness,
-            morale: p.morale,
-            form: p.form,
-            stamina: p.stamina,
-            // Default contract: 2 seasons (76 weeks) at a flat starter wage.
-            salaryEurK: 2,
-            contractStartWeek: 0,
-            contractEndWeek: 76,
-          })),
-        );
-      }
+      await tx.insert(players).values(
+        userRoster.map((p) => ({
+          clubId: newClub.id,
+          playthroughId: newPlaythrough.id,
+          firstName: p.firstName,
+          lastName: p.lastName,
+          nationality: p.nationality,
+          birthWeek: p.birthWeek,
+          position: p.position,
+          skill: p.skill,
+          fitness: p.fitness,
+          morale: p.morale,
+          form: p.form,
+          stamina: p.stamina,
+          salaryEurK: 2,
+          contractStartWeek: 0,
+          contractEndWeek: 76,
+        })),
+      );
 
+      // ── 3. AI clubs + their rosters ───────────────────────────────────
+      const aiSeeds = generateAiClubs({
+        rng,
+        count: AI_CLUB_COUNT,
+        currentWeek: 0,
+        excludeNames: new Set([clubName]),
+      });
+
+      const aiClubRows = await tx
+        .insert(clubs)
+        .values(
+          aiSeeds.map((s) => ({
+            managerId: null,
+            name: s.name,
+            city: s.city,
+            division: 'fifth' as const,
+            prestige: 1,
+            budget: 8000,
+            fanBase: 300,
+            cityTier: 1,
+            currentSeason: 1,
+          })),
+        )
+        .returning({ id: clubs.id });
+
+      // Persist AI rosters (concat all in one insert for speed).
+      const aiPlayerRows = aiSeeds.flatMap((seed, i) => {
+        const aiClubId = aiClubRows[i]!.id;
+        return seed.roster.map((p) => ({
+          clubId: aiClubId,
+          playthroughId: newPlaythrough.id,
+          firstName: p.firstName,
+          lastName: p.lastName,
+          nationality: p.nationality,
+          birthWeek: p.birthWeek,
+          position: p.position,
+          skill: p.skill,
+          fitness: p.fitness,
+          morale: p.morale,
+          form: p.form,
+          stamina: p.stamina,
+          salaryEurK: 1,
+          contractStartWeek: 0,
+          contractEndWeek: 76,
+        }));
+      });
+      if (aiPlayerRows.length > 0) await tx.insert(players).values(aiPlayerRows);
+
+      // ── 4. League + division + season ─────────────────────────────────
+      const [league] = await tx
+        .insert(leagues)
+        .values({ playthroughId: newPlaythrough.id, name: 'Liga Cascada', country: 'ES' })
+        .returning({ id: leagues.id });
+
+      const [division] = await tx
+        .insert(divisions)
+        .values({ leagueId: league.id, tier: 5, name: 'Quinta División', clubCount: 12 })
+        .returning({ id: divisions.id });
+
+      // 12 clubs → 22 matchdays, 1 per week starting week 1.
+      const endWeek = SEASON_START_WEEK + 22 - 1;
+      const [season] = await tx
+        .insert(seasons)
+        .values({
+          leagueId: league.id,
+          divisionId: division.id,
+          seasonNumber: 1,
+          status: 'active',
+          startWeek: SEASON_START_WEEK,
+          endWeek,
+        })
+        .returning({ id: seasons.id });
+
+      // ── 5. Fixtures (double round-robin) ──────────────────────────────
+      const allClubIds = [newClub.id, ...aiClubRows.map((c) => c.id)];
+      const pairs = generateDoubleRoundRobin({
+        clubIds: allClubIds,
+        startWeek: SEASON_START_WEEK,
+      });
+
+      await tx.insert(fixtures).values(
+        pairs.map((p) => ({
+          seasonId: season.id,
+          divisionId: division.id,
+          homeClubId: p.homeClubId,
+          awayClubId: p.awayClubId,
+          week: p.week,
+          matchday: p.matchday,
+          status: 'scheduled' as const,
+        })),
+      );
+
+      // ── 6. Initial standings (all zeros) ──────────────────────────────
+      await tx.insert(standings).values(
+        allClubIds.map((id) => ({
+          seasonId: season.id,
+          divisionId: division.id,
+          clubId: id,
+          played: 0,
+          wins: 0,
+          draws: 0,
+          losses: 0,
+          goalsFor: 0,
+          goalsAgainst: 0,
+          points: 0,
+        })),
+      );
+
+      // ── 7. WorldSnapshot + manager profile ───────────────────────────
       await tx.insert(worldSnapshots).values({
         playthroughId: newPlaythrough.id,
         week: 0,

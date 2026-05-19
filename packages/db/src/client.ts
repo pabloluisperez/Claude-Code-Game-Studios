@@ -15,3 +15,4 @@ export * from './schema/index.js';
 // Re-export drizzle query helpers so workspace consumers (apps/web) don't need
 // to add drizzle-orm as a direct dependency.
 export { and, or, eq, ne, gt, gte, lt, lte, desc, asc, sql, inArray } from 'drizzle-orm';
+export { alias } from 'drizzle-orm/pg-core';

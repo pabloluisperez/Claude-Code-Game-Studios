@@ -18,6 +18,7 @@ import {
   type WorldState,
 } from '@smt/shared';
 import { popEffectsDueAt } from '@smt/shared/sim/delayed-effects';
+import { runMatchDay } from '$lib/server/match-day-runner';
 
 export const load: PageServerLoad = async ({ parent }) => {
   const { user, activePlaythrough } = await parent();
@@ -125,6 +126,10 @@ export const actions: Actions = {
         .where(eq(playthroughs.id, active.id));
     });
 
-    return { ok: true };
+    // Simulate every fixture scheduled for `nextWeek` (user-vs-AI and
+    // AI-vs-AI alike) and update standings. Runs in its own transaction.
+    const matchDay = await runMatchDay({ playthroughId: active.id, week: nextWeek });
+
+    return { ok: true, matchesPlayed: matchDay.played };
   },
 };
