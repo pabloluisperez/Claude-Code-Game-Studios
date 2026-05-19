@@ -16,6 +16,7 @@
   const links = [
     { href: '/dashboard',  icon: '📊', label: 'Dashboard' },
     { href: '/squad',      icon: '👥', label: 'Plantilla' },
+    { href: '/staff',      icon: '🧑‍💼', label: 'Staff' },
     { href: '/finance',    icon: '💰', label: 'Finanzas' },
     { href: '/league',     icon: '🏆', label: 'Liga' },
     { href: '/calendar',   icon: '📅', label: 'Calendario' },

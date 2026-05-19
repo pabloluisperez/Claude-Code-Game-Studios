@@ -22,12 +22,24 @@ export interface QuickPlayerInput {
   readonly form: number;
 }
 
+export interface QuickMatchEvent {
+  readonly minute: number;
+  readonly type: 'goal' | 'yellow_card' | 'red_card' | 'injury';
+  readonly team: 'home' | 'away';
+}
+
 export interface QuickMatchResult {
   readonly homeScore: number;
   readonly awayScore: number;
   readonly winner: 'home' | 'away' | 'draw';
   readonly homeStrength: number;
   readonly awayStrength: number;
+  /**
+   * Synthetic minute-by-minute events (goals + occasional cards/injuries).
+   * Goal counts always sum to the final homeScore/awayScore.
+   * Useful for the /match/[id] replay view.
+   */
+  readonly events: readonly QuickMatchEvent[];
 }
 
 const TOP_N = 11;
@@ -62,6 +74,18 @@ function poissonDraw(lambda: number, rng: () => number): number {
   return Math.min(MAX_GOALS, k - 1);
 }
 
+function pickMinute(rng: () => number, used: Set<number>, max = 90): number {
+  // Avoid same-minute collisions for readability.
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const m = 1 + Math.floor(rng() * max);
+    if (!used.has(m)) {
+      used.add(m);
+      return m;
+    }
+  }
+  return 1 + Math.floor(rng() * max);
+}
+
 export function quickSimulateMatch(args: {
   readonly homeRoster: readonly QuickPlayerInput[];
   readonly awayRoster: readonly QuickPlayerInput[];
@@ -85,5 +109,40 @@ export function quickSimulateMatch(args: {
   const winner: 'home' | 'away' | 'draw' =
     homeScore > awayScore ? 'home' : homeScore < awayScore ? 'away' : 'draw';
 
-  return { homeScore, awayScore, winner, homeStrength, awayStrength };
+  // Synthetic timeline: goals at random minutes, plus 0-2 cards and 0-1
+  // injuries per team for flavour. Sorted by minute.
+  const usedMinutes = new Set<number>();
+  const events: QuickMatchEvent[] = [];
+  for (let i = 0; i < homeScore; i++) {
+    events.push({ minute: pickMinute(args.rng, usedMinutes), type: 'goal', team: 'home' });
+  }
+  for (let i = 0; i < awayScore; i++) {
+    events.push({ minute: pickMinute(args.rng, usedMinutes), type: 'goal', team: 'away' });
+  }
+  const cardCount = Math.floor(args.rng() * 3); // 0..2
+  for (let i = 0; i < cardCount; i++) {
+    events.push({
+      minute: pickMinute(args.rng, usedMinutes),
+      type: args.rng() < 0.1 ? 'red_card' : 'yellow_card',
+      team: args.rng() < 0.5 ? 'home' : 'away',
+    });
+  }
+  if (args.rng() < 0.15) {
+    events.push({
+      minute: pickMinute(args.rng, usedMinutes),
+      type: 'injury',
+      team: args.rng() < 0.5 ? 'home' : 'away',
+    });
+  }
+
+  events.sort((a, b) => a.minute - b.minute);
+
+  return {
+    homeScore,
+    awayScore,
+    winner,
+    homeStrength,
+    awayStrength,
+    events,
+  };
 }

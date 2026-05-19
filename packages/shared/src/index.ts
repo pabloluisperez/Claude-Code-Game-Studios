@@ -38,6 +38,7 @@ export {
   quickSimulateMatch,
   type QuickPlayerInput,
   type QuickMatchResult,
+  type QuickMatchEvent,
 } from './sim/quick-match.js';
 
 // Player management exports (Story PM-003..009)

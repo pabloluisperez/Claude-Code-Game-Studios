@@ -157,6 +157,7 @@ export async function runMatchDay(args: {
             winner: result.winner,
             homeStrength: result.homeStrength,
             awayStrength: result.awayStrength,
+            events: result.events,
           },
           playedAt,
         })

@@ -7,14 +7,18 @@ import {
   staff,
   playthroughs,
   eq,
+  and,
   desc,
 } from '@smt/db';
 import {
   CASCADA_FC_GRAPH,
   createSeededRng,
   defaultWorldState,
+  generateStaffMessages,
   runTick,
   type DelayedEffectsBuffer,
+  type StaffRole,
+  type StaffQualityTier,
   type WorldState,
 } from '@smt/shared';
 import { popEffectsDueAt } from '@smt/shared/sim/delayed-effects';
@@ -129,6 +133,52 @@ export const actions: Actions = {
     // Simulate every fixture scheduled for `nextWeek` (user-vs-AI and
     // AI-vs-AI alike) and update standings. Runs in its own transaction.
     const matchDay = await runMatchDay({ playthroughId: active.id, week: nextWeek });
+
+    // Generate staff messages from the world-state diff + threshold crossings.
+    // The active staff perceive cascades in their domain (with the tier-1/2/3
+    // QUALITY_FACTOR sensitivity). Persists into staff_messages.
+    const activeStaff = await db
+      .select({
+        id: staff.id,
+        role: staff.role,
+        qualityTier: staff.qualityTier,
+      })
+      .from(staff)
+      .where(and(eq(staff.playthroughId, active.id), eq(staff.status, 'active')));
+
+    if (activeStaff.length > 0) {
+      const worldStateDiff: Record<string, { prev: number; next: number }> = {};
+      for (const key of Object.keys(result.nextState)) {
+        const prev = prevState[key as keyof WorldState] ?? 0;
+        const next = result.nextState[key as keyof WorldState] ?? 0;
+        if (prev !== next) worldStateDiff[key] = { prev, next };
+      }
+
+      const generated = generateStaffMessages({
+        staff: activeStaff.map((s) => ({
+          id: s.id,
+          role: s.role as StaffRole,
+          qualityTier: s.qualityTier as StaffQualityTier,
+        })),
+        worldStateDiff,
+        thresholdCrossings: result.thresholdCrossings,
+      });
+
+      if (generated.length > 0) {
+        await db.insert(staffMessages).values(
+          generated.map((m) => ({
+            playthroughId: active.id,
+            staffId: m.staffId,
+            week: nextWeek,
+            season: 1,
+            priority: m.priority,
+            templateKey: m.templateKey,
+            content: m.content,
+            isRead: false,
+          })),
+        );
+      }
+    }
 
     return { ok: true, matchesPlayed: matchDay.played };
   },

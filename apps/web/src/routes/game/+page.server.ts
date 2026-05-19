@@ -29,6 +29,7 @@ import {
   seasons,
   fixtures,
   standings,
+  calendarEvents,
   eq,
   desc,
 } from '@smt/db';
@@ -256,6 +257,104 @@ export const actions: Actions = {
         name: userName,
         skills: initManagerSkills(),
       });
+
+      // ── 8. Calendar events for the season ────────────────────────────
+      // Mix of NOTIFY (informational) and STOP (decision-blocking) events.
+      // Sample sponsor + board review give the player something to decide.
+      await tx.insert(calendarEvents).values([
+        {
+          playthroughId: newPlaythrough.id,
+          week: SEASON_START_WEEK,
+          season: 1,
+          type: 'season_start',
+          priority: 'NOTIFY',
+          status: 'pending',
+          metadata: { kind: 'season_start' },
+        },
+        {
+          playthroughId: newPlaythrough.id,
+          week: SEASON_START_WEEK,
+          season: 1,
+          type: 'transfer_window_open',
+          priority: 'NOTIFY',
+          status: 'pending',
+          metadata: { kind: 'transfer_window_open' },
+        },
+        {
+          playthroughId: newPlaythrough.id,
+          week: SEASON_START_WEEK + 3,
+          season: 1,
+          type: 'sponsor_offer',
+          priority: 'STOP',
+          status: 'pending',
+          metadata: {
+            kind: 'sponsor_offer',
+            brand: 'Pueblo Bakery',
+            weeklyAmountEurK: 3,
+            contractWeeks: 22,
+            qualityDelta: 5,
+            options: {
+              accept: { label: 'Aceptar', description: 'Firma a Pueblo Bakery por 22 semanas.' },
+              reject: { label: 'Rechazar', description: 'Mantén el slot libre para una oferta mejor.' },
+            },
+            defaultOption: 'reject',
+          },
+        },
+        {
+          playthroughId: newPlaythrough.id,
+          week: SEASON_START_WEEK + 9,
+          season: 1,
+          type: 'board_meeting',
+          priority: 'STOP',
+          status: 'pending',
+          metadata: {
+            kind: 'board_meeting',
+            reason: 'mid_season_review',
+            options: {
+              ambitious: { label: 'Promete ascenso', description: '+20% expectativas, +reputación si cumples.' },
+              cautious: { label: 'Estabilizar', description: 'Sin upside, sin downside.' },
+              defensive: { label: 'Pedir paciencia', description: 'Salida segura si pierdes confianza.' },
+            },
+            defaultOption: 'cautious',
+          },
+        },
+        {
+          playthroughId: newPlaythrough.id,
+          week: SEASON_START_WEEK + 10,
+          season: 1,
+          type: 'transfer_window_close',
+          priority: 'NOTIFY',
+          status: 'pending',
+          metadata: { kind: 'transfer_window_close' },
+        },
+        {
+          playthroughId: newPlaythrough.id,
+          week: SEASON_START_WEEK + 17,
+          season: 1,
+          type: 'transfer_window_open',
+          priority: 'NOTIFY',
+          status: 'pending',
+          metadata: { kind: 'transfer_window_open' },
+        },
+        {
+          playthroughId: newPlaythrough.id,
+          week: endWeek,
+          season: 1,
+          type: 'transfer_window_close',
+          priority: 'NOTIFY',
+          status: 'pending',
+          metadata: { kind: 'transfer_window_close' },
+        },
+        {
+          playthroughId: newPlaythrough.id,
+          week: endWeek,
+          season: 1,
+          type: 'season_end',
+          priority: 'NOTIFY',
+          status: 'pending',
+          metadata: { kind: 'season_end' },
+        },
+      ]);
 
       return newPlaythrough.id;
     });

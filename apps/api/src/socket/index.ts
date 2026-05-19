@@ -9,6 +9,7 @@ import type {
 import { validateSessionToken } from '../auth/session.js';
 import { logger } from '../lib/logger.js';
 import { defaultNamespace } from './namespaces/default.js';
+import { matchNamespace } from './namespaces/match.js';
 
 export function createSocketServer(httpServer: HttpServer) {
   const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>(
@@ -33,5 +34,6 @@ export function createSocketServer(httpServer: HttpServer) {
   });
 
   defaultNamespace(io);
+  matchNamespace(io);
   return io;
 }
