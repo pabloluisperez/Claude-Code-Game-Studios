@@ -1,6 +1,6 @@
 ---
 Story: LEAGUE-SYSTEM-002
-Status: Ready
+Status: Complete
 Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: TR-LGS-002 (generateRoundRobin — 20 clubs × 38 matchdays × 10 matches)

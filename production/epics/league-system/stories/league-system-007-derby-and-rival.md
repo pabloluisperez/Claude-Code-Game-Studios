@@ -1,6 +1,6 @@
 ---
 Story: LEAGUE-SYSTEM-007
-Status: Ready
+Status: Complete
 Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: TR-LGS-007 (Derby detection + rival club identification)

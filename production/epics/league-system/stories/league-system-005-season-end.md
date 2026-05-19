@@ -1,6 +1,6 @@
 ---
 Story: LEAGUE-SYSTEM-005
-Status: Ready
+Status: Complete (code-complete; integration tests deferred to env with DB seeded fixtures)
 Last Updated: 2026-05-19
 Type: Integration
 GDD Requirement: TR-LGS-005 (processSeasonEnd — 3 up / 3 down + new season)

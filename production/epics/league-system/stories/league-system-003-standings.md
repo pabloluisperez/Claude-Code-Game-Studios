@@ -1,6 +1,6 @@
 ---
 Story: LEAGUE-SYSTEM-003
-Status: Ready
+Status: Complete
 Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: TR-LGS-003 (standings sort: points → goal_diff → goals_for → head-to-head → derby +1)

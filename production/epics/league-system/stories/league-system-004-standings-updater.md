@@ -1,6 +1,6 @@
 ---
 Story: LEAGUE-SYSTEM-004
-Status: Ready
+Status: Complete (code-complete; integration tests deferred to env with DB seeded fixtures)
 Last Updated: 2026-05-19
 Type: Integration
 GDD Requirement: TR-LGS-004 (applyMatchToStandings post-match transactional update)
