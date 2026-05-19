@@ -1,6 +1,6 @@
 ---
 Story: MANAGER-RPG-004
-Status: Ready
+Status: Complete
 Type: Integration
 Governing ADR: ADR-010, ADR-015 (event-system payloads)
 Control Manifest: 2026-05-19

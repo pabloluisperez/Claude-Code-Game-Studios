@@ -8,3 +8,4 @@ export * from './fixtures';
 export * from './standings';
 export * from './match-sessions';
 export * from './sponsors';
+export * from './manager-rpg';

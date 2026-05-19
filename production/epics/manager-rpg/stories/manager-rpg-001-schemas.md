@@ -1,6 +1,6 @@
 ---
 Story: MANAGER-RPG-001
-Status: Ready
+Status: Complete
 Type: Integration
 Governing ADR: ADR-010 (Manager RPG progression)
 Control Manifest: 2026-05-19

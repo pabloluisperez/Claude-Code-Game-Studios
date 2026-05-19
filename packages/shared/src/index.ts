@@ -147,6 +147,35 @@ export {
   type BankruptcyTransition,
 } from './sim/economy/bankruptcy.js';
 
+// Manager-RPG (MANAGER-RPG-002..006)
+export {
+  MANAGER_SKILL_IDS,
+  MAX_SKILL_LEVEL,
+  type ManagerSkillId,
+  type SkillLevel,
+  type ManagerSkill,
+  type ManagerSkills,
+  type ManagerProfile,
+  type XpGrant,
+  type SkillLevelUp,
+} from './sim/manager-rpg/types.js';
+export {
+  calculateXpToNextLevel,
+  initManagerSkills,
+  applyXpGrants,
+  INITIAL_MANAGER_SKILL,
+  type ApplyXpGrantsResult,
+} from './sim/manager-rpg/xp.js';
+export {
+  XP_SOURCES,
+  computeXpGrants,
+} from './sim/manager-rpg/xp-sources.js';
+export {
+  getMaxHirableStaffQuality,
+  isStaffTierHirable,
+  type StaffQualityTier,
+} from './sim/manager-rpg/staff-gating.js';
+
 // League-system (LEAGUE-SYSTEM-002..007)
 export {
   generateRoundRobin,

@@ -1,6 +1,6 @@
 ---
 Story: MANAGER-RPG-003
-Status: Ready
+Status: Complete
 Type: Integration
 Governing ADR: ADR-010 (atomic skill allocation — control-manifest Core layer Required)
 Control Manifest: 2026-05-19

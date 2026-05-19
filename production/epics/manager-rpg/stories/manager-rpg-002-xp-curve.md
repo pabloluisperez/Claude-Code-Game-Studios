@@ -1,6 +1,6 @@
 ---
 Story: MANAGER-RPG-002
-Status: Ready
+Status: Complete
 Type: Logic
 Governing ADR: ADR-010
 Control Manifest: 2026-05-19

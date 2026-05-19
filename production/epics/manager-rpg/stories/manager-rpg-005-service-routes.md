@@ -1,6 +1,6 @@
 ---
 Story: MANAGER-RPG-005
-Status: Ready
+Status: Complete
 Type: Integration
 Governing ADR: ADR-010
 Control Manifest: 2026-05-19
