@@ -262,3 +262,47 @@ Whichever option Pablo picks, the work is now unblocked on every front.
 
 `stage.txt` still "Concept" (gate not yet passed formally — needs stories +
 sprint-plan + gate re-run).
+
+## Session Extract — /dev-story 2026-05-19
+- Story: production/epics/cascade-engine/stories/cascade-engine-002-graph-topology.md — CascadeEdgeDef Data Model + CASCADA_FC_GRAPH Skeleton
+- Status: In Progress → implementation done, tests passing (87/87)
+- Files changed: packages/shared/src/sim/cascade-graph.ts (created), packages/shared/tests/cascade-engine/graph-topology.test.ts (created)
+- Test written: packages/shared/tests/cascade-engine/graph-topology.test.ts (66 tests — all passing)
+- Note: story Test Evidence path says tests/unit/cascade-engine/ but file is at packages/shared/tests/cascade-engine/ — update in /story-done
+- Blockers: None
+- Next: /code-review packages/shared/src/sim/cascade-graph.ts packages/shared/tests/cascade-engine/graph-topology.test.ts → /story-done production/epics/cascade-engine/stories/cascade-engine-002-graph-topology.md
+
+## Session Extract — /story-done 2026-05-19
+- Verdict: COMPLETE WITH NOTES
+- Story: production/epics/cascade-engine/stories/cascade-engine-002-graph-topology.md — CascadeEdgeDef Data Model + CASCADA_FC_GRAPH Skeleton
+- Tech debt logged: None (advisory deviations noted in story Completion Notes, not logged as formal debt)
+- Next recommended: cascade-engine-003 — DelayedEffectsBuffer (Day 4, sprint-01)
+
+## Session Extract — /dev-story + /code-review + /story-done 2026-05-19
+- Story: production/epics/cascade-engine/stories/cascade-engine-003-delayed-effects-buffer.md — DelayedEffectsBuffer Data Structure + JSON Schema
+- Verdict: COMPLETE (8/8 ACs, 22/22 tests, 0 deviations)
+- Files changed: packages/shared/src/sim/delayed-effects.ts (created), packages/shared/tests/cascade-engine/delayed-effects-buffer.test.ts (created), packages/shared/src/sim/cascade-types.ts (forward-ref updated)
+- Tech debt logged: None
+- Next recommended: cascade-engine-004 — runTick skeleton (Days 5-6, sprint-01)
+
+## Session Extract — /dev-story + /code-review + /story-done 2026-05-19
+- Story: production/epics/cascade-engine/stories/cascade-engine-004-runtick-skeleton.md — runTick() Pure Function — Steps 1, 4, 6 Skeleton
+- Verdict: COMPLETE (9/9 ACs, 20/20 tests, 0 deviations)
+- Files changed: packages/shared/src/sim/cascade-engine.ts (created), packages/shared/tests/cascade-engine/runtick-skeleton.test.ts (created, 20 tests)
+- Tech debt logged: None
+- Next recommended: cascade-engine-005 — Step 2 edge evaluation + Step 3 PlayerDecisions (Days 7-8, sprint-01)
+
+## Session Extract — /dev-story 2026-05-19
+- Story: production/epics/cascade-engine/stories/cascade-engine-005-step2-step3-evaluation.md — runTick() Step 2 + Step 3
+- Status: In Progress → implementation done, 141/141 tests passing
+- Files changed: packages/shared/src/sim/cascade-types.ts (CascadeLog extended + CascadeLogSource added), packages/shared/src/sim/cascade-engine.ts (Steps 2/3 full impl, story-004 Step 1 updated with source:'delayed'), packages/shared/tests/cascade-engine/runtick-edges-decisions.test.ts (created, 11 tests), packages/shared/tests/cascade-engine/runtick-skeleton.test.ts (backward compat fix: log entry shape updated)
+- Blockers: None
+- Next: /code-review packages/shared/src/sim/cascade-types.ts packages/shared/src/sim/cascade-engine.ts packages/shared/tests/cascade-engine/runtick-edges-decisions.test.ts → /story-done production/epics/cascade-engine/stories/cascade-engine-005-step2-step3-evaluation.md
+
+## Session Extract — /story-done 2026-05-19
+- Verdict: COMPLETE
+- Story: production/epics/cascade-engine/stories/cascade-engine-005-step2-step3-evaluation.md — runTick() Step 2 + Step 3
+- Tech debt logged: None
+- Next recommended: SPRINT CLOSE-OUT — todas las 5 stories del Sprint 01 están Complete. Ejecutar /smoke-check → /team-qa sprint → /retrospective
+
+<!-- QA RUN: 2026-05-19 | Sprint: sprint-01 | Verdict: APPROVED | Report: production/qa/qa-signoff-sprint-01-2026-05-19.md -->
