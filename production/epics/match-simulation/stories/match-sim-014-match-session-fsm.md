@@ -1,6 +1,7 @@
 ---
 Story: MATCH-SIM-014
-Status: Pending
+Status: Complete
+Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: AC-MATCH-02 (scripted-decision determinism across pause boundaries), AC-MATCH-03a (state transitions on substitution_window), AC-MATCH-04 (5-sub shared pool), AC-MATCH-22 (state mutation after red card), AC-MATCH-23 (playing_with_ten when bench empty)
 Governing ADR: ADR-013 (MatchSession FSM + MatchSessionSnapshot)
