@@ -1,0 +1,101 @@
+/**
+ * Drizzle schema: `players` — one row per player in a playthrough.
+ *
+ * Per ADR-016: players are normalised (not JSONB-on-club) for efficient per-club
+ * lookup. Composite index on (playthroughId, clubId) gives sub-millisecond
+ * lineup loads. Expected size ~800 rows × 250 bytes per playthrough = ~200KB.
+ *
+ * Story: PLAYER-MANAGEMENT-002
+ * Control Manifest: 2026-05-19
+ */
+
+import {
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from 'drizzle-orm/pg-core';
+import { relations } from 'drizzle-orm';
+import { clubs } from './clubs';
+import { playthroughs } from './playthroughs';
+
+export const players = pgTable(
+  'players',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    clubId: uuid('club_id')
+      .notNull()
+      .references(() => clubs.id, { onDelete: 'cascade' }),
+    playthroughId: uuid('playthrough_id')
+      .notNull()
+      .references(() => playthroughs.id, { onDelete: 'cascade' }),
+
+    // Identity
+    firstName: text('first_name').notNull(),
+    lastName: text('last_name').notNull(),
+    nationality: text('nationality').notNull().default('ES'),
+    birthWeek: integer('birth_week').notNull(),
+    position: text('position').notNull(), // 'GK' | 'DEF' | 'MID' | 'FWD'
+
+    // Universal stats
+    skill: integer('skill').notNull(),
+    fitness: integer('fitness').notNull().default(90),
+    morale: integer('morale').notNull().default(60),
+    form: integer('form').notNull().default(60),
+    stamina: integer('stamina').notNull().default(75),
+
+    // Position-specific stats (only the relevant 2-3 are set per position)
+    reflexes: integer('reflexes'),
+    handling: integer('handling'),
+    kicking: integer('kicking'),
+    strength: integer('strength'),
+    tackling: integer('tackling'),
+    positioning: integer('positioning'),
+    passing: integer('passing'),
+    vision: integer('vision'),
+    workRate: integer('work_rate'),
+    speed: integer('speed'),
+    finishing: integer('finishing'),
+    dribbling: integer('dribbling'),
+
+    // Development cap (young players only)
+    potentialCeiling: integer('potential_ceiling'),
+
+    // Contract
+    salaryEurK: integer('salary_eur_k').notNull(),
+    contractStartWeek: integer('contract_start_week').notNull(),
+    contractEndWeek: integer('contract_end_week').notNull(),
+
+    // Lifecycle
+    availability: text('availability').notNull().default('available'),
+    injuredUntilWeek: integer('injured_until_week'),
+
+    // F4 form history — bounded to last 5 entries by repo
+    recentRatings: jsonb('recent_ratings')
+      .$type<number[]>()
+      .notNull()
+      .default([]),
+
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    byClub: index('players_by_club').on(t.playthroughId, t.clubId),
+    byPlaythrough: index('players_by_playthrough').on(t.playthroughId),
+  }),
+);
+
+export const playersRelations = relations(players, ({ one }) => ({
+  club: one(clubs, { fields: [players.clubId], references: [clubs.id] }),
+  playthrough: one(playthroughs, {
+    fields: [players.playthroughId],
+    references: [playthroughs.id],
+  }),
+}));
+
+export type Player = typeof players.$inferSelect;
+export type NewPlayer = typeof players.$inferInsert;

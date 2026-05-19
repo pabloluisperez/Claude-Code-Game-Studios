@@ -1,6 +1,6 @@
 ---
 Story: PLAYER-MANAGEMENT-001
-Status: Ready
+Status: Complete
 Last Updated: 2026-05-19
 Type: Integration
 GDD Requirement: N/A — architectural prerequisite (ADR-005 playthroughs + ADR-016 world_snapshots)

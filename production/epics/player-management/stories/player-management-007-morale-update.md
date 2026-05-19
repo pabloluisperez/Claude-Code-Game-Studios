@@ -1,6 +1,6 @@
 ---
 Story: PLAYER-MANAGEMENT-007
-Status: Ready
+Status: Complete
 Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: TR-PM-007 (F11 morale update post-match + F10 market wage reference)

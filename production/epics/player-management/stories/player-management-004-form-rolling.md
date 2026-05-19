@@ -1,6 +1,6 @@
 ---
 Story: PLAYER-MANAGEMENT-004
-Status: Ready
+Status: Complete
 Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: TR-PM-004 (F4 form rolling average + F5 form decay)

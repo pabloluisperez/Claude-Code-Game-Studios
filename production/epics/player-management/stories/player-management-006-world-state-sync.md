@@ -1,6 +1,6 @@
 ---
 Story: PLAYER-MANAGEMENT-006
-Status: Ready
+Status: Complete
 Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: TR-PM-006 (F8 squad_available_pct, F9 team_skill, F9b player_happiness — WorldState PlayerDecisions)

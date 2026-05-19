@@ -1,6 +1,6 @@
 ---
 Story: PLAYER-MANAGEMENT-003
-Status: Ready
+Status: Complete
 Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: TR-PM-002 (F1 computeSkill), TR-PM-003 (generateRoster determinism)

@@ -1,6 +1,6 @@
 ---
 Story: PLAYER-MANAGEMENT-010
-Status: Ready
+Status: Complete
 Last Updated: 2026-05-19
 Type: Integration
 GDD Requirement: TR-PM-010 (AC-PM-18, AC-PM-19 — transfer market buy/sell within windows)

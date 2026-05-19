@@ -1,6 +1,6 @@
 ---
 Story: PLAYER-MANAGEMENT-002
-Status: Ready
+Status: Complete
 Last Updated: 2026-05-19
 Type: Integration
 GDD Requirement: TR-PM-001 — players table + PlayersRepo

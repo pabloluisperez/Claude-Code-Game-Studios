@@ -1,6 +1,6 @@
 ---
 Story: PLAYER-MANAGEMENT-009
-Status: Ready
+Status: Complete
 Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: TR-PM-009 (F6 transfer_value formula)

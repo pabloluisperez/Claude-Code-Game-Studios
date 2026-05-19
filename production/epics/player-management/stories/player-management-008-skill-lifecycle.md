@@ -1,6 +1,6 @@
 ---
 Story: PLAYER-MANAGEMENT-008
-Status: Ready
+Status: Complete
 Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: TR-PM-008 (AC-PM-13..15 development + AC-PM-25..27 F12 degradation)

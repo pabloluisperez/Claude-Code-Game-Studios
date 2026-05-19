@@ -8,6 +8,13 @@
       "when": 1778883984172,
       "tag": "0000_striped_iron_lad",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779212040488,
+      "tag": "0001_numerous_namor",
+      "breakpoints": true
     }
   ]
 }

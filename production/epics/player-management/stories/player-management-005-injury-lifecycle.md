@@ -1,6 +1,6 @@
 ---
 Story: PLAYER-MANAGEMENT-005
-Status: Ready
+Status: Complete
 Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: TR-PM-005 (AC-PM-07..09, AC-PM-20, AC-PM-21 — injury/suspension status + F7 fitness)
