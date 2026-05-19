@@ -13,7 +13,7 @@ now Ready** as of 2026-05-19 — ADRs 014/015/016/017/018 Accepted.
 
 | # | Epic | Layer | System | GDD | Stories | Status |
 |---|---|---|---|---|---|---|
-| 1 | [cascade-engine](cascade-engine/EPIC.md) | Foundation | cascade-engine | `design/gdd/cascade-engine.md` | Not yet created | ✅ **Ready** |
+| 1 | [cascade-engine](cascade-engine/EPIC.md) | Foundation | cascade-engine | `design/gdd/cascade-engine.md` | 14 done | ✅ **Complete** (Sprint 03, 2026-05-19) |
 | 2 | [match-simulation](match-simulation/EPIC.md) | Foundation | match-simulation | `design/gdd/match-simulation.md` | Not yet created | ✅ **Ready** |
 | 3 | [economy](economy/EPIC.md) | Foundation | economy | `design/gdd/economy.md` | Not yet created | ✅ **Ready** (ADR-014 Accepted 2026-05-19) |
 | 4 | [manager-rpg](manager-rpg/EPIC.md) | Core | manager-rpg | `design/gdd/manager-rpg.md` | Not yet created | ✅ **Ready** (AC-27/28 partial block on OQ-STAFF-04) |
