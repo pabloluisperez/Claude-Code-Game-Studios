@@ -334,7 +334,7 @@ Si MPI < 50 (derrota):
 
 **Rango del output:** −16 a +5.5
 **Ejemplo (victoria):** MPI = 70 → delta = 8.0 × ln(1.4) = **+2.71**
-**Ejemplo (derrota):** MPI = 40 → delta = −8.0 × (1 + 0.04) = **−8.32** (misma distancia de 50, ~3.1× más impacto)
+**Ejemplo (derrota):** MPI = 30 → delta = −8.0 × (1 + 0.16) = **−9.28** (misma distancia de 50 que el ejemplo de victoria MPI=70, ~3.4× más impacto — consistente con entities.yaml fan_momentum_asymmetric_hysteresis note. *Fix post-sprint-planning 2026-05-19: el ejemplo anterior usaba MPI=40 que era matemáticamente correcto pero no demostraba la asimetría "misma distancia" que la prosa reclamaba; MPI=30 está a la misma distancia de 50 que MPI=70 y produce el ratio 3.4× canónico.*)
 
 ---
 
@@ -876,7 +876,7 @@ Archivo: `tests/unit/db/sim-persistence.test.ts`
 GIVEN un WorldState con los 20 nodos incluyendo valores con decimales (`fan_momentum = 58.123456789`), WHEN se llama a `serializeWorldState()` y luego `deserializeWorldState()`, THEN el valor de `fan_momentum` es idéntico con precisión de 6 decimales significativos.
 
 **AC-SER-02**
-GIVEN un WorldState serializado, WHEN se llama a `deserializeWorldState()`, THEN el resultado es una instancia de `Map` (`result instanceof Map === true`).
+GIVEN un WorldState serializado vía `serializeWorldState()`, WHEN se llama a `deserializeWorldState()` con esa serialización, THEN el resultado es un **objeto plano** `Record<NodeId, number>` con las mismas keys + valores que el original. ⚠ NO usar `Map<NodeId, number>` — `Map` no es JSON-serializable (`JSON.stringify(new Map())` produce `{}`), y control-manifest 2026-05-19 (cross-cutting rule) lo prohíbe explícitamente. Slice valida este patrón. *Fix post-sprint-planning 2026-05-19: alineado AC con manifest + slice; versión anterior decía `result instanceof Map === true` que rompía el round-trip JSON.*
 
 **AC-SER-03**
 GIVEN un objeto JSON corrupto (un nodo con valor `null`), WHEN se llama a `WorldStateJsonSchema.parse()` (Zod), THEN Zod lanza un error de validación — no silencia la corrupción.
@@ -927,7 +927,7 @@ GIVEN `fan_momentum = 60` en el momento del escándalo con `SCANDAL_FAN_IMPACT=3
 GIVEN `fan_momentum = 25` (cerca del BLOCKING en 20) en el momento del escándalo, WHEN el escándalo aplica -30, THEN `nextState.fan_momentum = 0` (clamped), Y `TickResult.thresholdCrossings` contiene un crossing BLOCKING adicional para `fan_momentum`.
 
 **AC-C18-04**
-GIVEN `corruption_exposure = 60` y una PlayerDecision de reducción activa de -10 (via director deportivo tier 3), WHEN se evalúa el tick, THEN `nextState.corruption_exposure = 50` (el motor aplica el delta sin conocer su origen).
+GIVEN `corruption_exposure = 60` y una PlayerDecision de reducción activa de -10 (via director deportivo tier 3), WHEN se evalúa el tick, THEN `nextState.corruption_exposure = 47` (Step 2 aplica C18a decay = −0.05 × 60 = −3 primero; Step 3 aplica la PlayerDecision −10; resultado: 60 + (−3) + (−10) = **47**). El motor aplica el delta de PD sin conocer su origen — la composición aditiva con el decay es automática. *Fix post-sprint-planning 2026-05-19: la versión anterior decía `nextState=50` que asumía decay=0; era inconsistente con la nota de la línea 523 "el decay del Paso 2 aplica primero cuando CE < 80" (factor 0.95×X). Slice + manifest implementan la versión corregida.*
 
 ---
 

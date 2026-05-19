@@ -146,6 +146,13 @@ P_overturn           = 0.35   // 35% de las revisiones revierten la decisión
 
 Si VAR activo y overturn: evento original se reemplaza por evento 'overturned'
 El MatchEvent de VAR siempre se añade al feed (el jugador siempre ve el resultado)
+
+⚠ Cuando VAR anula un gol (`var_review.outcome === 'overturned'` post-goal):
+  - El MatchEvent `goal` se reemplaza por `goal_disallowed` en `MatchOutcome.events`
+  - El scoreboard interno (`homeScore` / `awayScore`) se DECREMENTA — el gol no cuenta
+  - `MatchOutcome.worldStateDeltas.match_performance_index` se recalcula con el score final corregido (F8)
+  - La UI del live match (per ADR-018 OQ-LIVE-01) DEBE actualizar el marcador visiblemente para reflejar la decisión authoritative
+  - Fix post-sprint-planning 2026-05-19: el slice mantuvo el score en pantalla por simplicidad (visual-only), pero el código de producción debe seguir la autoridad del simulador. Pablo's UX spec match-live.md AC documenta esta corrección.
 ```
 
 ---
