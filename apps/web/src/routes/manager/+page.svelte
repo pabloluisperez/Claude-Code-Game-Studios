@@ -1,7 +1,7 @@
 <!--
-  Manager profile — wired to /manager/+page.server.ts.
+  Manager profile — explains the 5 skills in plain Spanish + shows level/XP.
 
-  Story: HUD-UI-008
+  Story: MVP UX fixes — manager page clarity
   Control Manifest: 2026-05-19
 -->
 <script lang="ts">
@@ -23,10 +23,10 @@
     if (!data.hasPlaythrough || !data.profile) {
       return {
         tactical_insight: { level: 1, xp: 0, xpToNextLevel: 100 },
-        man_management:    { level: 1, xp: 0, xpToNextLevel: 100 },
-        financial_acumen:  { level: 1, xp: 0, xpToNextLevel: 100 },
-        scouting_network:  { level: 1, xp: 0, xpToNextLevel: 100 },
-        reputation:        { level: 1, xp: 0, xpToNextLevel: 100 },
+        man_management:   { level: 1, xp: 0, xpToNextLevel: 100 },
+        financial_acumen: { level: 1, xp: 0, xpToNextLevel: 100 },
+        scouting_network: { level: 1, xp: 0, xpToNextLevel: 100 },
+        reputation:       { level: 1, xp: 0, xpToNextLevel: 100 },
       };
     }
     const dbSkills = data.profile.skills as Record<string, { level: number; xp: number }>;
@@ -43,16 +43,51 @@
     reputationLevel >= 4 ? 3 : reputationLevel >= 3 ? 2 : 1,
   );
 
-  function skillLabel(id: string): string {
-    switch (id) {
-      case 'tactical_insight': return 'Tactical Insight';
-      case 'man_management':   return 'Man Management';
-      case 'financial_acumen': return 'Financial Acumen';
-      case 'scouting_network': return 'Scouting Network';
-      case 'reputation':       return 'Reputation';
-      default: return id;
-    }
+  interface SkillCard {
+    id: string;
+    label: string;
+    description: string;
+    howToLevel: string;
+    icon: string;
   }
+
+  const skillCards: SkillCard[] = [
+    {
+      id: 'tactical_insight',
+      label: 'Visión táctica',
+      description: 'Mide tu lectura del juego. A más nivel, mejor afinas formaciones e instrucciones.',
+      howToLevel: 'Ganas XP por victorias, especialmente contra rivales mejores.',
+      icon: '🎯',
+    },
+    {
+      id: 'man_management',
+      label: 'Gestión humana',
+      description: 'Mantiene la moral del vestuario y reduce conflictos entre jugadores.',
+      howToLevel: 'XP cuando renuevas contratos o resuelves crisis de vestuario.',
+      icon: '🤝',
+    },
+    {
+      id: 'financial_acumen',
+      label: 'Olfato financiero',
+      description: 'Te permite leer el balance, negociar mejor con sponsors y evitar quiebras.',
+      howToLevel: 'XP cuando cierras meses con cashflow positivo o firmas un buen sponsor.',
+      icon: '💼',
+    },
+    {
+      id: 'scouting_network',
+      label: 'Red de ojeadores',
+      description: 'Encuentra mejores jugadores en el mercado y revela el potencial real de la cantera.',
+      howToLevel: 'XP cuando promocionas juveniles o fichas con éxito.',
+      icon: '🕵️',
+    },
+    {
+      id: 'reputation',
+      label: 'Reputación',
+      description: 'La habilidad clave: tu nivel desbloquea el staff que puedes contratar.',
+      howToLevel: 'XP cuando cumples objetivos de temporada, ganas trofeos o asciendes.',
+      icon: '⭐',
+    },
+  ];
 
   function progressPct(skill: ManagerSkill): number {
     if (!isFinite(skill.xpToNextLevel)) return 100;
@@ -62,8 +97,13 @@
 
 <div class="space-y-6">
   <header>
-    <h1 class="text-2xl font-bold">Mánager</h1>
-    <p class="opacity-60">Habilidades del mánager y registro de carrera</p>
+    <h1 class="text-2xl font-bold">
+      {data.hasPlaythrough && data.profile ? data.profile.name : 'Mánager'}
+    </h1>
+    <p class="opacity-60">
+      Tu perfil como entrenador-director. Sube nivel cumpliendo objetivos —
+      <strong>no hay asignación manual de puntos</strong>.
+    </p>
   </header>
 
   {#if !data.hasPlaythrough}
@@ -72,62 +112,77 @@
     </div>
   {:else if !data.profile}
     <div class="alert alert-warning">
-      <span>Perfil de mánager no inicializado. Inicialízalo desde la API.</span>
+      <span>Perfil no inicializado. Inicia una nueva carrera desde /game.</span>
     </div>
   {:else}
+    <!-- Reputation impact card -->
     <section class="alert alert-info">
       <div>
-        <div class="text-xs uppercase opacity-70">Staff máximo contratable</div>
-        <div class="text-lg font-bold">Tier {maxStaffTier}</div>
-        <div class="text-xs">
-          Reputación nivel {reputationLevel}.
+        <div class="text-xs uppercase opacity-70">¿Qué afecta hoy mi reputación?</div>
+        <div class="text-lg font-bold">
+          Nivel {reputationLevel} ⇒ staff máximo contratable: tier {maxStaffTier}
+        </div>
+        <div class="text-xs opacity-80 mt-1">
           {#if reputationLevel < 3}
-            Sube a nivel 3 para acceder a staff Tier 2.
+            Sube a nivel 3 para fichar staff tier 2 (perciben cascadas con ×1.5).
           {:else if reputationLevel < 4}
-            Sube a nivel 4 para acceder a staff Tier 3.
+            Sube a nivel 4 para fichar staff tier 3 (los mejores — perciben con ×3.0).
           {:else}
-            Acceso completo al pool de staff.
+            Acceso completo al pool de staff. Tu reputación es de élite.
           {/if}
         </div>
       </div>
     </section>
 
+    <!-- 5 skill cards with explanations -->
     <section class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {#each Object.entries(skills) as [id, skill]}
+      {#each skillCards as card}
+        {@const skill = skills[card.id] ?? { level: 1, xp: 0, xpToNextLevel: 100 }}
         <div class="card bg-base-100 shadow">
           <div class="card-body">
-            <div class="flex justify-between items-baseline">
-              <div>
-                <h3 class="font-semibold">{skillLabel(id)}</h3>
-                <div class="text-xs opacity-60">{id}</div>
+            <div class="flex justify-between items-start gap-2">
+              <div class="flex-1">
+                <h3 class="font-bold text-lg">
+                  <span class="text-2xl mr-1">{card.icon}</span>
+                  {card.label}
+                </h3>
+                <p class="text-sm opacity-70 mt-1">{card.description}</p>
               </div>
               <div class="text-3xl font-mono">L{skill.level}</div>
             </div>
-            <progress class="progress progress-primary" value={progressPct(skill)} max="100"></progress>
+            <progress class="progress progress-primary mt-3" value={progressPct(skill)} max="100"></progress>
             <div class="text-xs opacity-60 text-right font-mono">
               {skill.xp} / {isFinite(skill.xpToNextLevel) ? skill.xpToNextLevel : '∞'} XP
+            </div>
+            <div class="text-xs opacity-60 mt-2">
+              <strong>Cómo subir:</strong> {card.howToLevel}
             </div>
           </div>
         </div>
       {/each}
     </section>
 
+    <!-- Career log -->
     <section class="card bg-base-100 shadow">
       <div class="card-body">
-        <h2 class="card-title">Registro de XP reciente</h2>
+        <h2 class="card-title">Historial reciente de XP</h2>
         {#if data.log.length === 0}
-          <p class="opacity-60 text-sm">Aún no has ganado XP.</p>
+          <p class="opacity-60 text-sm">
+            Aún no has ganado XP. Cumple objetivos, gana partidos, mejora tus finanzas.
+          </p>
         {:else}
           <div class="overflow-x-auto">
             <table class="table table-sm">
               <thead>
-                <tr><th>Semana</th><th>Skill</th><th class="text-right">XP</th><th>Razón</th></tr>
+                <tr><th>Semana</th><th>Habilidad</th><th class="text-right">XP</th><th>Razón</th></tr>
               </thead>
               <tbody>
                 {#each data.log as e}
                   <tr>
                     <td class="font-mono">S{e.week}</td>
-                    <td>{skillLabel(e.skillId)}</td>
+                    <td>
+                      {skillCards.find((c) => c.id === e.skillId)?.label ?? e.skillId}
+                    </td>
                     <td class="text-right font-mono text-success">+{e.xpGranted}</td>
                     <td class="text-xs opacity-70">{e.reason}</td>
                   </tr>
@@ -138,10 +193,5 @@
         {/if}
       </div>
     </section>
-
-    <p class="text-xs opacity-60">
-      XP es event-driven (ADR-010) — se gana automáticamente por victorias, finanzas
-      positivas, fichajes, ascensos. No hay asignación manual.
-    </p>
   {/if}
 </div>

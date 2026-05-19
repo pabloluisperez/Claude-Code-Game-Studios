@@ -1,20 +1,17 @@
 <!--
-  Top bar — club name + balance + week + hamburger toggle.
-  Auto-updates via Socket.IO push when present (see /lib/sockets).
+  Top bar — club name + in-game date + hamburger toggle.
 
-  Story: HUD-UI-001
+  Story: HUD-UI-001 + MVP UX fixes (real dates)
   Control Manifest: 2026-05-19
 -->
 <script lang="ts">
   interface Props {
     user: { username: string } | null;
     week?: number;
-    balanceEurK?: number;
+    dateDisplay?: string | undefined;
     onToggleSidebar?: () => void;
   }
-  let { user, week = 1, balanceEurK = 0, onToggleSidebar }: Props = $props();
-
-  const balanceClass = $derived(balanceEurK < 0 ? 'text-error font-semibold' : 'text-base-content');
+  let { user, week = 0, dateDisplay, onToggleSidebar }: Props = $props();
 </script>
 
 <nav class="navbar bg-base-200 px-4 sticky top-0 z-10 border-b border-base-300">
@@ -33,16 +30,18 @@
   </div>
 
   <div class="flex-none gap-4 items-center">
-    <div class="hidden sm:flex flex-col items-end text-xs leading-tight">
+    {#if dateDisplay}
+      <div class="hidden sm:flex flex-col items-end text-xs leading-tight">
+        <span class="opacity-50">Hoy</span>
+        <span class="font-mono font-semibold">{dateDisplay}</span>
+      </div>
+    {/if}
+    <div class="hidden md:flex flex-col items-end text-xs leading-tight">
       <span class="opacity-50">Semana</span>
       <span class="font-mono font-semibold">{week}</span>
     </div>
-    <div class="hidden sm:flex flex-col items-end text-xs leading-tight">
-      <span class="opacity-50">Balance</span>
-      <span class="font-mono {balanceClass}">{balanceEurK} €K</span>
-    </div>
     {#if user}
-      <span class="text-sm opacity-70 hidden md:inline">{user.username}</span>
+      <span class="text-sm opacity-70 hidden lg:inline">{user.username}</span>
       <form method="POST" action="/logout">
         <button class="btn btn-ghost btn-sm" type="submit">Salir</button>
       </form>

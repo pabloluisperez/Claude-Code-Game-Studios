@@ -30,6 +30,7 @@ import {
   fixtures,
   standings,
   calendarEvents,
+  staff,
   eq,
   desc,
 } from '@smt/db';
@@ -40,10 +41,22 @@ import {
   generateDoubleRoundRobin,
   initManagerSkills,
   createSeededRng,
+  STAFF_WEEKLY_WAGE_EURK,
+  LEAGUE_KICKOFF_WEEK,
 } from '@smt/shared';
 
 const AI_CLUB_COUNT = 11; // user + 11 = 12 clubs (even, needed for round-robin)
-const SEASON_START_WEEK = 1;
+// Season schedule (in-game weeks):
+//   0..4   pretemporada (no matches)
+//   5..26  liga (matchdays 1..22)
+//   27+    cierre + nueva temporada (handled by season-rollover)
+const SEASON_START_WEEK = LEAGUE_KICKOFF_WEEK; // 5
+
+const INITIAL_STAFF_NAMES: Readonly<Record<string, string>> = {
+  groundskeeper: 'Antonio García',
+  fitness_coach: 'Marta Aguilar',
+  head_coach: 'Luis Pérez',
+};
 
 export const load: PageServerLoad = async ({ parent }) => {
   const { user } = await parent();
@@ -73,6 +86,7 @@ export const actions: Actions = {
     const form = await request.formData();
     const clubName = String(form.get('clubName') ?? '').trim();
     const city = String(form.get('city') ?? '').trim();
+    const managerName = String(form.get('managerName') ?? '').trim();
 
     if (clubName.length < 2 || clubName.length > 50) {
       return fail(400, { error: 'El nombre del club debe tener entre 2 y 50 caracteres.' });
@@ -80,9 +94,11 @@ export const actions: Actions = {
     if (city.length < 2 || city.length > 50) {
       return fail(400, { error: 'La ciudad debe tener entre 2 y 50 caracteres.' });
     }
+    if (managerName.length < 2 || managerName.length > 50) {
+      return fail(400, { error: 'Tu nombre de mánager debe tener entre 2 y 50 caracteres.' });
+    }
 
     const userId = locals.user.id;
-    const userName = locals.user.username;
 
     const newPlaythroughId = await db.transaction(async (tx) => {
       // ── 1. User club + playthrough ────────────────────────────────────
@@ -195,7 +211,7 @@ export const actions: Actions = {
         .values({ leagueId: league.id, tier: 5, name: 'Quinta División', clubCount: 12 })
         .returning({ id: divisions.id });
 
-      // 12 clubs → 22 matchdays, 1 per week starting week 1.
+      // 12 clubs → 22 matchdays, 1 per week starting at SEASON_START_WEEK.
       const endWeek = SEASON_START_WEEK + 22 - 1;
       const [season] = await tx
         .insert(seasons)
@@ -208,6 +224,16 @@ export const actions: Actions = {
           endWeek,
         })
         .returning({ id: seasons.id });
+
+      // Season objective for the player (persisted as a NOTIFY event so the
+      // dashboard + end-of-season screen can read it).
+      const objective = {
+        kind: 'season_objective',
+        seasonNumber: 1,
+        target: 'permanencia',
+        targetLabel: 'Permanencia (no quedar último)',
+        targetRule: 'top_9_of_12',
+      };
 
       // ── 5. Fixtures (double round-robin) ──────────────────────────────
       const allClubIds = [newClub.id, ...aiClubRows.map((c) => c.id)];
@@ -254,9 +280,23 @@ export const actions: Actions = {
 
       await tx.insert(managerProfiles).values({
         playthroughId: newPlaythrough.id,
-        name: userName,
+        name: managerName,
         skills: initManagerSkills(),
       });
+
+      // ── 7b. Initial staff (3 tier-1 hires so messages flow from week 1) ──
+      await tx.insert(staff).values(
+        (['groundskeeper', 'fitness_coach', 'head_coach'] as const).map((role) => ({
+          playthroughId: newPlaythrough.id,
+          clubId: newClub.id,
+          role,
+          qualityTier: 1,
+          weeklyEurK: STAFF_WEEKLY_WAGE_EURK[1],
+          name: INITIAL_STAFF_NAMES[role] ?? 'Staff inicial',
+          hiredWeek: 0,
+          status: 'active',
+        })),
+      );
 
       // ── 8. Calendar events for the season ────────────────────────────
       // Mix of NOTIFY (informational) and STOP (decision-blocking) events.
@@ -269,7 +309,7 @@ export const actions: Actions = {
           type: 'season_start',
           priority: 'NOTIFY',
           status: 'pending',
-          metadata: { kind: 'season_start' },
+          metadata: { kind: 'season_start', objective },
         },
         {
           playthroughId: newPlaythrough.id,
@@ -290,14 +330,42 @@ export const actions: Actions = {
           metadata: {
             kind: 'sponsor_offer',
             brand: 'Pueblo Bakery',
-            weeklyAmountEurK: 3,
+            weeklyAmountEurK: 2,
             contractWeeks: 22,
+            qualityDelta: 3,
+            description: 'Panadería local, oferta conservadora pero estable.',
+          },
+        },
+        {
+          playthroughId: newPlaythrough.id,
+          week: SEASON_START_WEEK + 3,
+          season: 1,
+          type: 'sponsor_offer',
+          priority: 'STOP',
+          status: 'pending',
+          metadata: {
+            kind: 'sponsor_offer',
+            brand: 'Tienda Garcés',
+            weeklyAmountEurK: 4,
+            contractWeeks: 18,
             qualityDelta: 5,
-            options: {
-              accept: { label: 'Aceptar', description: 'Firma a Pueblo Bakery por 22 semanas.' },
-              reject: { label: 'Rechazar', description: 'Mantén el slot libre para una oferta mejor.' },
-            },
-            defaultOption: 'reject',
+            description: 'Cadena de electrodomésticos. Pagan bien pero contrato más corto.',
+          },
+        },
+        {
+          playthroughId: newPlaythrough.id,
+          week: SEASON_START_WEEK + 3,
+          season: 1,
+          type: 'sponsor_offer',
+          priority: 'STOP',
+          status: 'pending',
+          metadata: {
+            kind: 'sponsor_offer',
+            brand: 'Casinos Verdes',
+            weeklyAmountEurK: 6,
+            contractWeeks: 22,
+            qualityDelta: -4,
+            description: 'Oferta jugosa pero la afición no va a estar contenta.',
           },
         },
         {

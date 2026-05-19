@@ -1,10 +1,10 @@
 /**
- * Calendar — list season calendar events + decision action.
+ * Calendar — visual grid centered on the in-game "hoy" (current Saturday).
  *
- * On accept of a sponsor_offer we additionally insert a `sponsors` row so the
- * finance page reflects new weekly revenue immediately.
+ * Returns the raw event list (decorated with each event's real date) plus the
+ * fixture list, so the Svelte page can pin them on a month-grid.
  *
- * Story: Event scheduling follow-up (EVENT-SYSTEM-006)
+ * Story: MVP UX fixes — visual calendar grid
  * Control Manifest: 2026-05-19
  */
 
@@ -14,12 +14,17 @@ import {
   db,
   calendarEvents,
   sponsors,
+  fixtures,
+  clubs,
   playthroughs,
   eq,
   and,
   asc,
+  or,
   desc,
+  alias,
 } from '@smt/db';
+import { weekToDate } from '@smt/shared';
 
 export const load: PageServerLoad = async ({ parent }) => {
   const { user, activePlaythrough } = await parent();
@@ -35,7 +40,46 @@ export const load: PageServerLoad = async ({ parent }) => {
     .where(eq(calendarEvents.playthroughId, activePlaythrough.id))
     .orderBy(asc(calendarEvents.week));
 
-  return { hasPlaythrough: true as const, events };
+  // User's fixtures (so the calendar also pins matchdays).
+  const homeClubs = alias(clubs, 'home_clubs');
+  const awayClubs = alias(clubs, 'away_clubs');
+
+  const userFixtures = await db
+    .select({
+      id: fixtures.id,
+      week: fixtures.week,
+      matchday: fixtures.matchday,
+      status: fixtures.status,
+      homeClubId: fixtures.homeClubId,
+      awayClubId: fixtures.awayClubId,
+      homeName: homeClubs.name,
+      awayName: awayClubs.name,
+      homeScore: fixtures.homeScore,
+      awayScore: fixtures.awayScore,
+    })
+    .from(fixtures)
+    .innerJoin(homeClubs, eq(homeClubs.id, fixtures.homeClubId))
+    .innerJoin(awayClubs, eq(awayClubs.id, fixtures.awayClubId))
+    .where(
+      or(
+        eq(fixtures.homeClubId, activePlaythrough.clubId),
+        eq(fixtures.awayClubId, activePlaythrough.clubId),
+      ),
+    )
+    .orderBy(asc(fixtures.week));
+
+  return {
+    hasPlaythrough: true as const,
+    currentWeek: activePlaythrough.currentWeek,
+    today: weekToDate(activePlaythrough.currentWeek),
+    events: events.map((e) => ({ ...e, date: weekToDate(e.week) })),
+    fixtures: userFixtures.map((f) => ({
+      ...f,
+      date: weekToDate(f.week),
+      isHome: f.homeClubId === activePlaythrough.clubId,
+      opponent: f.homeClubId === activePlaythrough.clubId ? f.awayName : f.homeName,
+    })),
+  };
 };
 
 export const actions: Actions = {
@@ -86,12 +130,18 @@ export const actions: Actions = {
         .update(calendarEvents)
         .set({
           status: 'resolved',
-          metadata: { ...metadata, resolvedChoice: choice, resolvedAt: new Date().toISOString() },
+          metadata: {
+            ...metadata,
+            resolvedChoice: choice,
+            resolvedAt: new Date().toISOString(),
+          },
           consumed: true,
         })
         .where(eq(calendarEvents.id, eventId));
 
-      // Side effect: sponsor offer accepted → create sponsor row.
+      // Side effect: sponsor offer accepted → create sponsor row so finance
+      // immediately picks up the new revenue. Also auto-expire competing
+      // sponsor offers for the same week (the user can only sign one).
       if (
         metadata.kind === 'sponsor_offer' &&
         choice === 'accept' &&
@@ -110,6 +160,22 @@ export const actions: Actions = {
           startedWeek: active.currentWeek,
           endsWeek: active.currentWeek + metadata.contractWeeks,
         });
+
+        // Auto-expire competing sponsor offers for the same week.
+        await tx
+          .update(calendarEvents)
+          .set({
+            status: 'expired',
+            consumed: true,
+          })
+          .where(
+            and(
+              eq(calendarEvents.playthroughId, active.id),
+              eq(calendarEvents.type, 'sponsor_offer'),
+              eq(calendarEvents.week, evt.week),
+              eq(calendarEvents.status, 'pending'),
+            ),
+          );
       }
     });
 

@@ -1,8 +1,7 @@
 <!--
-  Sidebar nav — links to all hud-ui pages.
-  Mobile (<768px): collapses behind a hamburger button in the top bar.
+  Sidebar nav — links to all hud-ui pages + per-link notification dots.
 
-  Story: HUD-UI-001
+  Story: HUD-UI-001 + MVP UX fixes (badges)
   Control Manifest: 2026-05-19
 -->
 <script lang="ts">
@@ -10,8 +9,17 @@
 
   interface Props {
     open: boolean;
+    badges: { pendingStops: number; unreadUrgent: number } | null | undefined;
   }
-  let { open = $bindable() }: Props = $props();
+  let { open = $bindable(), badges }: Props = $props();
+
+  // dotFor returns the count to display next to a nav link, or 0 for no badge.
+  function dotFor(href: string): number {
+    if (!badges) return 0;
+    if (href === '/calendar') return badges.pendingStops;
+    if (href === '/dashboard') return badges.unreadUrgent;
+    return 0;
+  }
 
   const links = [
     { href: '/dashboard',  icon: '📊', label: 'Dashboard' },
@@ -35,13 +43,17 @@
   </div>
   <ul class="menu p-2 gap-1">
     {#each links as link}
+      {@const dot = dotFor(link.href)}
       <li>
         <a
           href={link.href}
           class:active={$page.url.pathname.startsWith(link.href)}
         >
           <span class="text-lg">{link.icon}</span>
-          <span>{link.label}</span>
+          <span class="flex-1">{link.label}</span>
+          {#if dot > 0}
+            <span class="badge badge-error badge-sm animate-pulse">{dot}</span>
+          {/if}
         </a>
       </li>
     {/each}

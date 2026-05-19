@@ -76,6 +76,20 @@
         }}
       >
         <label class="form-control">
+          <span class="label-text">Tu nombre como mánager</span>
+          <input
+            class="input input-bordered"
+            type="text"
+            name="managerName"
+            placeholder="Pep Cascada, Mireia Reyes, ..."
+            required
+            minlength="2"
+            maxlength="50"
+            disabled={submitting}
+          />
+        </label>
+
+        <label class="form-control">
           <span class="label-text">Nombre del club</span>
           <input
             class="input input-bordered"

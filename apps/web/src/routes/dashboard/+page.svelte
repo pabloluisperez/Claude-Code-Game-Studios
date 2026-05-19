@@ -1,8 +1,8 @@
 <!--
-  Dashboard — hero card + 4-up cascade-node grid + staff messages feed.
-  Wired via +page.server.ts → @smt/db.
+  Dashboard — hero + week summary + cascade nodes + upcoming events + staff
+  messages. Anchored on the current in-game date (weekDate).
 
-  Story: HUD-UI-002
+  Story: MVP UX fixes — dashboard refresh
   Control Manifest: 2026-05-19
 -->
 <script lang="ts">
@@ -23,7 +23,7 @@
   ] as const;
 
   const NODE_LABELS: Readonly<Record<string, string>> = {
-    financial_balance: 'Balance',
+    financial_balance: 'Balance (€K)',
     fan_momentum: 'Fan momentum',
     team_fitness: 'Fitness equipo',
     squad_available_pct: 'Plantilla disp.',
@@ -39,11 +39,34 @@
   });
 
   const messages = $derived(data.hasPlaythrough ? data.messages : []);
+  const nextFixtures = $derived(data.hasPlaythrough ? data.nextFixtures : []);
+  const pendingEvents = $derived(data.hasPlaythrough ? data.pendingEvents : []);
 
   function colorFor(value: number): string {
     if (value < 30) return 'progress-error';
     if (value < 70) return 'progress-warning';
     return 'progress-success';
+  }
+
+  function outcomeBadge(outcome: 'win' | 'draw' | 'loss' | null): string {
+    if (outcome === 'win') return 'badge-success';
+    if (outcome === 'loss') return 'badge-error';
+    if (outcome === 'draw') return 'badge-warning';
+    return 'badge-ghost';
+  }
+  function outcomeLabel(outcome: 'win' | 'draw' | 'loss' | null): string {
+    if (outcome === 'win') return 'Victoria';
+    if (outcome === 'loss') return 'Derrota';
+    if (outcome === 'draw') return 'Empate';
+    return '—';
+  }
+
+  function eventIcon(type: string): string {
+    if (type.startsWith('season_'))    return '🗓';
+    if (type.startsWith('transfer_'))  return '💼';
+    if (type.startsWith('sponsor_'))   return '🤝';
+    if (type.startsWith('board_'))     return '🏛';
+    return '•';
   }
 </script>
 
@@ -62,20 +85,55 @@
       </div>
     </div>
   {:else}
+    <!-- Hero -->
     <section class="card bg-base-200 shadow">
       <div class="card-body">
         <div class="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h1 class="card-title text-2xl">{data.activePlaythrough?.clubName ?? 'Mi club'}</h1>
-            <p class="opacity-70">Semana actual: <span class="font-mono">{data.week}</span></p>
+            <p class="opacity-70 text-sm">
+              <span class="font-mono">{data.weekDate.display}</span>
+              · semana <span class="font-mono">{data.week}</span>
+              {#if data.position !== null && data.standingsCount > 0}
+                · <span class="badge badge-info">Pos {data.position}º / {data.standingsCount}</span>
+              {/if}
+            </p>
           </div>
           <form method="POST" action="/dashboard?/advance">
-            <button class="btn btn-primary" type="submit">Avanzar semana</button>
+            <button class="btn btn-primary btn-lg" type="submit">
+              ▶ Avanzar semana
+            </button>
           </form>
         </div>
       </div>
     </section>
 
+    <!-- Week summary (post-advance) -->
+    {#if data.justAdvanced}
+      <section class="alert alert-success shadow-lg">
+        <div class="flex-1">
+          <h3 class="font-bold">Semana avanzada al {data.weekDate.display}</h3>
+          {#if data.lastResult && data.lastResult.week === data.week}
+            <p class="text-sm">
+              <span class="badge {outcomeBadge(data.lastResult.outcome)} mr-2">
+                {outcomeLabel(data.lastResult.outcome)}
+              </span>
+              <span class="font-semibold">{data.lastResult.opponentName}</span>
+              <span class="font-mono ml-2">
+                {data.lastResult.isHome ? `${data.lastResult.myScore}-${data.lastResult.oppScore}` : `${data.lastResult.oppScore}-${data.lastResult.myScore}`}
+              </span>
+              ({data.lastResult.isHome ? 'casa' : 'fuera'})
+            </p>
+          {:else}
+            <p class="text-sm opacity-80">
+              Sin partido esta semana — entrenamientos y operaciones de oficina.
+            </p>
+          {/if}
+        </div>
+      </section>
+    {/if}
+
+    <!-- Nodes -->
     {#if nodes.length > 0}
       <section class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {#each nodes as n}
@@ -94,29 +152,77 @@
       </div>
     {/if}
 
-    <section class="card bg-base-100 shadow">
-      <div class="card-body">
-        <h2 class="card-title">Mensajes del staff</h2>
-        {#if messages.length === 0}
-          <p class="opacity-60 text-sm">No hay mensajes del staff todavía.</p>
-        {:else}
-          <div class="space-y-3">
-            {#each messages as m}
-              <div
-                class="alert {m.priority === 'URGENT' ? 'alert-error' : 'alert-info'}
-                       {m.tier === 3 ? 'border-l-4 border-l-warning' : ''}"
-              >
-                <div>
-                  <div class="text-xs uppercase opacity-60">
-                    {m.role.replace('_', ' ')} · tier {m.tier} · {m.priority} · sem {m.week}
-                  </div>
-                  <div class="text-sm">{m.content}</div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <!-- Upcoming -->
+      <section class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h2 class="card-title">Próximos eventos</h2>
+
+          {#if nextFixtures.length === 0 && pendingEvents.length === 0}
+            <p class="opacity-60 text-sm">No hay nada agendado. Pretemporada en marcha.</p>
+          {/if}
+
+          {#each nextFixtures as f}
+            <a
+              href="/match/{f.id}"
+              class="flex items-center justify-between p-3 rounded bg-base-200 hover:bg-base-300"
+            >
+              <div>
+                <div class="text-xs opacity-60">⚽ Partido · {f.date.display}</div>
+                <div class="font-semibold">
+                  {f.isHome ? '🏠' : '✈️'} vs {f.opponentName}
                 </div>
               </div>
-            {/each}
-          </div>
-        {/if}
-      </div>
-    </section>
+              <span class="badge badge-primary">Jor {f.matchday}</span>
+            </a>
+          {/each}
+
+          {#each pendingEvents as e}
+            <a
+              href="/calendar"
+              class="flex items-center justify-between p-3 rounded
+                     {e.priority === 'STOP' ? 'bg-error/10 border border-error/30' : 'bg-base-200'}"
+            >
+              <div>
+                <div class="text-xs opacity-60">{eventIcon(e.type)} {e.type} · {e.date.display}</div>
+                <div class="font-semibold text-sm">
+                  {e.priority === 'STOP' ? 'Decisión pendiente' : 'Aviso'}
+                </div>
+              </div>
+              <span class="badge {e.priority === 'STOP' ? 'badge-error' : 'badge-ghost'}">{e.priority}</span>
+            </a>
+          {/each}
+        </div>
+      </section>
+
+      <!-- Staff messages -->
+      <section class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h2 class="card-title">Mensajes del staff</h2>
+          {#if messages.length === 0}
+            <p class="opacity-60 text-sm">
+              Tu staff aún no ha enviado mensajes. Pasa una semana o contrata más
+              especialistas en <a href="/staff" class="link">Staff</a>.
+            </p>
+          {:else}
+            <div class="space-y-3 max-h-96 overflow-y-auto">
+              {#each messages as m}
+                <div
+                  class="alert {m.priority === 'URGENT' ? 'alert-error' : 'alert-info'}
+                         {m.tier === 3 ? 'border-l-4 border-l-warning' : ''}"
+                >
+                  <div>
+                    <div class="text-xs uppercase opacity-60">
+                      {m.role.replace('_', ' ')} · tier {m.tier} · {m.priority} · sem {m.week}
+                    </div>
+                    <div class="text-sm">{m.content}</div>
+                  </div>
+                </div>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      </section>
+    </div>
   {/if}
 </div>

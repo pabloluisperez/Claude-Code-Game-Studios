@@ -13,6 +13,17 @@ declare global {
         clubId: string;
         currentWeek: number;
         clubName: string | null;
+        date?: {
+          iso: string;
+          display: string;
+          year: number;
+          month: number;
+          day: number;
+        };
+      } | null;
+      badges?: {
+        pendingStops: number;
+        unreadUrgent: number;
       } | null;
     }
   }

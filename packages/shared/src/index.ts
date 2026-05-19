@@ -20,6 +20,15 @@ export {
 // future tooling) don't need to add seedrandom as a direct dependency.
 export { createSeededRng } from './sim/rng.js';
 
+// In-game calendar (week → real date).
+export {
+  weekToDate,
+  weekPhase,
+  CALENDAR_ANCHOR_ISO,
+  LEAGUE_KICKOFF_WEEK,
+  type InGameDate,
+} from './sim/calendar.js';
+
 // Cascade-engine runtime — runTick + the canonical Cascada FC edge definitions.
 export { runTick } from './sim/cascade-engine.js';
 export { CASCADA_FC_GRAPH, type CascadeEdgeDef } from './sim/cascade-graph.js';

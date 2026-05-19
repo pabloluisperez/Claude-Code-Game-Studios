@@ -31,10 +31,11 @@
     <Topbar
       user={data.user}
       week={data.activePlaythrough?.currentWeek ?? 0}
+      dateDisplay={data.activePlaythrough?.date?.display}
       onToggleSidebar={toggleSidebar}
     />
     <div class="flex flex-1">
-      <Sidebar bind:open={sidebarOpen} />
+      <Sidebar bind:open={sidebarOpen} badges={data.badges} />
       <main class="flex-1 container mx-auto px-4 py-8 max-w-7xl">
         {@render children()}
       </main>
