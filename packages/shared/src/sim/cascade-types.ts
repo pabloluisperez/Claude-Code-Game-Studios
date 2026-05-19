@@ -219,6 +219,8 @@ export interface ThresholdCrossing {
   readonly threshold: number;
   readonly direction: 'above' | 'below';
   readonly priority: 'BLOCKING' | 'ADVISORY';
+  readonly previousValue: number;
+  readonly newValue: number;
   readonly reason: string;
 }
 

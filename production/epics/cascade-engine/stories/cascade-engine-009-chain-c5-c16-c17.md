@@ -1,6 +1,7 @@
 ---
 Story: CASCADE-ENGINE-009
-Status: Pending
+Status: Complete
+Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: cascade-engine.md §C5a, §C5b, §C16a, §C16b, §C17 — all direct (non-counterintuitive) chains in the catering/happiness/sponsor cluster
 Governing ADR: ADR-002, ADR-003
@@ -118,3 +119,10 @@ _(Use `packages/shared/tests/cascade-engine/` not `tests/unit/cascade-engine/`)_
 - AC-C16b's guard pattern is the SAME mechanism that gates C11 and C14 (story 010). The implementation of `guardFn` itself is in story 002; this story just exercises it.
 - C17 is monotonic non-negative — `prevState.sponsor_quality / 100` is always in [0,1], multiplied by `K_sponsor_happy = 5.0` always in [0,5]. Add an explicit assertion in the test: `expect(delta).toBeGreaterThanOrEqual(0)` across all spot values. This is the canonical "sponsors only help, never hurt" invariant.
 - Story 002's named-constants block should already include `K_catering_fit, K_catering_moral, K_happy_fit, K_happy_perf, K_sponsor_happy`. If any are missing, treat as a story 002 defect to fix before completing this story.
+
+## Completion Notes
+**Completed**: 2026-05-19
+**Criteria**: 16/16 passing
+**Deviations**: None. Bug fixed: determinism test line 456 had `result1` instead of `result2` (copy-paste error caught by code review).
+**Test Evidence**: Logic — `packages/shared/tests/cascade-engine/chains-c5-c16-c17.test.ts` — 17/17 passing (244/244 suite)
+**Code Review**: Complete — CHANGES REQUIRED → fixed (1 line) → APPROVED 2026-05-19

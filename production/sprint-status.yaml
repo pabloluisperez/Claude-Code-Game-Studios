@@ -21,61 +21,61 @@ stories:
     name: "CASCADE-009: Chains C5a + C5b + C16a + C16b + C17"
     file: "production/epics/cascade-engine/stories/cascade-engine-009-chain-c5-c16-c17.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-19"
 
   - id: "003-02"
     name: "CASCADE-010: Chains C6 + C7 + C11 + C14"
     file: "production/epics/cascade-engine/stories/cascade-engine-010-chain-c6-c7-c11-c14.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 2.0
     blocker: ""
-    completed: ""
+    completed: "2026-05-19"
 
   - id: "003-03"
     name: "CASCADE-011: Chains C8 + C15"
     file: "production/epics/cascade-engine/stories/cascade-engine-011-chain-c8-c15.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 2.0
     blocker: ""
-    completed: ""
+    completed: "2026-05-19"
 
   - id: "003-04"
     name: "CASCADE-012: Chains C9a + C9b"
     file: "production/epics/cascade-engine/stories/cascade-engine-012-chain-c9a-c9b.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-19"
 
   - id: "003-05"
     name: "CASCADE-013: Chains C12 + C18"
     file: "production/epics/cascade-engine/stories/cascade-engine-013-chain-c12-c18.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 2.0
     blocker: ""
-    completed: ""
+    completed: "2026-05-19"
 
   - id: "003-06"
     name: "CASCADE-014: Threshold Detection"
     file: "production/epics/cascade-engine/stories/cascade-engine-014-threshold-detection.md"
     priority: should-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 2.0
-    blocker: "CASCADE-009..013 (uses full graph)"
-    completed: ""
+    blocker: ""
+    completed: "2026-05-19"
 
   - id: "003-07"
     name: "MATCH-SIM-003: F1 + F2 effective stats"

@@ -370,6 +370,33 @@ sprint-plan + gate re-run).
 - Story: production/epics/match-simulation/stories/match-sim-002-prng-context-stateful.md — Stateful PRNG Factory
 - Tech debt logged: None
 - Next recommended: SPRINT CLOSE-OUT — todas las 7 Must Have stories del Sprint 02 están Complete
+
+## Session Extract — /dev-story 2026-05-19
+- Story: production/epics/cascade-engine/stories/cascade-engine-009-chain-c5-c16-c17.md — Chains C5a + C5b + C16a + C16b + C17
+- Status: In Progress → implementation done, 17 new tests, 244/244 suite total
+- Files changed: packages/shared/src/sim/cascade-graph.ts (5 transferFns implemented), packages/shared/tests/cascade-engine/chains-c5-c16-c17.test.ts (created, 17 tests), packages/shared/tests/cascade-engine/graph-topology.test.ts (C16a placeholder guard updated)
+- Blockers: None
+- Next: /code-review packages/shared/src/sim/cascade-graph.ts packages/shared/tests/cascade-engine/chains-c5-c16-c17.test.ts → /story-done
+
+## Session Extract — /story-done 2026-05-19
+- Verdict: COMPLETE (bug fixed: determinism test line 456)
+- Story: production/epics/cascade-engine/stories/cascade-engine-009-chain-c5-c16-c17.md — Chains C5+C16+C17
+- Tech debt logged: None
+- Next recommended: CASCADE-010 — Chains C6 + C7 + C11 + C14 (Must Have, sprint-03)
+
+## Session Extract — /dev-story 2026-05-19
+- Story: production/epics/cascade-engine/stories/cascade-engine-010-chain-c6-c7-c11-c14.md — Chains C6 + C7 + C11 + C14
+- Status: In Progress → implementation done, 19 new tests, 263/263 suite total
+- Files changed: packages/shared/src/sim/cascade-graph.ts (C6/C7/C11/C14 transferFns + C7_DENOM constant), packages/shared/tests/cascade-engine/chains-c6-c7-c11-c14.test.ts (created, 19 tests)
+- Note: agent cut off mid-implementation; test file created manually from the formulas. C6 asymmetry ratio ~3.45× at MPI=30/70.
+
+## Session Extract — /story-done 2026-05-19
+- Verdict: COMPLETE (21/21 tests, 18/18 ACs)
+- Story: production/epics/cascade-engine/stories/cascade-engine-010-chain-c6-c7-c11-c14.md — Chains C6+C7+C11+C14
+- Tech debt logged: None
+- Next recommended: CASCADE-011 — Chains C8 + C15 (Must Have, sprint-03)
+- Blockers: None
+- Next: /code-review packages/shared/src/sim/cascade-graph.ts packages/shared/tests/cascade-engine/chains-c6-c7-c11-c14.test.ts → /story-done
 - Blockers: None
 - Next: /code-review packages/shared/src/sim/sports/football/match-prng.ts packages/shared/tests/match-sim/prng-state.test.ts → /story-done
 - Blockers: None

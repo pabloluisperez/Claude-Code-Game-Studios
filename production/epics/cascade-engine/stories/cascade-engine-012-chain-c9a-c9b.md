@@ -1,6 +1,7 @@
 ---
 Story: CASCADE-ENGINE-012
-Status: Pending
+Status: Complete
+Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: AC-DEL-05, AC-EQL-04, AC-CLM-05 + cascade-engine.md §C9a, §C9b
 Governing ADR: ADR-002, ADR-003 (Rule 5 — long-delay design intent)
@@ -96,3 +97,10 @@ C9b's `fromNode = scouting_points`, `toNode = squad_available_pct`. NO delay on 
 - AC-DEL-05 references `scouting_budget=30` running for 4 weeks. With our K values (K_scouting=15, K_scouting_roster=5), `scouting_points` cannot cross 50 in 4 weeks at budget=30. Either: (a) the AC needs revising in cascade-engine.md (raise budget in test scenario), or (b) the AC asserts ONLY that `scouting_points` accumulates (no claim that C9b fires in W=4). Re-read the AC carefully: "scouting_points empieza a acumular en el tick W=2 (delay:1 de C9a); squad_available_pct no muestra el incremento de C9b hasta al menos W=4 (delay adicional de 2w cuando scouting_points supera 50)". The phrase "delay adicional de 2w cuando scouting_points supera 50" is misleading — there is no 2w delay in C9b. Interpret as: "the empirical observation that C9b doesn't contribute until SP > 50, which takes additional weeks to accumulate". Implement the test as: in W=4, scouting_points is still ~13 (< 50), so C9b delta = 0. This validates the spec's intent (slow chain) without contradicting the actual edge logic.
 - The decay term means C9a is self-limiting — even with budget=100, SP saturates around `15.0 / 0.08 = 187.5`, but the [0,100] clamp keeps it ≤ 100.
 - Per cascade-engine.md §C9b "delay:0": the GDD is explicit. If a future tuning iteration wants a delay here, ADR amendment + manifest version bump required.
+
+## Completion Notes
+**Completed**: 2026-05-19
+**Criteria**: 13/13 passing
+**Deviations**: None. Convergence test confirms SP_eq ≈ 56 at budget=30 (within 54-59 GDD range).
+**Test Evidence**: Logic — `packages/shared/tests/cascade-engine/chains-c9.test.ts` — 14/14 passing (294/294 suite)
+**Code Review**: Skipped (lean mode, autonomous run). Implementation verified against story formulas + 50-tick equilibrium simulation + compound C9 chain timing test.

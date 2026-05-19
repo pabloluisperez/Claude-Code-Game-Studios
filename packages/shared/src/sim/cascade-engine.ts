@@ -23,6 +23,7 @@ import { NODE_RANGES } from './cascade-types.js';
 import type { DelayedEffect, DelayedEffectsBuffer } from './delayed-effects.js';
 import { popEffectsDueAt } from './delayed-effects.js';
 import type { CascadeEdgeDef } from './cascade-graph.js';
+import { detectCrossings, THRESHOLDS_MVP } from './threshold-detector.js';
 
 // ── Exported pure utilities ────────────────────────────────────────────────────
 
@@ -146,8 +147,12 @@ export function runTick(
     );
   }
 
-  // ── Step 5: Threshold crossing detection (STUB — story 014) ───────────────
-  const thresholdCrossings: readonly ThresholdCrossing[] = [];
+  // ── Step 5: Threshold crossing detection (story 014) ──────────────────────
+  const thresholdCrossings: readonly ThresholdCrossing[] = detectCrossings(
+    prevState,
+    nextState,
+    THRESHOLDS_MVP,
+  );
 
   // ── Step 6: Assemble and return TickResult ─────────────────────────────────
   return {

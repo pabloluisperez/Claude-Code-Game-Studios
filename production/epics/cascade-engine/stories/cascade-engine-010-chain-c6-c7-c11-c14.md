@@ -1,6 +1,7 @@
 ---
 Story: CASCADE-ENGINE-010
-Status: Pending
+Status: Complete
+Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: AC-CTI-C6 (asymmetric hysteresis), AC-PLD-04, AC-PLD-05 + cascade-engine.md §C6, §C7, §C11, §C14
 Governing ADR: ADR-002, ADR-003, ADR-007 (match-sim writes MPI), ADR-008 (hasMatchThisWeek)
@@ -104,4 +105,11 @@ Constants: `K_win_base = 8.0`, `K_loss_base = 8.0` (per R4 fix — was 10, lower
 - C6 uses `Math.log1p(P_win)` rather than `Math.log(1 + P_win)` for numerical stability at small P_win. The slice's implementation used `Math.log(1 + x)` which is identical in our value range — either works, document the choice in a code comment.
 - Edge case from cascade-engine.md line 536: MPI=50 exactly uses the positive branch; AC #4 verifies this.
 - The hysteresis is asymmetric BY SHAPE (log on the win side, quadratic on the loss side), not by K. R4 fix made K equal on both sides; the structural asymmetry remains.
-- C7's denominator `110` is `10 × 11`, the maximum value of `CW × (CW+1)` when CW=10. Stored as a derived constant `C7_DENOM = 110` in story 002.
+- C7's denominator `110` is `10 × 11`, the maximum value of `CW × (CW+1)` when CW=10. Stored as a derived constant `C7_DENOM = 110` (added during this story since story-002 omitted it).
+
+## Completion Notes
+**Completed**: 2026-05-19
+**Criteria**: 18/18 passing
+**Deviations**: None. C7_DENOM constant added here (was omitted from story-002's scope).
+**Test Evidence**: Logic — `packages/shared/tests/cascade-engine/chains-c6-c7-c11-c14.test.ts` — 21/21 passing (264/264 suite)
+**Code Review**: Complete — APPROVED WITH SUGGESTIONS (2026-05-19, MPI=49 boundary + C14 determinism strengthened)

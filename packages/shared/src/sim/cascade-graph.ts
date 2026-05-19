@@ -68,6 +68,8 @@ export const K_loss_base = 8.0;
 
 /** C7 — Streak bonus multiplier (quadratic-ish). */
 export const K_streak_base = 2.0;
+/** C7 — denominator for streak bonus: max_wins × (max_wins + 1) = 10 × 11. */
+export const C7_DENOM = 110;
 
 /** C8 — Maximum attendance achievable from momentum alone (+ ATTEND_MIN_BASE). */
 export const ATTEND_MAX_BASE = 60;
@@ -112,6 +114,8 @@ export const K_desperation = 10.0;
 export const T_desperation_threshold = 50;
 /** C12 — Exponent making damage grow faster with longer losing streaks. */
 export const DESPERATION_EXP = 1.5;
+/** C12 — Normalizer for drainShape: 10^DESPERATION_EXP (max losing streak = 10). */
+export const DESPERATION_NORM = Math.pow(10, DESPERATION_EXP);
 
 /** C13 — Fitness delta per point of squad_available_pct deviation from optimal. */
 export const K_squad_fit = 5.0;
@@ -329,12 +333,15 @@ export const CASCADA_FC_GRAPH: readonly CascadeEdgeDef[] = Object.freeze([
   // ── C5a: catering_budget → team_fitness ──────────────────────────────────
   // cascade-engine.md §C5a
   // Linear: better catering = better fitness. delay:1 — nutrition takes a week.
+  // Formula: delta = K_catering_fit × (catering_budget − 50) / 50
+  // Story: CASCADE-ENGINE-009
   {
     id: 'C5a',
     fromNode: 'catering_budget',
     toNode: 'team_fitness',
     delay: 1,
-    transferFn: notYetImplemented('CASCADE-ENGINE-007'),
+    transferFn: (prevState: Readonly<WorldState>) =>
+      K_catering_fit * (prevState.catering_budget - 50) / 50,
     counterintuitive: false,
   },
 
@@ -342,12 +349,15 @@ export const CASCADA_FC_GRAPH: readonly CascadeEdgeDef[] = Object.freeze([
   // cascade-engine.md §C5b
   // Staff morale is more catering-sensitive than players (K_catering_moral > K_catering_fit).
   // delay:1 — morale effects lag one week.
+  // Formula: delta = K_catering_moral × (catering_budget − 50) / 50
+  // Story: CASCADE-ENGINE-009
   {
     id: 'C5b',
     fromNode: 'catering_budget',
     toNode: 'staff_morale',
     delay: 1,
-    transferFn: notYetImplemented('CASCADE-ENGINE-007'),
+    transferFn: (prevState: Readonly<WorldState>) =>
+      K_catering_moral * (prevState.catering_budget - 50) / 50,
     counterintuitive: false,
   },
 
@@ -366,7 +376,20 @@ export const CASCADA_FC_GRAPH: readonly CascadeEdgeDef[] = Object.freeze([
     fromNode: 'match_performance_index',
     toNode: 'fan_momentum',
     delay: 0,
-    transferFn: notYetImplemented('CASCADE-ENGINE-008'),
+    transferFn: (prevState: Readonly<WorldState>) => {
+      const MPI = prevState.match_performance_index;
+      if (MPI >= 50) {
+        // Win branch: logarithmic — K_win_base × ln(1 + P_win)
+        // Math.log1p(x) = ln(1+x), numerically stable for small x near zero.
+        const P_win = (MPI - 50) / 50;
+        return K_win_base * Math.log1p(P_win);
+      } else {
+        // Loss branch: quadratic — more damage than wins give momentum.
+        // Asymmetric shape: quadratic loss vs logarithmic gain ≈ 3.4× at MPI=30/70.
+        const P_loss = (50 - MPI) / 50;
+        return -K_loss_base * (1 + P_loss * P_loss);
+      }
+    },
     counterintuitive: true,
   },
 
@@ -380,7 +403,8 @@ export const CASCADA_FC_GRAPH: readonly CascadeEdgeDef[] = Object.freeze([
     fromNode: 'consecutive_wins',
     toNode: 'fan_momentum',
     delay: 0,
-    transferFn: notYetImplemented('CASCADE-ENGINE-008'),
+    transferFn: (prevState: Readonly<WorldState>) =>
+      K_streak_base * prevState.consecutive_wins * (prevState.consecutive_wins + 1) / C7_DENOM,
     counterintuitive: false,
   },
 
@@ -391,12 +415,29 @@ export const CASCADA_FC_GRAPH: readonly CascadeEdgeDef[] = Object.freeze([
   // with LOW momentum, the same price triggers collapse.
   // fromNode is fan_momentum (the primary driver); ticket_price_index is secondary.
   // delay:0 — price effect on attendance is same week.
+  // Formula (cascade-engine.md §C8):
+  //   attendance_base = (F_m/100) × ATTEND_MAX_BASE + ATTEND_MIN_BASE
+  //   price_penalty   = max(0, TPI-50) × (1 − F_m/MOMENTUM_TOLERANCE_DIVISOR)
+  //   price_bonus     = max(0, 50-TPI) × PRICE_BONUS_K
+  //   target          = attendance_base + price_bonus − price_penalty
+  //   delta           = target − fan_attendance_prev  (convergence pattern)
+  // Reads TWO nodes via prevState (multi-input precedent: C10). Raw delta may
+  // exit [−60,+60] under extremes — engine Step 4 clamps nextState, not delta.
+  // Story: CASCADE-ENGINE-011
   {
     id: 'C8',
     fromNode: 'fan_momentum',
     toNode: 'fan_attendance',
     delay: 0,
-    transferFn: notYetImplemented('CASCADE-ENGINE-008'),
+    transferFn: (prevState: Readonly<WorldState>) => {
+      const F_m = prevState.fan_momentum;
+      const TPI = prevState.ticket_price_index;
+      const attendance_base = (F_m / 100) * ATTEND_MAX_BASE + ATTEND_MIN_BASE;
+      const price_penalty = Math.max(0, TPI - 50) * (1 - F_m / MOMENTUM_TOLERANCE_DIVISOR);
+      const price_bonus = Math.max(0, 50 - TPI) * PRICE_BONUS_K;
+      const target = attendance_base + price_bonus - price_penalty;
+      return target - prevState.fan_attendance;
+    },
     counterintuitive: true,
   },
 
@@ -404,12 +445,21 @@ export const CASCADA_FC_GRAPH: readonly CascadeEdgeDef[] = Object.freeze([
   // cascade-engine.md §C9a
   // Accumulates scouting_points with decay (reports become stale). noise ±1.
   // delay:1 — scouting intel takes a week to process.
+  // Formula: delta = K_scouting × budget/100 − DECAY_scouting × SP + noise
+  // Accumulator pattern. Steady-state: SP_eq ≈ K_scouting × budget / (100 × DECAY).
+  // At budget=30: SP_eq ≈ 4.5/0.08 = 56.25.
+  // Story: CASCADE-ENGINE-012
   {
     id: 'C9a',
     fromNode: 'scouting_budget',
     toNode: 'scouting_points',
     delay: 1,
-    transferFn: notYetImplemented('CASCADE-ENGINE-009'),
+    transferFn: (prevState: Readonly<WorldState>, ctx: SimContext) => {
+      const SC_budget = prevState.scouting_budget;
+      const SP = prevState.scouting_points;
+      const noise = (ctx.rng() - 0.5) * NOISE_C9a_AMP;
+      return (K_scouting * SC_budget) / 100 - DECAY_scouting * SP + noise;
+    },
     counterintuitive: false,
   },
 
@@ -419,12 +469,17 @@ export const CASCADA_FC_GRAPH: readonly CascadeEdgeDef[] = Object.freeze([
   // delay:0 — C9b evaluates immediately in the same tick as C9a's delta lands.
   // The 3-week total chain delay comes from C9a's delay:1 + C9b's delay:0.
   // (Adding a delay here would make the full chain 4 weeks — GDD says 3.)
+  // Formula: delta = K_scouting_roster × max(0, SP − T_scouting_active) / (100 − T_scouting_active)
+  // Threshold gate (no delay). Below SP=50 → 0 contribution; linear above.
+  // Story: CASCADE-ENGINE-012
   {
     id: 'C9b',
     fromNode: 'scouting_points',
     toNode: 'squad_available_pct',
     delay: 0,
-    transferFn: notYetImplemented('CASCADE-ENGINE-009'),
+    transferFn: (prevState: Readonly<WorldState>) =>
+      (K_scouting_roster * Math.max(0, prevState.scouting_points - T_scouting_active)) /
+      (100 - T_scouting_active),
     counterintuitive: false,
   },
 
@@ -441,7 +496,8 @@ export const CASCADA_FC_GRAPH: readonly CascadeEdgeDef[] = Object.freeze([
     toNode: 'match_performance_index',
     delay: 0,
     guardFn: guardHasMatch,
-    transferFn: notYetImplemented('CASCADE-ENGINE-010'),
+    transferFn: (prevState: Readonly<WorldState>) =>
+      K_morale_perf * (prevState.staff_morale - 50) / 50,
     counterintuitive: false,
   },
 
@@ -453,12 +509,25 @@ export const CASCADA_FC_GRAPH: readonly CascadeEdgeDef[] = Object.freeze([
   // this damage. delay:1 — fatigue accumulates over the week.
   // fromNode is consecutive_losses (primary driver); training_intensity read
   // via ctx.prevState.
+  // Formula: delta = -K_desperation × drainShape × intensity_mod
+  //   where drainShape = CL^DESPERATION_EXP / DESPERATION_NORM (normalized to [0,1])
+  //         intensity_mod = max(0, I_train - T_desp_threshold) / (100 - T_desp_threshold)
+  // Player agency lever: I_train ≤ 50 ⇒ intensity_mod=0 ⇒ delta=0 (damage cancelled).
+  // Counterintuitive: SAME losing streak hurts MORE under high training (sobreentrenamiento).
+  // Story: CASCADE-ENGINE-013
   {
     id: 'C12',
     fromNode: 'consecutive_losses',
     toNode: 'team_fitness',
     delay: 1,
-    transferFn: notYetImplemented('CASCADE-ENGINE-010'),
+    transferFn: (prevState: Readonly<WorldState>) => {
+      const CL = prevState.consecutive_losses;
+      const I_train = prevState.training_intensity;
+      const intensity_mod =
+        Math.max(0, I_train - T_desperation_threshold) / (100 - T_desperation_threshold);
+      const drainShape = Math.pow(CL, DESPERATION_EXP) / DESPERATION_NORM;
+      return -K_desperation * drainShape * intensity_mod;
+    },
     counterintuitive: true,
   },
 
@@ -490,7 +559,11 @@ export const CASCADA_FC_GRAPH: readonly CascadeEdgeDef[] = Object.freeze([
     toNode: 'match_performance_index',
     delay: 0,
     guardFn: guardHasMatch,
-    transferFn: notYetImplemented('CASCADE-ENGINE-010'),
+    transferFn: (prevState: Readonly<WorldState>, ctx: SimContext) => {
+      const base = K_home_advantage * (prevState.field_quality - 50) / 50;
+      const noise = (ctx.rng() - 0.5) * NOISE_C14_AMP;
+      return base + noise;
+    },
     counterintuitive: false,
   },
 
@@ -500,12 +573,18 @@ export const CASCADA_FC_GRAPH: readonly CascadeEdgeDef[] = Object.freeze([
   // when the team wins. delay:2 — takes two weeks for fans to react to price.
   // Counterintuitive: lowering price doesn't immediately reverse already-queued
   // DelayedEffects (they are immutable once enqueued per edge-case doc).
+  // Formula: delta = −K_price_erosion × max(0, TPI − T_price_danger)
+  // Silent below TPI=65; pure (no rng); delay:2 (longest in MVP).
+  // Counterintuitive: lowering price AFTER queuing does NOT cancel queued
+  // erosion (Rule 5 / AC-PLD-02). Each evaluation snapshots prevState.TPI.
+  // Story: CASCADE-ENGINE-011
   {
     id: 'C15',
     fromNode: 'ticket_price_index',
     toNode: 'fan_momentum',
     delay: 2,
-    transferFn: notYetImplemented('CASCADE-ENGINE-009'),
+    transferFn: (prevState: Readonly<WorldState>) =>
+      -K_price_erosion * Math.max(0, prevState.ticket_price_index - T_price_danger),
     counterintuitive: true,
   },
 
@@ -513,12 +592,15 @@ export const CASCADA_FC_GRAPH: readonly CascadeEdgeDef[] = Object.freeze([
   // cascade-engine.md §C16a
   // Happy squad = full effort in training. delay:0 — morale impact is immediate.
   // No hasMatchThisWeek guard — C16a applies in all weeks.
+  // Formula: delta = K_happy_fit × (player_happiness − 50) / 50
+  // Story: CASCADE-ENGINE-009
   {
     id: 'C16a',
     fromNode: 'player_happiness',
     toNode: 'team_fitness',
     delay: 0,
-    transferFn: notYetImplemented('CASCADE-ENGINE-011'),
+    transferFn: (prevState: Readonly<WorldState>) =>
+      K_happy_fit * (prevState.player_happiness - 50) / 50,
     counterintuitive: false,
   },
 
@@ -527,13 +609,16 @@ export const CASCADA_FC_GRAPH: readonly CascadeEdgeDef[] = Object.freeze([
   // Happy squad = full effort on match day. Guard: hasMatchThisWeek.
   // Larger K than C16a (K_happy_perf=7 vs K_happy_fit=4) — match-day
   // emotional impact outweighs training impact.
+  // Formula: delta = K_happy_perf × (player_happiness − 50) / 50
+  // Story: CASCADE-ENGINE-009
   {
     id: 'C16b',
     fromNode: 'player_happiness',
     toNode: 'match_performance_index',
     delay: 0,
     guardFn: guardHasMatch,
-    transferFn: notYetImplemented('CASCADE-ENGINE-011'),
+    transferFn: (prevState: Readonly<WorldState>) =>
+      K_happy_perf * (prevState.player_happiness - 50) / 50,
     counterintuitive: false,
   },
 
@@ -541,12 +626,15 @@ export const CASCADA_FC_GRAPH: readonly CascadeEdgeDef[] = Object.freeze([
   // cascade-engine.md §C17
   // Premium sponsors (cars, watches, catering perks) → happier squad.
   // delay:1 — squad notices perks after the deal is announced.
+  // Formula: delta = K_sponsor_happy × sponsor_quality / 100  (monotonic non-negative)
+  // Story: CASCADE-ENGINE-009
   {
     id: 'C17',
     fromNode: 'sponsor_quality',
     toNode: 'player_happiness',
     delay: 1,
-    transferFn: notYetImplemented('CASCADE-ENGINE-011'),
+    transferFn: (prevState: Readonly<WorldState>) =>
+      K_sponsor_happy * prevState.sponsor_quality / 100,
     counterintuitive: false,
   },
 
@@ -560,13 +648,18 @@ export const CASCADA_FC_GRAPH: readonly CascadeEdgeDef[] = Object.freeze([
   // Counterintuitive: decay means doing nothing actually reduces risk — but
   //   once it hits 80 the decay stops, making the timing window visible.
   //   Marked counterintuitive = true per the 7-chain counterintuitive list.
+  // Formula: delta = -K_corruption_decay × prevState.corruption_exposure
+  // Guard: skip when CE ≥ 80 (BLOCKING zone) — see guardCorruptionDecay above.
+  // The guard ensures threshold detection (story 014) sees a CLEAN crossing at 80.
+  // Story: CASCADE-ENGINE-013
   {
     id: 'C18a',
     fromNode: 'corruption_exposure',
     toNode: 'corruption_exposure',
     delay: 0,
     guardFn: guardCorruptionDecay,
-    transferFn: notYetImplemented('CASCADE-ENGINE-013'),
+    transferFn: (prevState: Readonly<WorldState>) =>
+      -K_corruption_decay * prevState.corruption_exposure,
     counterintuitive: true,
   },
 ] as const);

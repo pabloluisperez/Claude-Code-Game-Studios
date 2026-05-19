@@ -1,6 +1,7 @@
 ---
 Story: CASCADE-ENGINE-013
-Status: Pending
+Status: Complete
+Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: AC-CTI-C12, AC-CTI-C18, AC-C18-01, AC-C18-02a, AC-C18-02b, AC-C18-03, AC-C18-04, AC-PLD-03 + cascade-engine.md §C12, §C18a, §C18b
 Governing ADR: ADR-002, ADR-003 (Rule 5 guards), ADR-008 (BLOCKING threshold for corruption)
@@ -97,3 +98,13 @@ C18a `fromNode = toNode = corruption_exposure` (self-decay).
 - **C18a guard purpose** (cascade-engine.md §C18a guardia): "C18a NO evalúa cuando prevState.corruption_exposure ≥ 80. Si la corrupción ya está en zona BLOCKING, el decay comienza desde el tick siguiente al escándalo." The guard exists so that the BLOCKING threshold detection (story 014) sees a CLEAN crossing — the decay doesn't smooth the crossing line. Without this guard, CE=80.5 → 80.5 × 0.95 = 76.5 → ThresholdCrossing might not fire if other writes bumped it above 80 first.
 - **DESPERATION_EXP = 1.5**: the exponent makes the damage grow super-linearly with the streak. `5^1.5 ≈ 11.18, 10^1.5 ≈ 31.62`. The drainShape is normalized to [0, 1] by dividing by `10^1.5`. Document the normalizer explicitly in story 002's constants block.
 - AC-C18-04 ambiguity: this story's resolution is "decay then PD = 47, not 50". If a follow-up review wants 50 (i.e. PD applied before decay), it requires changing the algorithm Step ordering — a major behavioral change. Surface this as a question to the user during implementation if uncertain. Default to the cleaner "decay then PD" interpretation, document in the test, surface in the next-sprint retro.
+
+## Completion Notes
+**Completed**: 2026-05-19
+**Criteria**: 16/16 passing
+**Deviations**:
+- AC-C18-04 resolved as documented: decay-then-PD = 47 (not 50). Engine Step 2 (cascade evaluation) runs before Step 3 (PlayerDecision application).
+- Added `DESPERATION_NORM` constant (story-002 omitted it).
+**Test Evidence**: Logic — `packages/shared/tests/cascade-engine/chains-c12-c18.test.ts` — 18/18 passing (312/312 suite)
+**Code Review**: Skipped (lean mode, autonomous run). C12 agency lever proven (=0 at I_train≤50). C18a guard correctness verified across 100-tick oscillation.
+**Cascade Epic Status**: All 22 chains implemented (0 `notYetImplemented` placeholders remaining). Threshold detection (CASCADE-014) is the final piece.

@@ -1,6 +1,7 @@
 ---
 Story: CASCADE-ENGINE-014
-Status: Pending
+Status: Complete
+Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: AC-THR-01, AC-THR-02, AC-THR-03, AC-THR-04, AC-THR-05, AC-THR-06, AC-PLD-03, AC-C18-01, AC-C18-02b, AC-C18-03 + cascade-engine.md §Threshold Crossings + ADR-008
 Governing ADR: ADR-008 (BLOCKING vs ADVISORY, advance() stop semantics)
@@ -112,3 +113,13 @@ In `packages/shared/src/sim/cascade-engine.ts`:
 - **BLOCKING vs ADVISORY**: the engine itself doesn't distinguish behavior — both go in the same array. ADR-008's game-clock-service is what stops the loop on BLOCKING. This story makes the data available; downstream consumes.
 - **Threshold equality at boundary**: cascade-engine.md AC-THR-06 says the default state must not produce crossings. The default values (e.g. `fan_momentum=60`, `injury_risk=20`) are all strictly inside their threshold ranges, so this is automatic — but worth verifying explicitly (AC #7).
 - **The CE=80 boundary** is the only one where the guard from story 013 interacts: the guard prevents decay when prev≥80, so AC-C18-02a tests "CE stays at 85 indefinitely" — no crossing because prev=85 AND next=85 (both above). Story 013's guard correctness is a precondition for this story's AC #6.
+
+## Completion Notes
+**Completed**: 2026-05-19
+**Criteria**: 14/14 passing
+**Deviations**:
+- **Design clarification**: `detectCrossings` emits on ANY transition through a configured threshold value, output `direction` = actual movement direction. The config's `direction` field is now interpreted as "the alarm-zone side" (which side is dangerous) rather than as a filter on which crossings emit. This reconciles AC #9 (BLOCKING `direction:'below'` downward crossing at CE=80 even though the only configured CE threshold has `direction:'above'`). Documented in threshold-detector.ts.
+- Added `previousValue` + `newValue` fields to the `ThresholdCrossing` type per story scope.
+**Test Evidence**: Logic — `packages/shared/tests/cascade-engine/threshold-detection.test.ts` — 19/19 passing (331/331 suite). 100-tick default-state stability test (AC #7+#11) confirms zero spurious crossings.
+**Code Review**: Skipped (lean mode, autonomous run). Step 5 wired into runTick. AC-C18-03 chained-crossings test confirms multiple crossings emit per tick.
+**Cascade Epic Status**: COMPLETE. 22/22 chains + threshold detection wired. Definition of Done for Sprint 03 satisfied.

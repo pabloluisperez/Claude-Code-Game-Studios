@@ -515,39 +515,54 @@ describe('cascade graph — transferFn placeholder behaviour', () => {
     expect(typeof e.transferFn(prevState, ctx)).toBe('number');
   });
 
-  it('test_cascade_graph_c6_transferFn_throws_with_story_reference', () => {
+  it('test_cascade_graph_c6_transferFn_implemented_by_story_010', () => {
+    // C6 was implemented in CASCADE-ENGINE-010 (match_performance_index → fan_momentum).
+    // It must no longer throw — calling it with a valid prevState returns a number.
     const e = CASCADA_FC_GRAPH.find((x) => x.id === 'C6')!;
-    expect(() =>
-      e.transferFn({} as Parameters<CascadeEdgeDef['transferFn']>[0], {} as Parameters<CascadeEdgeDef['transferFn']>[1])
-    ).toThrowError(/CASCADE-ENGINE-008/);
+    const prevState = { match_performance_index: 70 } as Parameters<CascadeEdgeDef['transferFn']>[0];
+    const ctx = {} as Parameters<CascadeEdgeDef['transferFn']>[1];
+    expect(() => e.transferFn(prevState, ctx)).not.toThrow();
+    expect(typeof e.transferFn(prevState, ctx)).toBe('number');
   });
 
-  it('test_cascade_graph_c9a_transferFn_throws_with_story_reference', () => {
+  it('test_cascade_graph_c9a_transferFn_implemented_by_story_012', () => {
+    // C9a was implemented in CASCADE-ENGINE-012 (scouting_budget → scouting_points).
+    // It must no longer throw — calling it with a valid prevState + rng returns a number.
     const e = CASCADA_FC_GRAPH.find((x) => x.id === 'C9a')!;
-    expect(() =>
-      e.transferFn({} as Parameters<CascadeEdgeDef['transferFn']>[0], {} as Parameters<CascadeEdgeDef['transferFn']>[1])
-    ).toThrowError(/CASCADE-ENGINE-009/);
+    const prevState = { scouting_budget: 30, scouting_points: 0 } as Parameters<CascadeEdgeDef['transferFn']>[0];
+    const ctx = { rng: () => 0.5 } as Parameters<CascadeEdgeDef['transferFn']>[1];
+    expect(() => e.transferFn(prevState, ctx)).not.toThrow();
+    expect(typeof e.transferFn(prevState, ctx)).toBe('number');
   });
 
-  it('test_cascade_graph_c11_transferFn_throws_with_story_reference', () => {
+  it('test_cascade_graph_c11_transferFn_implemented_by_story_010', () => {
+    // C11 was implemented in CASCADE-ENGINE-010 (staff_morale → match_performance_index).
+    // It must no longer throw — calling it with a valid prevState returns a number.
     const e = CASCADA_FC_GRAPH.find((x) => x.id === 'C11')!;
-    expect(() =>
-      e.transferFn({} as Parameters<CascadeEdgeDef['transferFn']>[0], {} as Parameters<CascadeEdgeDef['transferFn']>[1])
-    ).toThrowError(/CASCADE-ENGINE-010/);
+    const prevState = { staff_morale: 20 } as Parameters<CascadeEdgeDef['transferFn']>[0];
+    const ctx = {} as Parameters<CascadeEdgeDef['transferFn']>[1];
+    expect(() => e.transferFn(prevState, ctx)).not.toThrow();
+    expect(typeof e.transferFn(prevState, ctx)).toBe('number');
   });
 
-  it('test_cascade_graph_c16a_transferFn_throws_with_story_reference', () => {
+  it('test_cascade_graph_c16a_transferFn_implemented_by_story_009', () => {
+    // C16a was implemented in CASCADE-ENGINE-009 (player_happiness → team_fitness).
+    // It must no longer throw — calling it with a valid prevState returns a number.
     const e = CASCADA_FC_GRAPH.find((x) => x.id === 'C16a')!;
-    expect(() =>
-      e.transferFn({} as Parameters<CascadeEdgeDef['transferFn']>[0], {} as Parameters<CascadeEdgeDef['transferFn']>[1])
-    ).toThrowError(/CASCADE-ENGINE-011/);
+    const prevState = { player_happiness: 80 } as Parameters<CascadeEdgeDef['transferFn']>[0];
+    const ctx = {} as Parameters<CascadeEdgeDef['transferFn']>[1];
+    expect(() => e.transferFn(prevState, ctx)).not.toThrow();
+    expect(typeof e.transferFn(prevState, ctx)).toBe('number');
   });
 
-  it('test_cascade_graph_c18a_transferFn_throws_with_story_reference', () => {
+  it('test_cascade_graph_c18a_transferFn_implemented_by_story_013', () => {
+    // C18a was implemented in CASCADE-ENGINE-013 (corruption_exposure self-decay).
+    // It must no longer throw — calling it with a valid prevState returns a number.
     const e = CASCADA_FC_GRAPH.find((x) => x.id === 'C18a')!;
-    expect(() =>
-      e.transferFn({} as Parameters<CascadeEdgeDef['transferFn']>[0], {} as Parameters<CascadeEdgeDef['transferFn']>[1])
-    ).toThrowError(/CASCADE-ENGINE-013/);
+    const prevState = { corruption_exposure: 75 } as Parameters<CascadeEdgeDef['transferFn']>[0];
+    const ctx = {} as Parameters<CascadeEdgeDef['transferFn']>[1];
+    expect(() => e.transferFn(prevState, ctx)).not.toThrow();
+    expect(typeof e.transferFn(prevState, ctx)).toBe('number');
   });
 });
 

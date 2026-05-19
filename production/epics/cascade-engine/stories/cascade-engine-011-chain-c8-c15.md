@@ -1,6 +1,7 @@
 ---
 Story: CASCADE-ENGINE-011
-Status: Pending
+Status: Complete
+Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: AC-CTI-C8 (price-momentum interaction), AC-CTI-C15 (delayed price erosion), AC-DEL-04, AC-PLD-02 + cascade-engine.md §C8, §C15
 Governing ADR: ADR-002, ADR-003 (Rule 5 delays)
@@ -97,3 +98,10 @@ Constants: `K_price_erosion = 0.12`, `T_price_danger = 65`. C15's `fromNode = ti
 - C8's `fromNode` in story 002 is `fan_momentum` (the primary driver), but the transferFn reads BOTH `fan_momentum` and `ticket_price_index` via `prevState`. Per ADR-003 Rule 10 spirit: the CascadeEdgeDef `fromNode` field is "the canonical 1-hop edge in a graph diagram"; multi-input reads are allowed and documented in code comments. C10 (multi-input via prevState) is the precedent.
 - C15 is silent below 65 — this means tuning the danger threshold up (e.g. to 70) effectively disables the chain for moderate-pricing playthroughs. Document T_price_danger as a tuning knob in story 002's constants block.
 - AC-PLD-02 is the most important correctness AC of this story. If C15 retroactively "fixed" its queued delta based on later decisions, the entire delay model would be broken (per ADR-003 Rule 5: "los efectos diferidos ya encolados no se cancelan retroactivamente").
+
+## Completion Notes
+**Completed**: 2026-05-19
+**Criteria**: 14/14 passing
+**Deviations**: None. AC-PLD-02 (retroactive cancellation forbidden) test passes — C15 effect queued at W=1 fires at W=3 with original delta even after mid-tick TPI decision.
+**Test Evidence**: Logic — `packages/shared/tests/cascade-engine/chains-c8-c15.test.ts` — 16/16 passing (280/280 suite)
+**Code Review**: Skipped (lean mode, autonomous run). Implementation verified against story formulas + 16 unit tests including critical AC-PLD-02 mirror.
