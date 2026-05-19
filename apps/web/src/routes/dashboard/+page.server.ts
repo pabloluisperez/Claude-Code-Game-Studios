@@ -233,10 +233,17 @@ export const actions: Actions = {
       .orderBy(desc(worldSnapshots.week))
       .limit(1);
 
-    const prevState: Readonly<WorldState> =
+    const basePrevState: Readonly<WorldState> =
       (latest?.worldState as WorldState) ?? defaultWorldState();
     const prevBuffer: DelayedEffectsBuffer = (latest?.delayedEffectsBuffer ??
       []) as DelayedEffectsBuffer;
+
+    // Inject the user-chosen training intensity into the prevState so the
+    // cascade reads it as the manager decision for this tick.
+    const prevState: Readonly<WorldState> = {
+      ...(basePrevState as Record<string, number>),
+      training_intensity: active.trainingIntensity ?? 50,
+    } as unknown as WorldState;
 
     const nextWeek = (latest?.week ?? -1) + 1;
 
@@ -342,6 +349,17 @@ export const actions: Actions = {
     if (rollover.rolledOver) {
       // Redirect to season-end recap before continuing.
       throw redirect(303, `/season-end?from=${rollover.fromSeason}`);
+    }
+
+    // If the user played a match this week, redirect to the match page with
+    // autoplay so they can watch the minute-by-minute replay. Otherwise back
+    // to dashboard with the weekly summary banner.
+    const userFixtureId = matchDay.results.find(
+      (r) => r.homeClubId === active.clubId || r.awayClubId === active.clubId,
+    )?.fixtureId;
+
+    if (userFixtureId) {
+      throw redirect(303, `/match/${userFixtureId}?autoplay=1&return=dashboard`);
     }
 
     throw redirect(303, '/dashboard?advanced=1');

@@ -31,6 +31,14 @@ export const playthroughs = pgTable('playthroughs', {
     .notNull()
     .references(() => clubs.id, { onDelete: 'cascade' }),
   currentWeek: integer('current_week').notNull().default(0),
+  /**
+   * Training intensity (0..100) the player has chosen for the upcoming
+   * advance. Read by /squad UI; consumed and reset on each advance.
+   *
+   * Bucket mapping (see UI):
+   *   descanso=10 · suave=30 · normal=50 · fuerte=70 · brutal=90
+   */
+  trainingIntensity: integer('training_intensity').notNull().default(50),
   lastTickAt: timestamp('last_tick_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()

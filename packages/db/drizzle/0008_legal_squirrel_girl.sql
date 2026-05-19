@@ -1,0 +1,1 @@
+ALTER TABLE "playthroughs" ADD COLUMN "training_intensity" integer DEFAULT 50 NOT NULL;

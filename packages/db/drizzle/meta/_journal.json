@@ -57,6 +57,13 @@
       "when": 1779217542980,
       "tag": "0007_chemical_young_avengers",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1779228235261,
+      "tag": "0008_legal_squirrel_girl",
+      "breakpoints": true
     }
   ]
 }

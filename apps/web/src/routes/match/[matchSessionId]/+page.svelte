@@ -11,10 +11,15 @@
 -->
 <script lang="ts">
   import type { PageData } from './$types';
-  import { onDestroy } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
+  import { page } from '$app/stores';
   import { joinMatchRoom, disconnectMatchSocket } from '$lib/sockets';
 
   let { data }: { data: PageData } = $props();
+
+  const autoplay = $derived($page.url.searchParams.get('autoplay') === '1');
+  const returnTo = $derived($page.url.searchParams.get('return'));
+  let finalWhistle = $state(false);
 
   interface FeedEvent {
     minute: number;
@@ -82,6 +87,7 @@
         idx += 1;
       }
       if (liveMinute >= 90) {
+        finalWhistle = true;
         stopReplay();
       }
     }, tickIntervalMs);
@@ -94,6 +100,12 @@
     }
     isReplaying = false;
   }
+
+  onMount(() => {
+    if (autoplay && persistedEvents.length > 0) {
+      startReplay();
+    }
+  });
 
   onDestroy(() => {
     stopReplay();
@@ -141,20 +153,31 @@
       </div>
 
       {#if data.fixture.status === 'played' && persistedEvents.length > 0}
-        <div class="card-actions justify-center mt-3">
-          {#if !isReplaying}
+        <div class="card-actions justify-center mt-3 gap-2 flex-wrap">
+          {#if !isReplaying && !finalWhistle}
             <button class="btn btn-primary" type="button" onclick={startReplay}>
               ▶ Reproducir en vivo
             </button>
-          {:else}
+          {:else if isReplaying}
             <button class="btn btn-error btn-outline" type="button" onclick={stopReplay}>
               Detener
             </button>
+          {/if}
+          {#if returnTo === 'dashboard'}
+            <a href="/dashboard?advanced=1" class="btn btn-ghost">
+              {finalWhistle ? '→ Volver al dashboard' : 'Saltar al final'}
+            </a>
           {/if}
         </div>
       {/if}
     </div>
   </section>
+
+  {#if finalWhistle && returnTo === 'dashboard'}
+    <div class="alert alert-success shadow">
+      <span>⏱ Final del partido. Vuelve al dashboard cuando quieras.</span>
+    </div>
+  {/if}
 
   <!-- Event feed -->
   <section class="card bg-base-100 shadow">
