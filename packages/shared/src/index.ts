@@ -74,3 +74,51 @@ export {
   computeTransferValue,
   type TransferValueArgs,
 } from './sim/player-management/transfer-value.js';
+
+// Match-simulation (MATCH-SIM-013..014)
+export type {
+  MatchInput,
+  MatchOutcome,
+  MatchEvent,
+  MatchSessionSnapshot,
+  MatchSessionState,
+  PlayerStats,
+  PlayerSlot,
+  Lineup,
+  FormationPreset,
+  TeamInstruction,
+  PreMatchSnapshot,
+  Position as MatchSimPosition,
+} from './sim/sports/football/football-types.js';
+export { simulateMatch } from './sim/sports/football/match-simulation.js';
+export {
+  initMatchSession,
+  advanceTick,
+  validateDecision,
+  applyDefaultDecisionsToSnapshot,
+  type MatchDecision,
+  type AdvanceTickResult,
+  type PauseType,
+} from './sim/sports/football/match-session-fsm.js';
+
+// League-system (LEAGUE-SYSTEM-002..007)
+export {
+  generateRoundRobin,
+  type FixtureDraft,
+  type RoundRobinArgs,
+} from './sim/league-system/round-robin.js';
+export {
+  computeStandingsSort,
+  type StandingsRow,
+  type StandingsSortArgs,
+  type HeadToHeadMap,
+} from './sim/league-system/standings-sort.js';
+export {
+  isDerby,
+  findDerbiesInSeason,
+  getRivalClub,
+  buildDerbyPairSet,
+  isDerbyPair,
+  type DerbyClub,
+  type DerbyFixture,
+} from './sim/league-system/derby.js';
