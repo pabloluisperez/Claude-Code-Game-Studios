@@ -176,6 +176,33 @@ export {
   type StaffQualityTier,
 } from './sim/manager-rpg/staff-gating.js';
 
+// Staff-system (STAFF-SYSTEM-001..005)
+export {
+  STAFF_ROLES,
+  QUALITY_FACTOR,
+  STAFF_WEEKLY_WAGE_EURK,
+  DEFAULT_DOMAIN_BY_ROLE,
+  MAX_ROUTINE_MESSAGES_PER_STAFF_PER_WEEK,
+  type StaffRole,
+  type MessagePriority,
+  type MessageDirection,
+  type StaffPerceptionConfig,
+} from './sim/staff-system/types.js';
+export {
+  STAFF_MESSAGE_TEMPLATES,
+  TEMPLATE_FALLBACK,
+  resolveMessageTemplate,
+  type ResolveTemplateArgs,
+} from './sim/staff-system/templates.js';
+export {
+  buildPerceptionConfig,
+  diffWorldStates,
+  generateStaffMessages,
+  type MinimalStaffMember,
+  type GeneratedStaffMessage,
+  type GenerateMessagesArgs as StaffPerceptionArgs,
+} from './sim/staff-system/perception.js';
+
 // League-system (LEAGUE-SYSTEM-002..007)
 export {
   generateRoundRobin,

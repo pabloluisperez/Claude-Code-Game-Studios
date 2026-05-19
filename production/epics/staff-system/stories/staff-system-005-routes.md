@@ -1,6 +1,6 @@
 ---
 Story: STAFF-SYSTEM-005
-Status: Ready
+Status: Complete
 Type: Integration
 Governing ADR: ADR-009
 Control Manifest: 2026-05-19

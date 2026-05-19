@@ -1,6 +1,6 @@
 ---
 Story: STAFF-SYSTEM-002
-Status: Ready
+Status: Complete
 Type: Logic
 Governing ADR: ADR-009
 Control Manifest: 2026-05-19

@@ -1,6 +1,6 @@
 ---
 Story: STAFF-SYSTEM-001
-Status: Ready
+Status: Complete
 Type: Integration
 Governing ADR: ADR-009 (Staff messaging tiers)
 Control Manifest: 2026-05-19
