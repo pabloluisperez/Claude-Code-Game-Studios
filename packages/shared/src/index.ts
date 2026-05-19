@@ -101,6 +101,52 @@ export {
   type PauseType,
 } from './sim/sports/football/match-session-fsm.js';
 
+// Economy (ECONOMY-002..006)
+export {
+  EN_RIESGO_BALANCE_THRESHOLD,
+  CRISIS_BALANCE_THRESHOLD,
+  QUIEBRA_BALANCE_THRESHOLD,
+  TV_RIGHTS_PRIMERA,
+  TV_RIGHTS_SEGUNDA,
+  PRIMERA_REFERENCE_MAX,
+  MAX_TICKET_FLOOR_SEGUNDA,
+  MAX_TICKET_FLOOR_PRIMERA,
+  PAYROLL_FREEZE_WEEKS,
+  PAYROLL_FREEZE_REDUCTION,
+  PAYROLL_FREEZE_HAPPINESS_PENALTY,
+  MAINTENANCE_BASELINE,
+} from './sim/economy/constants.js';
+export {
+  maxTicketEur,
+  marketTicketEur,
+  computeMatchDayRevenue,
+  computeSponsorIncome,
+  computeTvRights,
+  computeWeeklyRevenue,
+  type MaxTicketArgs,
+  type MatchDayRevenueArgs,
+  type ActiveSponsorRow,
+  type WeeklyRevenueArgs,
+  type WeeklyRevenueBreakdown,
+} from './sim/economy/revenue.js';
+export {
+  computePlayerPayroll,
+  computeStaffPayroll,
+  budgetNodeToEurK,
+  computeWeeklyCosts,
+  type PlayerForPayroll,
+  type StaffForPayroll,
+  type WeeklyCostArgs,
+  type WeeklyCostBreakdown,
+} from './sim/economy/costs.js';
+export {
+  computeFinancialStatus,
+  bankruptcyTransition,
+  FINANCIAL_STATUS_NAMES,
+  type FinancialStatus,
+  type BankruptcyTransition,
+} from './sim/economy/bankruptcy.js';
+
 // League-system (LEAGUE-SYSTEM-002..007)
 export {
   generateRoundRobin,

@@ -1,6 +1,6 @@
 ---
 Story: ECONOMY-003
-Status: Ready
+Status: Complete
 Type: Logic
 GDD Requirement: TR-ECO-003 (weekly costs: payroll + staff + catering + scouting + maintenance)
 Governing ADR: ADR-014

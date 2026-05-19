@@ -18,16 +18,14 @@ import {
 } from '../src/sim/cascade-types.js';
 
 describe('cascade types — NodeId catalog cardinality', () => {
-  it('test_cascade_types_node_catalog_has_exactly_20_members', () => {
-    // Arrange: NODE_RANGES is the authoritative catalog
-    // Act
+  it('test_cascade_types_node_catalog_has_exactly_25_members', () => {
+    // GDD §Catálogo de Nodos: 20 base nodes + 5 economy-owned (ADR-014)
     const count = NODE_IDS.length;
-    // Assert: GDD §Catálogo de Nodos lists exactly 20 nodes
-    expect(count).toBe(20);
+    expect(count).toBe(25);
   });
 
   it('test_cascade_types_node_ids_match_gdd_catalog', () => {
-    // Arrange: the canonical 20 nodes from cascade-engine.md
+    // Canonical 20 base nodes + 5 economy-owned nodes (ADR-014)
     const expected: NodeId[] = [
       'groundskeeper_budget',
       'training_intensity',
@@ -49,10 +47,14 @@ describe('cascade types — NodeId catalog cardinality', () => {
       'team_skill',
       'match_performance_index',
       'squad_available_pct',
+      // Economy-owned (ADR-014)
+      'financial_balance',
+      'weekly_cashflow',
+      'financial_status',
+      'stadium_capacity',
+      'fan_culture_index',
     ];
-    // Act
     const actual = new Set(NODE_IDS);
-    // Assert: every expected NodeId is present and no extras
     for (const id of expected) {
       expect(actual.has(id)).toBe(true);
     }
@@ -113,7 +115,7 @@ describe('cascade types — defaultWorldState()', () => {
     for (const id of NODE_IDS) {
       expect(state[id], `Missing node ${id}`).toBeDefined();
     }
-    expect(Object.keys(state).length).toBe(20);
+    expect(Object.keys(state).length).toBe(25);
   });
 
   it('test_cascade_types_default_state_values_match_node_ranges_default', () => {
@@ -151,7 +153,7 @@ describe('cascade types — JSON round-trip (control-manifest no-Map rule)', () 
     const restored = JSON.parse(serialised) as WorldState;
     // Assert
     expect(restored).toEqual(original);
-    expect(Object.keys(restored).length).toBe(20);
+    expect(Object.keys(restored).length).toBe(25);
   });
 
   it('test_cascade_types_serialised_state_is_not_empty_object', () => {

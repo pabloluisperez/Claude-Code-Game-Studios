@@ -1,6 +1,6 @@
 ---
 Story: ECONOMY-006
-Status: Ready
+Status: Complete
 Type: Integration
 GDD Requirement: TR-ECO-006 (Congelación de nómina catch-up event)
 Governing ADR: ADR-014, ADR-015 (event-system)

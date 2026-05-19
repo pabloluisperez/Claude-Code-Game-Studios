@@ -1,6 +1,6 @@
 ---
 Story: ECONOMY-001
-Status: Ready
+Status: Complete
 Type: Integration
 GDD Requirement: TR-ECO-001 (sponsors table + ledger schemas per ADR-014)
 Governing ADR: ADR-014 (Financial Flow + Bankruptcy)

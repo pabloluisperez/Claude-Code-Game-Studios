@@ -1,6 +1,6 @@
 ---
 Story: ECONOMY-007
-Status: Ready
+Status: Complete
 Type: Integration
 GDD Requirement: TR-ECO-007 (advance() integrates economy)
 Governing ADR: ADR-014

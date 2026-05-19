@@ -1,6 +1,6 @@
 ---
 Story: ECONOMY-008
-Status: Ready
+Status: Complete
 Type: Integration
 GDD Requirement: TR-ECO-008 (Hono routes for finance panel reads)
 Governing ADR: ADR-014, ADR-001 (Hono 4)

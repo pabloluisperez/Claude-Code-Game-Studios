@@ -1,6 +1,6 @@
 ---
 Story: ECONOMY-002
-Status: Ready
+Status: Complete
 Type: Logic
 GDD Requirement: TR-ECO-002 (weekly revenue: ticket × attendance + sponsors + TV rights tier)
 Governing ADR: ADR-014

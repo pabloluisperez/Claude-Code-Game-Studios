@@ -1,6 +1,6 @@
 ---
 Story: ECONOMY-005
-Status: Ready
+Status: Complete
 Type: Integration
 GDD Requirement: TR-ECO-005 (sponsor signing + cancellation; scandal trigger)
 Governing ADR: ADR-014

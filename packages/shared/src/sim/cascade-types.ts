@@ -50,7 +50,13 @@ export type NodeId =
   // Static / sim-output — read but not driven by cascades (3)
   | 'team_skill'
   | 'match_performance_index'
-  | 'squad_available_pct';
+  | 'squad_available_pct'
+  // Economy-owned (ADR-014) — financial state in WorldState
+  | 'financial_balance'
+  | 'weekly_cashflow'
+  | 'financial_status'
+  | 'stadium_capacity'
+  | 'fan_culture_index';
 
 /**
  * Per-node bounds + default. Sourced from cascade-engine.md §Catálogo de Nodos.
@@ -90,6 +96,12 @@ export const NODE_RANGES: Readonly<Record<NodeId, NodeRange>> = {
   team_skill:               { min: 0, max: 100, default: 50 },
   match_performance_index:  { min: 0, max: 100, default: 50 },
   squad_available_pct:      { min: 0, max: 100, default: 90 },
+  // Economy-owned (ADR-014)
+  financial_balance:        { min: -1000, max: 10000, default: 250 },
+  weekly_cashflow:          { min: -200,  max: 200,   default: 0 },
+  financial_status:         { min: 0,     max: 3,     default: 0 },
+  stadium_capacity:         { min: 500,   max: 80000, default: 3000 },
+  fan_culture_index:        { min: 0,     max: 100,   default: 35 },
 } as const;
 
 /**

@@ -1,6 +1,6 @@
 ---
 Story: ECONOMY-004
-Status: Ready
+Status: Complete
 Type: Logic
 GDD Requirement: TR-ECO-004 (bankruptcy FSM: healthy → at_risk → crisis → bankrupt)
 Governing ADR: ADR-014

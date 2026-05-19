@@ -7,3 +7,4 @@ export * from './leagues';
 export * from './fixtures';
 export * from './standings';
 export * from './match-sessions';
+export * from './sponsors';
