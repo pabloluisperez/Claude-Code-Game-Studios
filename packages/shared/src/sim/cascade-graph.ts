@@ -51,6 +51,8 @@ export const K_C4 = 8.0;
 export const T_low = 25;
 /** C4 — Upper threshold of training intensity. Above → overtraining. */
 export const T_high = 75;
+/** C4 — normalizer for the inverted parabola: (T_high - T_low)² / 4. */
+export const C4_PARABOLA_NORMALIZER = ((T_high - T_low) ** 2) / 4;
 /** C4 / C10 — Minimum effectiveness of training when staff_morale = 0. */
 export const MORALE_SCALE_MIN = 0.5;
 
@@ -211,7 +213,8 @@ export const CASCADA_FC_GRAPH: readonly CascadeEdgeDef[] = Object.freeze([
     fromNode: 'team_fitness',
     toNode: 'team_fitness',
     delay: 0,
-    transferFn: notYetImplemented('CASCADE-ENGINE-006'),
+    transferFn: (prevState: Readonly<WorldState>) =>
+      -K_fit_decay * (prevState.team_fitness - 70),
     counterintuitive: false,
   },
 
@@ -223,7 +226,8 @@ export const CASCADA_FC_GRAPH: readonly CascadeEdgeDef[] = Object.freeze([
     fromNode: 'groundskeeper_budget',
     toNode: 'field_quality',
     delay: 1,
-    transferFn: notYetImplemented('CASCADE-ENGINE-006'),
+    transferFn: (prevState: Readonly<WorldState>) =>
+      (prevState.groundskeeper_budget - 50) * K_ground,
     counterintuitive: false,
   },
 
@@ -232,12 +236,23 @@ export const CASCADA_FC_GRAPH: readonly CascadeEdgeDef[] = Object.freeze([
   // A mediocre field (20–75) is MORE dangerous than a bad or excellent one.
   // Three-branch piecewise: excellent (−K_safe_high), mediocre (+slope),
   // very poor (−K_safe_low). delay:0 — risk is immediate.
+  // Branches (R3 fix: branch A uses ≥75, NOT >75):
+  //   F_q ≥ 75            → delta = -K_safe_high                   (excellent → safe)
+  //   45 < F_q < 75       → delta = -(F_q - T_danger_peak)×K_danger (upper danger zone)
+  //   20 < F_q ≤ 45       → delta = +(T_danger_peak - F_q)×K_danger (mediocre danger peak)
+  //   F_q ≤ 20            → delta = -K_safe_low                    (catastrophic → cautious)
   {
     id: 'C1b',
     fromNode: 'field_quality',
     toNode: 'injury_risk',
     delay: 0,
-    transferFn: notYetImplemented('CASCADE-ENGINE-006'),
+    transferFn: (prevState: Readonly<WorldState>) => {
+      const fq = prevState.field_quality;
+      if (fq >= T_safe_high)   return -K_safe_high;
+      if (fq > T_danger_peak)  return -(fq - T_danger_peak) * K_danger;
+      if (fq > T_safe_low)     return (T_danger_peak - fq) * K_danger;
+      return -K_safe_low;
+    },
     counterintuitive: true,
   },
 
@@ -245,12 +260,18 @@ export const CASCADA_FC_GRAPH: readonly CascadeEdgeDef[] = Object.freeze([
   // cascade-engine.md §C2
   // Linear penalty above IR_base + noise. delay:1 — injuries take a week to
   // reduce availability (medical assessment lag).
+  // Formula: delta = -K_injury × (IR_prev − IR_base) + (rng() − 0.5) × NOISE_C2_AMP
+  // Story: CASCADE-ENGINE-007
   {
     id: 'C2',
     fromNode: 'injury_risk',
     toNode: 'squad_available_pct',
     delay: 1,
-    transferFn: notYetImplemented('CASCADE-ENGINE-007'),
+    transferFn: (prevState: Readonly<WorldState>, ctx: SimContext) => {
+      const base = -K_injury * (prevState.injury_risk - IR_base);
+      const noise = (ctx.rng() - 0.5) * NOISE_C2_AMP;
+      return base + noise;
+    },
     counterintuitive: false,
   },
 
@@ -258,27 +279,50 @@ export const CASCADA_FC_GRAPH: readonly CascadeEdgeDef[] = Object.freeze([
   // cascade-engine.md §C3
   // Poor field (< T_field_poor) causes extra fatigue during training.
   // delay:0 — physical toll is immediate.
+  // Formula: delta = -K_field_fatigue × max(0, T_field_poor − field_quality)
+  // Asymmetric: good fields (≥40) produce zero — they stop hurting, not helping.
+  // Story: CASCADE-ENGINE-007
   {
     id: 'C3',
     fromNode: 'field_quality',
     toNode: 'team_fitness',
     delay: 0,
-    transferFn: notYetImplemented('CASCADE-ENGINE-007'),
+    transferFn: (prevState: Readonly<WorldState>) =>
+      -K_field_fatigue * Math.max(0, T_field_poor - prevState.field_quality),
     counterintuitive: false,
   },
 
   // ── C4: training_intensity → team_fitness (COUNTERINTUITIVE) ──────────────
   // cascade-engine.md §C4
-  // Inverted parabola: sweet spot at intensity 50; extremes (< T_low or > T_high)
-  // HURT fitness. Integrates C10 (staff_morale effectiveness multiplier) via
-  // ctx.prevState.staff_morale — C10 is NOT a separate edge.
+  // Inverted parabola with roots at T_low=25 and T_high=75; peak at intensity=50.
+  // Both extremes (overtraining > T_high, undertraining < T_low) HURT fitness.
+  // Only the sweet spot [T_low, T_high] benefits fitness.
   // delay:1 — training effects appear next week.
+  //
+  // C10 staff_morale multiplier integrated here per cascade-engine.md §C10
+  // (C10 is NOT a separate edge).
+  // Multiplier maps SM ∈ [0,100] → [MORALE_SCALE_MIN, 1.0]:
+  //   SM=0   → multiplier = MORALE_SCALE_MIN = 0.5  (50% efficiency, never zero)
+  //   SM=50  → multiplier = 0.75
+  //   SM=100 → multiplier = 1.0  (full efficiency)
+  //
+  // Story: CASCADE-ENGINE-008
   {
     id: 'C4',
     fromNode: 'training_intensity',
     toNode: 'team_fitness',
     delay: 1,
-    transferFn: notYetImplemented('CASCADE-ENGINE-006'),
+    transferFn: (prevState: Readonly<WorldState>, ctx: SimContext) => {
+      const SM_prev = prevState.staff_morale;
+      const I_train = prevState.training_intensity;
+      // C10 multiplier: MORALE_SCALE_MIN + (SM / 100) × (1 − MORALE_SCALE_MIN)
+      const K_C4_eff = K_C4 * (MORALE_SCALE_MIN + (SM_prev / 100) * (1 - MORALE_SCALE_MIN));
+      // Parabola roots at T_low and T_high; normalizer = (T_high − T_low)² / 4 = 625
+      const base = K_C4_eff * (I_train - T_low) * (T_high - I_train) / C4_PARABOLA_NORMALIZER;
+      // Symmetric noise: ±NOISE_C4_AMP/2 (seeded rng, never Math.random())
+      const noise = (ctx.rng() - 0.5) * NOISE_C4_AMP;
+      return base + noise;
+    },
     counterintuitive: true,
   },
 
@@ -422,12 +466,16 @@ export const CASCADA_FC_GRAPH: readonly CascadeEdgeDef[] = Object.freeze([
   // cascade-engine.md §C13
   // Full squad = better group training exercises = higher fitness.
   // delay:1 — group training effect appears next week.
+  // Formula: delta = K_squad_fit × (squad_available_pct − SQ_optimal) / 100
+  // Sweet spot at SQ_optimal=75; range [-3.75, +1.25].
+  // Story: CASCADE-ENGINE-007
   {
     id: 'C13',
     fromNode: 'squad_available_pct',
     toNode: 'team_fitness',
     delay: 1,
-    transferFn: notYetImplemented('CASCADE-ENGINE-007'),
+    transferFn: (prevState: Readonly<WorldState>) =>
+      K_squad_fit * (prevState.squad_available_pct - SQ_optimal) / 100,
     counterintuitive: false,
   },
 

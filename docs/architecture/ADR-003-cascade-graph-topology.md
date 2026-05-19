@@ -139,31 +139,49 @@ export interface CascadeNodeDef {
   default: number;                     // valor en la semana 1 de una nueva partida
 }
 
-/** Define una relación causal entre dos variables */
+/** Define una relación causal entre dos variables.
+ *
+ * REVISIÓN 2026-05-19 (Sprint 02): Field names y firma de `transferFn` actualizadas
+ * para reflejar la implementación canónica de CASCADE-ENGINE-002:
+ *   - `from` → `fromNode` (primary driver; otros inputs vía `ctx.prevState`)
+ *   - `to` → `toNode` (exclusive write target)
+ *   - `transferFn(fromValue, toValue, ctx)` → `transferFn(prevState, ctx)` — la
+ *     función recibe el WorldState completo (Readonly), no valores individuales.
+ *     Esto permite edges multi-input (C8 lee fan_momentum + ticket_price_index;
+ *     C4 lee training_intensity + staff_morale para C10 multiplier).
+ *   - `delay: number` → `delay: 0 | 1 | 2` (MVP scope; updateable si v1.1+ requiere más).
+ *   - Añadido `guardFn?` (opcional) — para hasMatchThisWeek (C11/C14/C16b) y
+ *     corruption_exposure < 80 (C18a).
+ *   - Añadido `counterintuitive: boolean` — metadata para design-review tooling (7 anchors).
+ */
 export interface CascadeEdgeDef {
-  id: string;                // para debugging y logs
-  from: NodeId;
-  to: NodeId;
-  delay: number;             // en semanas (0 = mismo tick, 1 = siguiente semana, etc.)
+  readonly id: string;                // para debugging y logs (e.g. 'C0', 'C1a', 'C16b')
+  readonly fromNode: NodeId;          // primary driver; otros inputs vía ctx.prevState
+  readonly toNode: NodeId;            // exclusive write target
+  readonly delay: 0 | 1 | 2;          // en semanas (0 = mismo tick, 1+ = futuro)
+  /** Optional skip predicate. Returns true to evaluate; false to skip the edge entirely. */
+  readonly guardFn?: (prevState: Readonly<WorldState>, ctx: SimContext) => boolean;
   /**
    * Función de transferencia pura — NUNCA llama Math.random() ni Date.now().
-   * Recibe el valor de la variable origen (semana anterior) y devuelve el DELTA
-   * a añadir a la variable destino.
+   * Recibe `prevState` (read-only) y devuelve el DELTA (no el nuevo valor) a añadir
+   * al nodo destino. Multi-input edges leen otros nodos vía `prevState.X`.
    *
-   * NOTA: usar `import type { SimContext }` por verbatimModuleSyntax:true.
+   * NOTA: usar `import type { SimContext, WorldState }` por verbatimModuleSyntax:true.
    * NOTA: las funciones NO son JSON-serializable — "data-driven" en este ADR
    * significa configuración en código TypeScript tipado, NO en base de datos.
    * Si en el futuro se necesita persistir el grafo en BD, usar el patrón
    * transferFnId: string + TransferFnRegistry en el módulo de sim.
    *
-   * Ejemplos:
-   *  Efecto lineal: (from) => (from - 50) * 0.4
-   *  Efecto umbral (contraintuitivo): (from) => from > 75 ? -5 : from > 30 ? from * 0.2 : -2
-   *  Efecto modulado por RNG: (from, to, ctx) => (from - 50) * 0.3 + (ctx.rng() - 0.5) * 5
+   * Ejemplos (de las cadenas implementadas en stories 006-008):
+   *  C0 (decay):       (prev) => -K_fit_decay * (prev.team_fitness - 70)
+   *  C1a (linear):     (prev) => (prev.groundskeeper_budget - 50) * K_ground
+   *  C1b (piecewise):  (prev) => { const fq = prev.field_quality; if (fq >= 75) return -6.0; ... }
+   *  C2 (noisy):       (prev, ctx) => -K_injury * (prev.injury_risk - IR_base) + (ctx.rng() - 0.5) * NOISE_C2_AMP
+   *  C4 (multi-input): (prev, ctx) => { const K_eff = K_C4 * (MORALE_SCALE_MIN + prev.staff_morale/100 * 0.5); ... }
    */
-  // NOTA: en la implementación, el archivo cascade-types.ts debe tener en la cabecera:
-  //   import type { SimContext } from './context';  ← OBLIGATORIO con verbatimModuleSyntax:true
-  transferFn: (fromValue: number, toValue: number, ctx: SimContext) => number;
+  readonly transferFn: (prevState: Readonly<WorldState>, ctx: SimContext) => number;
+  /** True para las 7 cadenas counterintuitive (Core Rule 7): C1b, C4, C6, C8, C12, C15, C18a. */
+  readonly counterintuitive: boolean;
 }
 
 /** El grafo completo — todos los nodos y edges de cascada del juego */
@@ -242,26 +260,27 @@ function evaluateTick(ctx, graph, prevState, decisions, pendingEffects): TickRes
   }
 
   // 2. Evaluar todos los edges del grafo
-  for (const edge of graph.edges) {
-    const fromValue = prevState[edge.from];  // SIEMPRE prev state
-    const toValue   = prevState[edge.to];    // SIEMPRE prev state
-    const delta = edge.transferFn(fromValue, toValue, ctx);
+  for (const edge of graph) {
+    // Guard check (opcional): saltar el edge si guardFn retorna false
+    if (edge.guardFn && !edge.guardFn(prevState, ctx)) continue;
+
+    // El edge lee `prevState` completo (Readonly). transferFn determina cómo usa fromNode
+    // y otros inputs (e.g. C8 lee fan_momentum + ticket_price_index).
+    const delta = edge.transferFn(prevState, ctx);
 
     if (edge.delay === 0) {
-      // Efecto inmediato — acumulamos sobre nextState
-      nextState[edge.to] = clamp(
-        nextState[edge.to] + delta,
-        graph.nodes.find(n => n.id === edge.to)!.range
-      );
+      // Efecto inmediato — acumulamos sobre deltaMap (clamp aplica al final, Rule 4)
+      deltaMap.set(edge.toNode, (deltaMap.get(edge.toNode) ?? 0) + delta);
     } else {
       // Efecto diferido — va a la cola
       newDelayedEffects.push({
-        applyAt: ctx.worldClock + edge.delay,
-        toNode: edge.to,
+        applyAt: ctx.currentWeek + edge.delay,
+        toNode: edge.toNode,
         delta,
+        edgeId: edge.id,
       });
     }
-    log.push({ edgeId: edge.id, fromValue, delta, toNode: edge.to, appliedAt: ctx.worldClock + edge.delay });
+    log.push({ source: 'edge', edgeId: edge.id, nodeId: edge.toNode, delta, week: ctx.currentWeek });
   }
 
   // 3. Aplicar decisiones del jugador (siempre tienen efecto inmediato)
@@ -280,48 +299,52 @@ function evaluateTick(ctx, graph, prevState, decisions, pendingEffects): TickRes
 }
 ```
 
-### Ejemplo de grafo (prototipo → formato ADR-003)
+### Ejemplo de grafo (formato actualizado — Sprint 02 implementación)
 
 ```typescript
 // packages/shared/src/sim/cascade-graph.ts — DATOS, no lógica
-import type { CascadeGraph } from './cascade-types';
+import type { CascadeEdgeDef, WorldState, SimContext } from './cascade-types';
 
-export const CASCADA_FC_GRAPH: CascadeGraph = {
-  nodes: [
-    { id: 'groundskeeper_budget', range: [0, 100], default: 50 },
-    { id: 'field_quality',        range: [0, 100], default: 50 },
-    { id: 'injury_risk',          range: [0, 100], default: 20 },
-    { id: 'fan_momentum',         range: [0, 100], default: 50 },
-    { id: 'fan_attendance',       range: [0, 100], default: 40 },
-    { id: 'team_fitness',         range: [0, 100], default: 70 },
-    { id: 'staff_morale',         range: [0, 100], default: 60 },
-    // ... definidos en cascade-engine.md GDD
-  ],
-  edges: [
-    {
-      id: 'groundskeeper_to_field',
-      from: 'groundskeeper_budget',
-      to: 'field_quality',
-      delay: 1,  // efecto la semana siguiente
-      transferFn: (from) => (from - 50) * 0.4,
+export const CASCADA_FC_GRAPH: readonly CascadeEdgeDef[] = Object.freeze([
+  {
+    id: 'C1a',
+    fromNode: 'groundskeeper_budget',
+    toNode: 'field_quality',
+    delay: 1,  // efecto la semana siguiente
+    transferFn: (prev: Readonly<WorldState>) =>
+      (prev.groundskeeper_budget - 50) * K_ground,
+    counterintuitive: false,
+  },
+  {
+    id: 'C1b',
+    fromNode: 'field_quality',
+    toNode: 'injury_risk',
+    delay: 0,
+    // CONTRAINTUITIVO (piecewise): campo excelente O catastrófico → menos riesgo;
+    // campo mediocre (T_safe_low < fq ≤ T_danger_peak) → MÁS riesgo
+    transferFn: (prev: Readonly<WorldState>) => {
+      const fq = prev.field_quality;
+      if (fq >= T_safe_high)   return -K_safe_high;
+      if (fq > T_danger_peak)  return -(fq - T_danger_peak) * K_danger;
+      if (fq > T_safe_low)     return (T_danger_peak - fq) * K_danger;
+      return -K_safe_low;
     },
-    {
-      id: 'field_to_injury_risk',
-      from: 'field_quality',
-      to: 'injury_risk',
-      delay: 0,
-      // CONTRAINTUITIVO: campo muy bueno O muy malo → menos riesgo de lesión;
-      // campo mediocre (sin mantenimiento reciente) → mayor riesgo
-      transferFn: (from) => from > 75 ? -8 : from > 40 ? (50 - from) * 0.3 : -3,
+    counterintuitive: true,
+  },
+  {
+    id: 'C8',
+    fromNode: 'fan_momentum',  // primary driver
+    toNode: 'fan_attendance',
+    delay: 0,
+    // Multi-input: lee ticket_price_index vía ctx.prevState (no es fromNode)
+    transferFn: (prev: Readonly<WorldState>, _ctx: SimContext) => {
+      const momentum = prev.fan_momentum;
+      const price = prev.ticket_price_index; // secondary input
+      // ... formula completa en cascade-engine.md §C8
+      return (momentum - 50) * 0.6 - (price - 50) * 0.25;
     },
-    {
-      id: 'fan_momentum_to_attendance_sensitivity',
-      from: 'fan_momentum',
-      to: 'fan_attendance',
-      delay: 0,
-      // Fan momentum actúa como multiplicador de sensibilidad al precio
-      transferFn: (from, to) => (from - 50) * 0.2,
-    },
+    counterintuitive: true,
+  },
     // ... completo en cascade-engine.md GDD
   ],
 };
