@@ -1,11 +1,12 @@
 ---
 Story: CASCADE-ENGINE-002
-Status: Pending
+Status: Complete
+Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: ADR-003 Rules 1–10 + cascade-engine.md §Catálogo de Cadenas (catalog shape, not formulas)
 Governing ADR: ADR-003
 Control Manifest: 2026-05-19
-Test Evidence: tests/unit/cascade-engine/graph-topology.test.ts
+Test Evidence: packages/shared/tests/cascade-engine/graph-topology.test.ts
 ---
 
 # Story: CascadeEdgeDef Data Model + CASCADA_FC_GRAPH Skeleton
@@ -82,4 +83,13 @@ In `packages/shared/src/sim/cascade-graph.ts` (new file):
 - C8's `fromNode` is `fan_momentum` (per the GDD's "fan_momentum × ticket_price_index → fan_attendance" — the primary driver is fan_momentum, and ticket_price_index is read via `ctx.prevState`). Document this in inline comment.
 - C12's `fromNode` is `consecutive_losses` (per the GDD); training_intensity read via `ctx.prevState`.
 - C16 is split into C16a (→ team_fitness, no guard) and C16b (→ match_performance_index, hasMatchThisWeek guard) per the R4 fix in the GDD header.
-- Per control-manifest Forbidden: writing to `match_performance_index` from cascade edges is forbidden EXCEPT the documented exceptions C11 and C14 (C6 writes via match-sim's MatchOutcome path, not via an edge). Both C11 and C14 are allow-listed here.
+- Per control-manifest Forbidden: writing to `match_performance_index` from cascade edges is forbidden EXCEPT the documented exceptions C11, C14, and C16b. All three are allow-listed in cascade-graph.ts.
+
+## Completion Notes
+**Completed**: 2026-05-19
+**Criteria**: 9/9 passing
+**Deviations**:
+  - ADVISORY: ADR-003 interface sketch uses `from`/`to` and `(fromValue, toValue, ctx)` — implementation uses `fromNode`/`toNode` and `(prevState, ctx)`. Refinement specified explicitly in story scope; ADR-003 should be updated in a follow-up.
+  - ADVISORY: `Object.freeze` on CASCADA_FC_GRAPH is shallow (array only); edge objects are mutable at runtime via cast. Compile-time immutability is enforced by `as const` + `readonly`.
+**Test Evidence**: Logic — unit test at `packages/shared/tests/cascade-engine/graph-topology.test.ts` — 67/67 passing
+**Code Review**: Complete — APPROVED WITH SUGGESTIONS (2026-05-19)
