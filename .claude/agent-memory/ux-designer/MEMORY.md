@@ -1,2 +1,3 @@
 - [Pablo user profile](user-pablo-profile.md) — Senior dev + creative director; Spanish; prefers adversarial gap analysis with BLOCKING/WARNING severity; Pillar 4 + Pillar 1 constraints are central.
 - [Staff UX gaps (2026-05-18)](project-staff-ux-gaps.md) — 4 BLOCKERs + 3 WARNINGs in staff-system.md: tier unlock notification, inbox IA, vacante risk UI, mobile 375px layout. Blocks staff-inbox and staff-management epics.
+- [Dashboard UX spec (2026-05-19)](project-dashboard-ux-spec.md) — spec written to design/ux/dashboard.md; resolves OQ-HUD-01 + OQ-HUD-08 (Dashboard only); 6 OQs flagged including label vernacular (OQ-DASH-01) and GameState fields (OQ-DASH-03/04).
