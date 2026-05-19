@@ -1,9 +1,8 @@
 ---
 Story: MATCH-SIM-015
-Status: Blocked
+Status: Complete
 Last Updated: 2026-05-19
 Type: Integration
-Blocker: Requires `playthroughs` (player-management epic) + `fixtures` (league-system epic) tables for FK constraints. Neither epic has stories created yet.
 GDD Requirement: AC-MATCH-24 (idempotency: timeout + decision concurrent → exactly one resumption)
 Governing ADR: ADR-013 (UNIQUE INDEX excludes `failed`; Drizzle partial UNIQUE via sql template literal)
 Control Manifest: 2026-05-19

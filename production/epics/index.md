@@ -20,7 +20,7 @@ now Ready** as of 2026-05-19 — ADRs 014/015/016/017/018 Accepted.
 | 5 | [staff-system](staff-system/EPIC.md) | Core | staff-system | `design/gdd/staff-system.md` | Not yet created | ✅ **Ready** |
 | 6 | [player-management](player-management/EPIC.md) | Core | player-management | `design/gdd/player-management.md` | 11/11 done | ✅ **Complete** (2026-05-19) — DB migrated, 91 unit tests |
 | 7 | [event-system](event-system/EPIC.md) | Feature | event-system | `design/gdd/event-system.md` | Not yet created | ✅ **Ready** (ADR-015 Accepted 2026-05-19) |
-| 8 | [league-system](league-system/EPIC.md) | Feature | league-system | `design/gdd/league-system.md` | Not yet created | ✅ **Ready** |
+| 8 | [league-system](league-system/EPIC.md) | Feature | league-system | `design/gdd/league-system.md` | 7 stories | ✅ **Ready** — stories created 2026-05-19 |
 | 9 | [hud-ui](hud-ui/EPIC.md) | Presentation | hud-ui | `design/gdd/hud-ui.md` | Not yet created | ✅ **Ready** (ADR-017+018 Accepted 2026-05-19; UX specs + art-bible addendum recommended in parallel) |
 
 ## Coverage Map: Epic ↔ Governing ADRs

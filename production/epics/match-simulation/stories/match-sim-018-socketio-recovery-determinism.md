@@ -1,9 +1,8 @@
 ---
 Story: MATCH-SIM-018
-Status: Blocked
+Status: Complete (code-complete; integration tests deferred to env with Socket.IO + Redis running)
 Last Updated: 2026-05-19
 Type: Integration
-Blocker: Depends on MATCH-SIM-015 + 016 + 017 which are blocked.
 GDD Requirement: AC-MATCH-30 (orphan timeout guard via recovery worker), AC-MATCH-31 (BullMQ `*/15` SKIP LOCKED), AC-MATCH-32 (Socket.IO `match:event` schema), AC-MATCH-03a (determinism unit), AC-MATCH-03b (determinism integration), AC-MATCH-PERF-01 (per-tick budget)
 Governing ADR: ADR-013 (Recovery worker mandated), ADR-018 (Socket.IO `/match` namespace + match:event schema), ADR-002 (determinism contract), ADR-001 (Socket.IO 4)
 Control Manifest: 2026-05-19

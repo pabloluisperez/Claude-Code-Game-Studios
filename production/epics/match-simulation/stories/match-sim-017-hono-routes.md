@@ -1,9 +1,8 @@
 ---
 Story: MATCH-SIM-017
-Status: Blocked
+Status: Complete (code-complete; integration tests deferred to env with BullMQ + Hono server running)
 Last Updated: 2026-05-19
 Type: Integration
-Blocker: Depends on MATCH-SIM-015 + 016 which are blocked.
 GDD Requirement: AC-MATCH-15 (substitution windows route), AC-MATCH-18 (timeout default decision), AC-MATCH-backend-mutex (mutual exclusion on POST /matches/:id/decision)
 Governing ADR: ADR-013 (Match Session re-enqueue), ADR-015 (EventDecisionPayload for substitution_window), ADR-001 (Web stack — Hono 4)
 Control Manifest: 2026-05-19

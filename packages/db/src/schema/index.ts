@@ -3,3 +3,7 @@ export * from './sessions';
 export * from './clubs';
 export * from './playthroughs';
 export * from './players';
+export * from './leagues';
+export * from './fixtures';
+export * from './standings';
+export * from './match-sessions';

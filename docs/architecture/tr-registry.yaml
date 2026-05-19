@@ -118,3 +118,61 @@ requirements:
     created: "2026-05-19"
     revised: ""
     status: active
+
+  # ── league-system ─────────────────────────────────────────────────────────
+
+  - id: TR-LGS-001
+    system: league-system
+    gdd: design/gdd/league-system.md
+    requirement: "5 Drizzle tables (leagues, divisions, seasons, fixtures, standings) with FK constraints + composite indexes per ADR-011. UNIQUE (season_id, week, home_club_id) on fixtures."
+    created: "2026-05-19"
+    revised: ""
+    status: active
+
+  - id: TR-LGS-002
+    system: league-system
+    gdd: design/gdd/league-system.md
+    requirement: "generateRoundRobin: deterministic double round-robin — 20 clubs × 38 matchdays × 10 matches = 380 fixtures. Each pair × 2. No self-match. Same inputs → identical output."
+    created: "2026-05-19"
+    revised: ""
+    status: active
+
+  - id: TR-LGS-003
+    system: league-system
+    gdd: design/gdd/league-system.md
+    requirement: "Standings sort canonical order: points DESC → goal_diff DESC → goals_for DESC → head-to-head → derby +1 tiebreaker. Pure function."
+    created: "2026-05-19"
+    revised: ""
+    status: active
+
+  - id: TR-LGS-004
+    system: league-system
+    gdd: design/gdd/league-system.md
+    requirement: "applyMatchToStandings: post-match transactional update. Win=+3, draw=+1, loss=0. Both clubs updated atomically. Idempotent on fixture_id."
+    created: "2026-05-19"
+    revised: ""
+    status: active
+
+  - id: TR-LGS-005
+    system: league-system
+    gdd: design/gdd/league-system.md
+    requirement: "processSeasonEnd: top 3 D2→D1, bottom 3 D1→D2. New seasons + new round-robin fixtures. Player contracts on relegated clubs trigger renewal events. Atomic Drizzle tx."
+    created: "2026-05-19"
+    revised: ""
+    status: active
+
+  - id: TR-LGS-006
+    system: league-system
+    gdd: design/gdd/league-system.md
+    requirement: "Forfeit handler at fixture-load time: if squad_available_pct ≤ 63 (denom SQUAD_REGISTERED_SIZE=25), synthesize MatchOutcome 0-3 + mpi_delta=-30 + emit forfeit_recorded event."
+    created: "2026-05-19"
+    revised: ""
+    status: active
+
+  - id: TR-LGS-007
+    system: league-system
+    gdd: design/gdd/league-system.md
+    requirement: "Derby detection: isDerby = same city. Rival club identification: first same-city club (lexicographic tiebreak). Used by standings sort + event-system."
+    created: "2026-05-19"
+    revised: ""
+    status: active

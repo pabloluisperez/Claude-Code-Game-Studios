@@ -15,6 +15,20 @@
       "when": 1779212040488,
       "tag": "0001_numerous_namor",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779212948084,
+      "tag": "0002_outgoing_marvex",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1779212985378,
+      "tag": "0003_glamorous_sebastian_shaw",
+      "breakpoints": true
     }
   ]
 }

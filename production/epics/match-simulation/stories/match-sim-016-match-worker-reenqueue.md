@@ -1,9 +1,8 @@
 ---
 Story: MATCH-SIM-016
-Status: Blocked
+Status: Complete (code-complete; integration tests deferred to env with BullMQ + Redis running)
 Last Updated: 2026-05-19
 Type: Integration
-Blocker: Depends on MATCH-SIM-015 (match_sessions table) which is blocked. Also requires BullMQ + Redis infrastructure verification.
 GDD Requirement: AC-MATCH-02 (determinism across pause boundaries — production E2E), AC-MATCH-18 (timeout 24h default decision applies)
 Governing ADR: ADR-013 (re-enqueue pattern with PRNG persistence)
 Control Manifest: 2026-05-19

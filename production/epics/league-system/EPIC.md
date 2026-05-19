@@ -75,10 +75,16 @@ Determinism: `generateRoundRobin` with same input order → same fixtures.
   → standings), economy (TV rights tier scales with division), event-system
   (derbi announcement, season_start, season_end events), hud-ui (league table)
 
-## Next Step
+## Stories
 
-Run `/create-stories league-system` to break this epic into implementable
-stories. The 8 fixture-gen tests in the slice serve as the determinism
-baseline; production stories should bring tests/integration to cover
-`applyMatchToStandings` + `processSeasonEnd` (which the slice didn't exercise
-fully).
+| # | Story | Type | Status | ADR |
+|---|---|---|---|---|
+| 001 | 5 Drizzle tables (leagues/divisions/seasons/fixtures/standings) | Integration | Ready | ADR-011 |
+| 002 | generateRoundRobin (pure, deterministic) | Logic | Ready | ADR-011 |
+| 003 | Standings sort + Derby +1 tiebreaker | Logic | Ready | ADR-011 |
+| 004 | applyMatchToStandings (post-match) | Integration | Ready | ADR-011 |
+| 005 | processSeasonEnd (3 up / 3 down) | Integration | Ready | ADR-011 |
+| 006 | Forfeit handler integration | Integration | Ready | ADR-011 |
+| 007 | Derby detection + rival club | Logic | Ready | ADR-011 |
+
+**Story 001 unblocks MATCH-SIM-015** (match_sessions table needs fixtures FK).
