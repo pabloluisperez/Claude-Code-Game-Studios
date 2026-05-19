@@ -9,87 +9,87 @@
 #   done           ↔  Complete
 #   blocked        ↔  Blocked
 
-sprint: 3
-goal: "Complete the cascade engine epic — all 22 chains wired + threshold detection"
-start: "2026-06-03"
-end: "2026-06-16"
+sprint: 4
+goal: "Match Simulation — Core Formulas (F1–F7)"
+start: "2026-06-17"
+end: "2026-06-30"
 generated: "2026-05-19"
 updated: "2026-05-19"
 
 stories:
-  - id: "003-01"
-    name: "CASCADE-009: Chains C5a + C5b + C16a + C16b + C17"
-    file: "production/epics/cascade-engine/stories/cascade-engine-009-chain-c5-c16-c17.md"
-    priority: must-have
-    status: done
-    owner: ""
-    estimate_days: 1.5
-    blocker: ""
-    completed: "2026-05-19"
-
-  - id: "003-02"
-    name: "CASCADE-010: Chains C6 + C7 + C11 + C14"
-    file: "production/epics/cascade-engine/stories/cascade-engine-010-chain-c6-c7-c11-c14.md"
-    priority: must-have
-    status: done
-    owner: ""
-    estimate_days: 2.0
-    blocker: ""
-    completed: "2026-05-19"
-
-  - id: "003-03"
-    name: "CASCADE-011: Chains C8 + C15"
-    file: "production/epics/cascade-engine/stories/cascade-engine-011-chain-c8-c15.md"
-    priority: must-have
-    status: done
-    owner: ""
-    estimate_days: 2.0
-    blocker: ""
-    completed: "2026-05-19"
-
-  - id: "003-04"
-    name: "CASCADE-012: Chains C9a + C9b"
-    file: "production/epics/cascade-engine/stories/cascade-engine-012-chain-c9a-c9b.md"
-    priority: must-have
-    status: done
-    owner: ""
-    estimate_days: 1.5
-    blocker: ""
-    completed: "2026-05-19"
-
-  - id: "003-05"
-    name: "CASCADE-013: Chains C12 + C18"
-    file: "production/epics/cascade-engine/stories/cascade-engine-013-chain-c12-c18.md"
-    priority: must-have
-    status: done
-    owner: ""
-    estimate_days: 2.0
-    blocker: ""
-    completed: "2026-05-19"
-
-  - id: "003-06"
-    name: "CASCADE-014: Threshold Detection"
-    file: "production/epics/cascade-engine/stories/cascade-engine-014-threshold-detection.md"
-    priority: should-have
-    status: done
-    owner: ""
-    estimate_days: 2.0
-    blocker: ""
-    completed: "2026-05-19"
-
-  - id: "003-07"
-    name: "MATCH-SIM-003: F1 + F2 effective stats"
+  - id: "004-01"
+    name: "MATCH-SIM-003: F1 effective_fitness + F2 effective_rating"
     file: "production/epics/match-simulation/stories/match-sim-003-f1-f2-effective-stats.md"
-    priority: nice-to-have
-    status: backlog
+    priority: must-have
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-19"
 
-  - id: "003-08"
+  - id: "004-02"
     name: "MATCH-SIM-004: F3 + F4 momentum"
     file: "production/epics/match-simulation/stories/match-sim-004-f3-f4-momentum.md"
+    priority: must-have
+    status: done
+    owner: ""
+    estimate_days: 1.0
+    blocker: ""
+    completed: "2026-05-19"
+
+  - id: "004-03"
+    name: "MATCH-SIM-005: F5 P_attack"
+    file: "production/epics/match-simulation/stories/match-sim-005-f5-p-attack.md"
+    priority: must-have
+    status: done
+    owner: ""
+    estimate_days: 1.0
+    blocker: ""
+    completed: "2026-05-19"
+
+  - id: "004-04"
+    name: "MATCH-SIM-006: F6 P_shot"
+    file: "production/epics/match-simulation/stories/match-sim-006-f6-p-shot.md"
+    priority: must-have
+    status: done
+    owner: ""
+    estimate_days: 1.0
+    blocker: ""
+    completed: "2026-05-19"
+
+  - id: "004-05"
+    name: "MATCH-SIM-007: F7 P_goal"
+    file: "production/epics/match-simulation/stories/match-sim-007-f7-p-goal.md"
+    priority: must-have
+    status: done
+    owner: ""
+    estimate_days: 1.0
+    blocker: ""
+    completed: "2026-05-19"
+
+  - id: "004-06"
+    name: "MATCH-SIM-008: Card detection"
+    file: "production/epics/match-simulation/stories/match-sim-008-card-detection.md"
+    priority: should-have
+    status: done
+    owner: ""
+    estimate_days: 1.0
+    blocker: ""
+    completed: "2026-05-19"
+
+  - id: "004-07"
+    name: "MATCH-SIM-009: Injury detection"
+    file: "production/epics/match-simulation/stories/match-sim-009-injury-detection.md"
+    priority: should-have
+    status: done
+    owner: ""
+    estimate_days: 1.0
+    blocker: ""
+    completed: "2026-05-19"
+
+  - id: "004-08"
+    name: "MATCH-SIM-010: VAR resolution"
+    file: "production/epics/match-simulation/stories/match-sim-010-var-resolution.md"
     priority: nice-to-have
     status: backlog
     owner: ""

@@ -1,6 +1,7 @@
 ---
 Story: MATCH-SIM-006
-Status: Pending
+Status: Complete
+Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: AC-MATCH-12 (P_shot clamped to [0.10, 0.70])
 Governing ADR: ADR-007 (P_shot formula with defender-team formation_mod + hold_shape_mod), ADR-002 (NaN guards stem from determinism discipline)

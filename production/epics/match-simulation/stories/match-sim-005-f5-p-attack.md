@@ -1,6 +1,7 @@
 ---
 Story: MATCH-SIM-005
-Status: Pending
+Status: Complete
+Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: AC-MATCH-11 (mean goals in [2.0, 3.0] over 10,000 sims), AC-MATCH-26 (COUNTER: no effect when momentum ≤ 65, no effect for home), AC-MATCH-31 (formation_attack_mod affects P_attack ratio, not P_goal)
 Governing ADR: ADR-007 (per-team formation+instruction modifiers), ADR-002 (single rng() roll for attack resolution)

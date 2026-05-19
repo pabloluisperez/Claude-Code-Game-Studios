@@ -1,6 +1,7 @@
 ---
 Story: MATCH-SIM-004
-Status: Pending
+Status: Complete
+Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: AC-MATCH-09 (F3 initial momentum in [45,55]), AC-MATCH-10 (F4 momentum clamped [20,80])
 Governing ADR: ADR-007 (FootballPlugin formulas), ADR-002 (deterministic rng())

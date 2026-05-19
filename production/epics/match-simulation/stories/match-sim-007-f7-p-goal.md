@@ -1,6 +1,7 @@
 ---
 Story: MATCH-SIM-007
-Status: Pending
+Status: Complete
+Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: AC-MATCH-13 (P_goal clamped [0.05, 0.45]), AC-MATCH-17 (emergency DEF-portero produces P_goal ≈ 0.417, normal GK ≈ 0.318)
 Governing ADR: ADR-007 (P_goal formula with NaN guard), ADR-002 (no Math.random)

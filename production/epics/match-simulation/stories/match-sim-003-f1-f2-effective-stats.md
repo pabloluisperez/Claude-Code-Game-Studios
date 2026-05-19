@@ -1,6 +1,7 @@
 ---
 Story: MATCH-SIM-003
-Status: Pending
+Status: Complete
+Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: AC-MATCH-07 (F1 effective_fitness decay + clamp to 0), AC-MATCH-08 (F2 effective_rating composite)
 Governing ADR: ADR-007 (FootballPlugin formulas), ADR-002 (no Math.random — formulas are pure)

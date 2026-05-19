@@ -106,6 +106,13 @@ export interface MatchEvent {
   readonly player_id?: string;
   /** For injury events: 'injury_risk' (AC-MATCH-28). For all others in MVP: null allowed. */
   readonly causal_node: string | null;
+  /**
+   * Optional discriminator for sub-types of an event. Examples:
+   *   red_card: 'direct' | 'second_yellow'
+   *   injury:   'tackle' | 'fatigue'
+   * Stays absent for events that have no sub-type.
+   */
+  readonly reason?: string;
 }
 
 // ── Match input ───────────────────────────────────────────────────────────────
@@ -123,6 +130,12 @@ export interface PreMatchSnapshot {
   readonly fan_attendance: number;
   readonly staff_morale: number;
   readonly player_happiness: number;
+  /**
+   * F9 / P_injury: the player's-club injury_risk. Match-sim uses this for
+   * own-team injury rolls. Rival injuries use RIVAL_INJURY_RISK_CONST=50.
+   * Added 2026-05-19 (MATCH-SIM-009) — flagged for GDD R7 doc fix.
+   */
+  readonly injury_risk: number;
 }
 
 /** Full input contract for the match simulation engine. */

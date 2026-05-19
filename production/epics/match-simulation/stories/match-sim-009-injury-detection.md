@@ -1,6 +1,7 @@
 ---
 Story: MATCH-SIM-009
-Status: Pending
+Status: Complete
+Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: AC-MATCH-23 (field player injured, empty bench → playing_with_ten), AC-MATCH-28 (causal_node = 'injury_risk' on all injury events)
 Governing ADR: ADR-007 (P_injury formula; rival injury_risk constant = 50), ADR-002 (rng() discipline)

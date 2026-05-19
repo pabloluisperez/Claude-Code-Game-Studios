@@ -1,6 +1,7 @@
 ---
 Story: MATCH-SIM-008
-Status: Pending
+Status: Complete
+Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: AC-MATCH-22 (second yellow → automatic red)
 Governing ADR: ADR-007 (card formulas; tackle-check on tick % 15 = 0 + ataque rival), ADR-002 (rng() discipline)
