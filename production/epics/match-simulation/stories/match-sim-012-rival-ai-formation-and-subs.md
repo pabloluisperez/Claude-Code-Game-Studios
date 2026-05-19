@@ -1,6 +1,7 @@
 ---
 Story: MATCH-SIM-012
-Status: Pending
+Status: Complete
+Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: AC-MATCH-27 (rival AI: zero substitutions when effective_fitness ≥ 40), AC-MATCH-32 (rival AI: formation selection by strength_ratio)
 Governing ADR: ADR-007 (rival AI deterministic rules), ADR-002 (no rng in rival decisions — fully deterministic from inputs)

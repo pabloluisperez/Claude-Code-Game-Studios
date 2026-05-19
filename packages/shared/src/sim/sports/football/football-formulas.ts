@@ -35,12 +35,24 @@ import {
   F4_NOISE_RANGE,
   F4_W_PASSING,
   F4_W_VISION,
+  F8_AWAY_DRAW_BONUS,
+  F8_GOAL_DIFF_FACTOR,
+  F8_HOME_DRAW_PENALTY,
+  F8_WIN_BASE,
+  F9_HIGH_INTENSITY_BONUS,
+  F9_HIGH_INTENSITY_THRESHOLD,
+  F9_INJURY_WEIGHT,
+  F10_MIN_MINUTES,
   FORMATION_ATTACK_MOD,
   FORMATION_DEFENSE_MOD,
   FORMATION_MOMENTUM_MOD,
   HOLD_SHAPE_MOD,
+  INJURY_RISK_DELTA_MAX,
+  INJURY_RISK_DELTA_MIN,
   MOMENTUM_MAX,
   MOMENTUM_MIN,
+  MPI_DELTA_MAX,
+  MPI_DELTA_MIN,
   P_GOAL_CLAMP_MAX,
   P_GOAL_CLAMP_MIN,
   P_GOAL_FALLBACK_NAN,
@@ -517,4 +529,103 @@ export function shouldRunCardCheck(
   attackHappenedThisTick: boolean,
 ): boolean {
   return attackHappenedThisTick && CARD_CHECK_TICKS.includes(tick);
+}
+
+// ── F8: mpi_delta (perspective-aware) ─────────────────────────────────────────
+
+/**
+ * F8 — post-match `match_performance_index` delta from the player's perspective.
+ *
+ * Branches (R1 + R2 fixes from GDD §Post-Match):
+ *   - Player won:  +F8_WIN_BASE + F8_GOAL_DIFF_FACTOR × goal_diff
+ *   - Draw (home):  F8_HOME_DRAW_PENALTY (−3)
+ *   - Draw (away):  F8_AWAY_DRAW_BONUS  (+1)
+ *   - Player lost: −F8_WIN_BASE − F8_GOAL_DIFF_FACTOR × goal_diff
+ *
+ * Final value clamped to [MPI_DELTA_MIN, MPI_DELTA_MAX] = [−30, +30].
+ *
+ * The perspective is critical: AC-MATCH-14 R1 fix — an AWAY player winning
+ * MUST yield a POSITIVE delta (pre-R1 returned negative).
+ */
+export function computeMpiDelta(args: {
+  readonly homeScore: number;
+  readonly awayScore: number;
+  readonly playerClubSide: 'home' | 'away';
+}): number {
+  const { homeScore, awayScore, playerClubSide } = args;
+  const goalDiff = Math.abs(homeScore - awayScore);
+  let delta: number;
+
+  if (homeScore === awayScore) {
+    delta = playerClubSide === 'home' ? F8_HOME_DRAW_PENALTY : F8_AWAY_DRAW_BONUS;
+  } else {
+    const playerWon =
+      (playerClubSide === 'home' && homeScore > awayScore) ||
+      (playerClubSide === 'away' && awayScore > homeScore);
+    const magnitude = F8_WIN_BASE + F8_GOAL_DIFF_FACTOR * goalDiff;
+    delta = playerWon ? magnitude : -magnitude;
+  }
+
+  if (delta < MPI_DELTA_MIN) return MPI_DELTA_MIN;
+  if (delta > MPI_DELTA_MAX) return MPI_DELTA_MAX;
+  return delta;
+}
+
+// ── F9: injury_risk_delta ─────────────────────────────────────────────────────
+
+/**
+ * F9 — post-match injury_risk delta. Counts injury events + a high-intensity
+ * bonus if there were more than F9_HIGH_INTENSITY_THRESHOLD yellow cards.
+ *
+ *   delta = injury_count × F9_INJURY_WEIGHT
+ *         + (yellow_count > F9_HIGH_INTENSITY_THRESHOLD ? F9_HIGH_INTENSITY_BONUS : 0)
+ *
+ * Clamped to [0, 15] per AC-MATCH-15.
+ *
+ * Input is the FINAL `MatchOutcome.events` array (substitution_window already
+ * filtered out per AC-MATCH-30).
+ */
+export function computeInjuryRiskDelta(
+  events: readonly { readonly type: string }[],
+): number {
+  let injuries = 0;
+  let yellows = 0;
+  for (const e of events) {
+    if (e.type === 'injury') injuries += 1;
+    else if (e.type === 'yellow_card') yellows += 1;
+  }
+  let delta =
+    injuries * F9_INJURY_WEIGHT +
+    (yellows > F9_HIGH_INTENSITY_THRESHOLD ? F9_HIGH_INTENSITY_BONUS : 0);
+  if (delta < INJURY_RISK_DELTA_MIN) return INJURY_RISK_DELTA_MIN;
+  if (delta > INJURY_RISK_DELTA_MAX) return INJURY_RISK_DELTA_MAX;
+  return delta;
+}
+
+// ── F10: player ratings ───────────────────────────────────────────────────────
+
+/**
+ * F10 — `Record<player_id, effective_rating(player, t=90)>` for the player's
+ * own-team players with ≥ F10_MIN_MINUTES minutes played.
+ *
+ * Per MVP convention (GDD ambiguity flagged in OQ-MATCH-F10-01): uses t=90
+ * verbatim, regardless of when the player was substituted off. Future v1.1+
+ * may refine to t=minutesPlayed.
+ *
+ * Players whose `id` is missing from `minutesPlayed` (defensive) default to 0
+ * minutes and are excluded.
+ */
+export function computePlayerRatings(args: {
+  readonly playerLineup: readonly { readonly player: Readonly<PlayerStats> }[];
+  readonly minutesPlayed: Readonly<Record<string, number>>;
+  readonly t?: number;
+}): Record<string, number> {
+  const t = args.t ?? 90;
+  const out: Record<string, number> = {};
+  for (const slot of args.playerLineup) {
+    const minutes = args.minutesPlayed[slot.player.id] ?? 0;
+    if (minutes < F10_MIN_MINUTES) continue;
+    out[slot.player.id] = effectiveRating(slot.player, t);
+  }
+  return out;
 }

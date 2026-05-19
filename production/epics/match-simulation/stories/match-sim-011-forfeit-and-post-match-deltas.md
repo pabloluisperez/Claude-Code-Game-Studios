@@ -1,6 +1,7 @@
 ---
 Story: MATCH-SIM-011
-Status: Pending
+Status: Complete
+Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: AC-MATCH-14 (F8 mpi_delta perspective-aware), AC-MATCH-15 (F9 injury_risk_delta with clamp), AC-MATCH-16 (forfeit when squad_available_pct ≤ 63)
 Governing ADR: ADR-007 (F8/F9 formulas, exactly 2 worldStateDeltas), ADR-002 (no rng — these are deterministic post-match aggregations)

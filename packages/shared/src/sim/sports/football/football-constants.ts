@@ -138,3 +138,48 @@ export const RIVAL_INJURY_RISK_CONST = 50;
 export const INJURY_CHECK_TICKS_FIXED: readonly number[] = Object.freeze([45, 90]);
 /** Default minor-vs-major severity split (50/50 — OQ-MATCH-INJ-01 pending). */
 export const P_INJURY_MAJOR_THRESHOLD = 0.5;
+
+// ── VAR resolution ────────────────────────────────────────────────────────────
+
+/** VAR — probability the goal is reviewed at all. */
+export const P_VAR_REVIEW_GOAL = 0.25;
+/** VAR — probability a direct red is reviewed. */
+export const P_VAR_REVIEW_RED = 0.3;
+/** VAR — penalty review probability (v1.1+; unused in MVP). */
+export const P_VAR_REVIEW_PENALTY = 0.4;
+/** VAR — probability the call is overturned IF a review fires. */
+export const P_OVERTURN = 0.35;
+/** VAR — split between 'offside' and 'foul' for an overturned goal (50/50). */
+export const P_OVERTURN_REASON_OFFSIDE = 0.5;
+
+// ── Post-match deltas (F8, F9) + forfeit ──────────────────────────────────────
+
+/** F8 — clamp range for `mpi_delta` per AC-MATCH-14. */
+export const MPI_DELTA_MIN = -30;
+export const MPI_DELTA_MAX = 30;
+
+/** F8 — match-result base components (perspective-aware). */
+export const F8_WIN_BASE = 10;
+export const F8_GOAL_DIFF_FACTOR = 5;
+export const F8_HOME_DRAW_PENALTY = -3;
+export const F8_AWAY_DRAW_BONUS = 1;
+
+/** F9 — clamp range for `injury_risk_delta` per AC-MATCH-15. */
+export const INJURY_RISK_DELTA_MIN = 0;
+export const INJURY_RISK_DELTA_MAX = 15;
+
+/** F9 — injury_risk_delta weights. */
+export const F9_INJURY_WEIGHT = 5;
+export const F9_HIGH_INTENSITY_THRESHOLD = 3;
+export const F9_HIGH_INTENSITY_BONUS = 3;
+
+/** F10 — minimum minutes played to appear in playerRatings. */
+export const F10_MIN_MINUTES = 30;
+
+/** Forfeit — strict-less-than threshold on preMatchSnapshot.squad_available_pct. */
+export const FORFEIT_SQUAD_THRESHOLD = 63;
+/** Forfeit — synthetic score for the rival when the player's club forfeits. */
+export const FORFEIT_LOSER_SCORE = 0;
+export const FORFEIT_WINNER_SCORE = 3;
+/** Forfeit — mpi_delta applied to the player's club. */
+export const FORFEIT_MPI_DELTA = -30;

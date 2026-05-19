@@ -90,7 +90,8 @@ export type MatchEventType =
   | 'substitution'
   | 'substitution_window'
   | 'playing_with_ten'
-  | 'var_review';
+  | 'var_review'
+  | 'forfeit';
 
 /**
  * A single match event.

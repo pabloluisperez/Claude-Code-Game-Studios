@@ -1,6 +1,7 @@
 ---
 Story: MATCH-SIM-013
-Status: Pending
+Status: Complete
+Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: AC-MATCH-01 (determinism default), AC-MATCH-03a (pause at tick 45 substitution_window), AC-MATCH-11 (mean goals 2.0-3.0 over 10,000 sims), AC-MATCH-19 (≤50ms per sim), AC-MATCH-21 (substitution_window at 45/60/75), AC-MATCH-30 (substitution_window excluded from MatchOutcome.events)
 Governing ADR: ADR-007 (simulateMatch pure function — ONE-SHOT path), ADR-002 (one source of randomness)

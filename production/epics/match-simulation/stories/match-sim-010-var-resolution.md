@@ -1,6 +1,7 @@
 ---
 Story: MATCH-SIM-010
-Status: Pending
+Status: Complete
+Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: AC-MATCH-06 (VAR does not pause the manager), AC-MATCH-25 (VAR-overturned goal affects mpi_delta post-VAR)
 Governing ADR: ADR-007 (VAR inline; goals 25%, penalties 40% [v1.1+], reds 30%; P_overturn 35%), ADR-002 (rng() discipline)
