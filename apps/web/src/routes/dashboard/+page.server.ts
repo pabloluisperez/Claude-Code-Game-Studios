@@ -1,6 +1,23 @@
-import type { PageServerLoad } from './$types';
-import { redirect } from '@sveltejs/kit';
-import { db, worldSnapshots, staffMessages, staff, eq, desc } from '@smt/db';
+import type { Actions, PageServerLoad } from './$types';
+import { redirect, fail } from '@sveltejs/kit';
+import {
+  db,
+  worldSnapshots,
+  staffMessages,
+  staff,
+  playthroughs,
+  eq,
+  desc,
+} from '@smt/db';
+import {
+  CASCADA_FC_GRAPH,
+  createSeededRng,
+  defaultWorldState,
+  runTick,
+  type DelayedEffectsBuffer,
+  type WorldState,
+} from '@smt/shared';
+import { popEffectsDueAt } from '@smt/shared/sim/delayed-effects';
 
 export const load: PageServerLoad = async ({ parent }) => {
   const { user, activePlaythrough } = await parent();
@@ -39,4 +56,75 @@ export const load: PageServerLoad = async ({ parent }) => {
     week: latestSnapshot?.week ?? activePlaythrough.currentWeek,
     messages: recentMessages,
   };
+};
+
+export const actions: Actions = {
+  /**
+   * Advance one in-game week: run the cascade tick using the latest
+   * worldSnapshot as prevState, persist the new snapshot, bump
+   * playthroughs.currentWeek.
+   *
+   * MVP scope: no decisions, no match resolution, no staff message
+   * generation, no event scheduling. Those compose later — for now the
+   * button proves the simulation loop is wired end-to-end.
+   */
+  advance: async ({ locals }) => {
+    if (!locals.user) throw redirect(303, '/login');
+
+    const [active] = await db
+      .select()
+      .from(playthroughs)
+      .where(eq(playthroughs.userId, locals.user.id))
+      .orderBy(desc(playthroughs.updatedAt))
+      .limit(1);
+
+    if (!active) return fail(400, { error: 'No hay carrera activa.' });
+
+    const [latest] = await db
+      .select()
+      .from(worldSnapshots)
+      .where(eq(worldSnapshots.playthroughId, active.id))
+      .orderBy(desc(worldSnapshots.week))
+      .limit(1);
+
+    const prevState: Readonly<WorldState> =
+      (latest?.worldState as WorldState) ?? defaultWorldState();
+    const prevBuffer: DelayedEffectsBuffer = (latest?.delayedEffectsBuffer ??
+      []) as DelayedEffectsBuffer;
+
+    const nextWeek = (latest?.week ?? -1) + 1;
+
+    const result = runTick(
+      {
+        rng: createSeededRng(`${active.id}:${nextWeek}`),
+        currentWeek: nextWeek,
+        hasMatchThisWeek: false,
+        prevState,
+      },
+      CASCADA_FC_GRAPH,
+      prevState,
+      [],
+      prevBuffer,
+    );
+
+    // Combine remaining (not-yet-due) effects with newly produced ones to
+    // form the next buffer.
+    const { remaining } = popEffectsDueAt(prevBuffer, nextWeek);
+    const nextBuffer: DelayedEffectsBuffer = [...remaining, ...result.newDelayedEffects];
+
+    await db.transaction(async (tx) => {
+      await tx.insert(worldSnapshots).values({
+        playthroughId: active.id,
+        week: nextWeek,
+        worldState: result.nextState,
+        delayedEffectsBuffer: nextBuffer,
+      });
+      await tx
+        .update(playthroughs)
+        .set({ currentWeek: nextWeek, updatedAt: new Date() })
+        .where(eq(playthroughs.id, active.id));
+    });
+
+    return { ok: true };
+  },
 };

@@ -16,6 +16,15 @@ export {
   NODE_IDS,
 } from './sim/cascade-types.js';
 
+// Seeded PRNG helper — wraps seedrandom so consumers (apps/web onboarding,
+// future tooling) don't need to add seedrandom as a direct dependency.
+export { createSeededRng } from './sim/rng.js';
+
+// Cascade-engine runtime — runTick + the canonical Cascada FC edge definitions.
+export { runTick } from './sim/cascade-engine.js';
+export { CASCADA_FC_GRAPH, type CascadeEdgeDef } from './sim/cascade-graph.js';
+export type { DelayedEffectsBuffer } from './sim/delayed-effects.js';
+
 // Player management exports (Story PM-003..009)
 export {
   computeSkill,

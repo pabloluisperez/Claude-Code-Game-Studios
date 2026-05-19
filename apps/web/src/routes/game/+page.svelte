@@ -1,58 +1,117 @@
+<!--
+  Onboarding hub — list existing careers + create new career form.
+
+  Story: Onboarding (HUD-UI follow-up)
+  Control Manifest: 2026-05-19
+-->
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
-  import { Application, Graphics } from 'pixi.js';
+  import type { PageData, ActionData } from './$types';
+  import { enhance } from '$app/forms';
 
-  // Use $state.raw so PixiJS instance is not proxied by Svelte reactivity
-  let app = $state.raw<Application | null>(null);
-  let canvas: HTMLCanvasElement | undefined = $state(undefined);
+  let { data, form }: { data: PageData; form: ActionData } = $props();
 
-  onMount(async () => {
-    if (!canvas) return;
-
-    const pixiApp = new Application();
-    await pixiApp.init({
-      canvas,
-      width: canvas.clientWidth,
-      height: canvas.clientHeight,
-      backgroundColor: 0x1a1a2e,
-      resolution: window.devicePixelRatio ?? 1,
-      autoDensity: true
-    });
-
-    // Placeholder isometric ground tile
-    const ground = new Graphics();
-    ground.poly([
-      pixiApp.screen.width / 2, 80,
-      pixiApp.screen.width / 2 + 60, 110,
-      pixiApp.screen.width / 2, 140,
-      pixiApp.screen.width / 2 - 60, 110
-    ]);
-    ground.fill({ color: 0x4a7c59 });
-    pixiApp.stage.addChild(ground);
-
-    app = pixiApp;
-  });
-
-  onDestroy(() => {
-    app?.destroy(true);
-    app = null;
-  });
+  let submitting = $state(false);
 </script>
 
 <svelte:head>
-  <title>Stadium — Cascada FC</title>
+  <title>Mis carreras — Cascada FC</title>
 </svelte:head>
 
-<div class="flex h-[calc(100vh-64px)] flex-col">
-  <div class="flex items-center justify-between border-b border-base-300 px-4 py-2">
-    <h1 class="text-lg font-bold">Your Club</h1>
-    <span class="badge badge-neutral">Division 5 — Pre-Season</span>
-  </div>
+<div class="space-y-6 max-w-3xl mx-auto">
+  <header>
+    <h1 class="text-2xl font-bold">Mis carreras</h1>
+    <p class="opacity-60">Selecciona una partida o comienza una nueva.</p>
+  </header>
 
-  <div class="relative flex-1">
-    <canvas bind:this={canvas} class="h-full w-full" />
-    <div class="absolute bottom-4 left-4 rounded bg-base-200/80 p-2 text-xs backdrop-blur">
-      Isometric world — coming soon
+  {#if data.careers.length > 0}
+    <section class="space-y-3">
+      <h2 class="text-lg font-semibold">Carreras activas</h2>
+      {#each data.careers as c}
+        <a
+          href="/dashboard"
+          class="card bg-base-100 shadow hover:bg-base-200 transition-colors block"
+        >
+          <div class="card-body flex-row items-center justify-between">
+            <div>
+              <div class="font-bold text-lg">{c.clubName}</div>
+              <div class="text-sm opacity-60">{c.city}</div>
+            </div>
+            <div class="text-right">
+              <div class="text-xs opacity-50 uppercase">Semana</div>
+              <div class="font-mono text-2xl">{c.currentWeek}</div>
+            </div>
+          </div>
+        </a>
+      {/each}
+    </section>
+  {/if}
+
+  <section class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h2 class="card-title">
+        {data.careers.length === 0 ? 'Crear mi primera carrera' : 'Nueva carrera'}
+      </h2>
+      <p class="opacity-70 text-sm">
+        Te asignamos un club modesto en Quinta División. Generamos una plantilla
+        de 25 jugadores y un staff inicial. Tu objetivo: ascender, crecer la
+        afición y construir un legado.
+      </p>
+
+      {#if form?.error}
+        <div class="alert alert-error mt-3">
+          <span>{form.error}</span>
+        </div>
+      {/if}
+
+      <form
+        method="POST"
+        action="?/create"
+        class="space-y-3 mt-3"
+        use:enhance={() => {
+          submitting = true;
+          return async ({ update }) => {
+            await update();
+            submitting = false;
+          };
+        }}
+      >
+        <label class="form-control">
+          <span class="label-text">Nombre del club</span>
+          <input
+            class="input input-bordered"
+            type="text"
+            name="clubName"
+            placeholder="CD Pueblo, Real Cascada, ..."
+            required
+            minlength="2"
+            maxlength="50"
+            disabled={submitting}
+          />
+        </label>
+
+        <label class="form-control">
+          <span class="label-text">Ciudad</span>
+          <input
+            class="input input-bordered"
+            type="text"
+            name="city"
+            placeholder="Cascada"
+            required
+            minlength="2"
+            maxlength="50"
+            disabled={submitting}
+          />
+        </label>
+
+        <button class="btn btn-primary btn-block" type="submit" disabled={submitting}>
+          {#if submitting}
+            <span class="loading loading-spinner loading-sm"></span>
+            Creando…
+          {:else}
+            Comenzar carrera
+          {/if}
+        </button>
+      </form>
     </div>
-  </div>
+  </section>
 </div>
