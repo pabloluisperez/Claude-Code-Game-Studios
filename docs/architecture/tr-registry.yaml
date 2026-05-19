@@ -25,32 +25,96 @@
 # STATUS VALUES: active | deprecated | superseded-by: TR-[system]-NNN
 
 version: 1
-last_updated: ""
+last_updated: "2026-05-19"
 
-requirements: []
+requirements:
 
-# --- EXAMPLE ENTRIES (remove when first real entries are added) ---
-#
-# - id: TR-combat-001
-#   system: combat
-#   gdd: design/gdd/combat-system.md
-#   requirement: "Player takes damage from enemies based on attack power minus defence"
-#   created: 2026-03-10
-#   revised: ""
-#   status: active
-#
-# - id: TR-combat-002
-#   system: combat
-#   gdd: design/gdd/combat-system.md
-#   requirement: "Combo window timing is 0.4 seconds between hits"
-#   created: 2026-03-10
-#   revised: "2026-04-01"
-#   status: active
-#
-# - id: TR-combat-003
-#   system: combat
-#   gdd: design/gdd/combat-system.md
-#   requirement: "Old damage formula using raw stats"
-#   created: 2026-03-10
-#   revised: ""
-#   status: superseded-by: TR-combat-001
+  # ── player-management ─────────────────────────────────────────────────────
+
+  - id: TR-PM-001
+    system: player-management
+    gdd: design/gdd/player-management.md
+    requirement: "players table (normalised, per-row) with composite index (playthroughId, clubId); PlayersRepo with findByClub, createPlayers, updatePlayer, getSquadAvailabilityCount"
+    created: "2026-05-19"
+    revised: ""
+    status: active
+
+  - id: TR-PM-002
+    system: player-management
+    gdd: design/gdd/player-management.md
+    requirement: "F1 computeSkill: position-weighted mean of position stats — GK reflexes×0.40+handling×0.35+kicking×0.25; DEF tackling×0.40+strength×0.35+positioning×0.25; MID passing×0.35+vision×0.35+workRate×0.30; FWD finishing×0.45+speed×0.30+dribbling×0.25. Output clamped [20,95]."
+    created: "2026-05-19"
+    revised: ""
+    status: active
+
+  - id: TR-PM-003
+    system: player-management
+    gdd: design/gdd/player-management.md
+    requirement: "generateRoster: deterministic generation of 40 players per club (4 GK, 12 DEF, 12 MID, 12 FWD) from ctx.rng() seed. Age distribution 30% young/50% peak/20% veteran. Same seed → identical roster."
+    created: "2026-05-19"
+    revised: ""
+    status: active
+
+  - id: TR-PM-004
+    system: player-management
+    gdd: design/gdd/player-management.md
+    requirement: "F4 form rolling: exponentially-weighted average of last 5 match_ratings (weights [1.0, 0.85, 0.7, 0.55, 0.4] most-recent-first), clamped [30,90]. F5 form decay: -2/week after 5-week grace period without playing, floor at MIN_FORM=30."
+    created: "2026-05-19"
+    revised: ""
+    status: active
+
+  - id: TR-PM-005
+    system: player-management
+    gdd: design/gdd/player-management.md
+    requirement: "Player status transitions: available→injured (injury event, recovery=rng(1-6) weeks), injured→available (recovery_weeks=0), available→suspended (red card, 1 week). F7 fitness: post-match decay = FITNESS_DECAY_MAX×(min/90)×(1-stamina/100); weekly recovery = +8 when no match. Both clamped [0,100]."
+    created: "2026-05-19"
+    revised: ""
+    status: active
+
+  - id: TR-PM-006
+    system: player-management
+    gdd: design/gdd/player-management.md
+    requirement: "F8 squad_available_pct = round(available_count/SQUAD_REGISTERED_SIZE×100) with SQUAD_REGISTERED_SIZE=25 (canonical denominator from league-system). F9 team_skill = round(mean(skill of starting 11)). F9b player_happiness_delta = round(mean(morale of starting 11)) - prevState.player_happiness. All pushed as PlayerDecisions in cascade Step 3."
+    created: "2026-05-19"
+    revised: ""
+    status: active
+
+  - id: TR-PM-007
+    system: player-management
+    gdd: design/gdd/player-management.md
+    requirement: "F10 market_wage = transfer_value × WAGE_VALUE_RATIO(0.02). F11 morale delta = result_bonus(±3/0/−2) + wage_ratio_bonus(±2/0/−3) + playing_time_bonus(+1/0/−1). morale_next = clamp(morale + delta, 0, 100)."
+    created: "2026-05-19"
+    revised: ""
+    status: active
+
+  - id: TR-PM-008
+    system: player-management
+    gdd: design/gdd/player-management.md
+    requirement: "F12 end-of-season: for age≥30, decay=min(SKILL_DECAY_MAX=2, floor((age-29)/2)); skill=max(20,skill-decay). Weekly micro-decay (ADR-016): age<28→0; 28-29→-0.05/wk; 30-31→-0.1; 32-33→-0.2; 34+→-0.4. Development for age<30: if minutes_season/max_season≥0.40 and skill<potentialCeiling: skill+=min(2,potentialCeiling-skill)."
+    created: "2026-05-19"
+    revised: ""
+    status: active
+
+  - id: TR-PM-009
+    system: player-management
+    gdd: design/gdd/player-management.md
+    requirement: "F6 transfer_value_eur_k = BASE_VALUE_K(5.0) × skill_factor((skill/50)^1.8) × age_factor(discrete table) × form_factor(0.8+(form-60)/100×0.4). Minimum clamp 0.1 €K."
+    created: "2026-05-19"
+    revised: ""
+    status: active
+
+  - id: TR-PM-010
+    system: player-management
+    gdd: design/gdd/player-management.md
+    requirement: "Transfer market: buy at offer≥transfer_value×0.9 within transfer_window; sell when AI offer≥threshold and manager accepts. Operations rejected with 'market_closed' outside window. Wrapped in Drizzle transaction."
+    created: "2026-05-19"
+    revised: ""
+    status: active
+
+  - id: TR-PM-011
+    system: player-management
+    gdd: design/gdd/player-management.md
+    requirement: "Contract renewal: players with contractEndWeek≤currentWeek+8 trigger ContractRenewalOffer STOP event at season_end. Accept→update salary+contractEnd; Decline→availability='leaving'; Counter→accept if ≤market_wage×1.5, else decline. Default timeout=decline."
+    created: "2026-05-19"
+    revised: ""
+    status: active

@@ -39,7 +39,7 @@ Coverage:
 | AC-16 – AC-18 | F11 morale per match (post-match) + F12 skill degradation | ADR-016 ⚠ pending |
 | AC-19 – AC-22 | Contract renewal pipeline + basic aging | ADR-016 ⚠ pending |
 
-**Untraced requirements**: All. **ADR-016 is the gate to unblocking this epic.**
+**Untraced requirements**: TR-PM-001 through TR-PM-011 (see stories). TR-registry populated 2026-05-19.
 
 ## Engine Risk
 
@@ -73,6 +73,24 @@ World-gen is deterministic from a seed.
   cost via player.salary), staff-system (no direct read; scout staff observes),
   hud-ui (squad panel — currently shows standings only, will need players)
 
+## Stories
+
+| # | Story | Type | Status | ADR |
+|---|-------|------|--------|-----|
+| 001 | playthroughs + world_snapshots DB schemas | Integration | Ready | ADR-005 |
+| 002 | players DB schema + PlayersRepo | Integration | Ready | ADR-016 |
+| 003 | F1 computeSkill + generateRoster world-gen | Logic | Ready | ADR-016 |
+| 004 | F4 form rolling + F5 form decay | Logic | Ready | ADR-016 |
+| 005 | Injury/suspension lifecycle + F7 fitness | Logic | Ready | ADR-016 |
+| 006 | F8 squad_available_pct + F9 team_skill + F9b WorldState sync | Logic | Ready | ADR-016 |
+| 007 | F10 market wage + F11 morale update | Logic | Ready | ADR-016 |
+| 008 | F12 skill degradation + end-of-season development | Logic | Ready | ADR-016 |
+| 009 | F6 transfer value formula | Logic | Ready | ADR-016 |
+| 010 | Transfer market integration (buy/sell) | Integration | Ready | ADR-016 |
+| 011 | Contract renewal pipeline | Integration | Ready | ADR-016+015 |
+
+**Note**: Story 001 also creates `playthroughs` and `world_snapshots` tables (ADR-005), unblocking MATCH-SIM-015.
+
 ## Next Step
 
-Run `/create-stories player-management`. ADR-016 is Accepted as of 2026-05-19.
+Run `/story-readiness production/epics/player-management/stories/player-management-001-db-schemas.md` to validate before starting implementation. Stories must be implemented in order (001 → 002 → 003...) due to FK dependencies.
