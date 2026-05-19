@@ -1,6 +1,7 @@
 ---
 Story: CASCADE-ENGINE-005
-Status: Pending
+Status: Complete
+Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: cascade-engine.md §States and Transitions Steps 2 & 3 + AC-PLD-01, AC-PLD-02, AC-PLD-03, AC-PLD-04, AC-PLD-05
 Governing ADR: ADR-002 (determinism), ADR-003 (Rule 3 prevState-only, Rule 4 additive, Rule 5 delays), ADR-008 (PlayerDecisions are the post-edge application path)
@@ -18,30 +19,87 @@ With this story done, the engine processes the full Step 1→2→3→4 pipeline;
 
 ## Scope
 
-In `packages/shared/src/sim/cascade-engine.ts` — replace the Step 2 and Step 3 stubs:
+This story touches TWO files:
+
+### 1. `packages/shared/src/sim/cascade-types.ts` — extend `CascadeLog`
+
+Replace the minimal `CascadeLog` (story 001 placeholder) with the richer version
+that story 014 (thresholds) and staff-system require:
+
+```typescript
+export type CascadeLogSource = 'edge' | 'decision' | 'delayed' | 'guarded';
+
+export interface CascadeLog {
+  readonly source: CascadeLogSource;
+  readonly edgeId: string;       // edge.id for edge/delayed/guarded; decision.source for 'decision'
+  readonly nodeId: NodeId;       // target node (edge.toNode | decision.nodeId | effect.toNode)
+  readonly delta: number;        // applied delta (0 for 'guarded')
+  readonly week: number;         // ctx.currentWeek
+  // Optional fields — populated ONLY for 'edge' entries
+  readonly fromNode?: NodeId;
+  readonly fromValue?: number;
+  readonly delay?: 0 | 1 | 2;
+}
+```
+
+Backward-compatible extension (existing 4 fields preserved; `source` is the only required addition).
+
+**Also update story-004's Step 1 push** in `cascade-engine.ts` to include `source: 'delayed'`
+so all log entries are consistently typed.
+
+### 2. `packages/shared/src/sim/cascade-engine.ts` — replace the Step 2 and Step 3 stubs:
 
 **Step 2 — edge evaluation**:
-```
+```typescript
 for (const edge of graph) {
   if (edge.guardFn && !edge.guardFn(prevState, ctx)) {
-    // log skip — { edgeId, status: 'guarded' } — useful for debugging
+    log.push({
+      source: 'guarded',
+      edgeId: edge.id,
+      nodeId: edge.toNode,
+      delta: 0,
+      week: ctx.currentWeek,
+    });
     continue;
   }
+  const fromValue = prevState[edge.fromNode];
   const delta = edge.transferFn(prevState, ctx);
-  log.push({ source: 'edge', edgeId: edge.id, fromNode: edge.fromNode, fromValue: prevState[edge.fromNode], toNode: edge.toNode, delta, delay: edge.delay });
+  log.push({
+    source: 'edge',
+    edgeId: edge.id,
+    nodeId: edge.toNode,
+    delta,
+    week: ctx.currentWeek,
+    fromNode: edge.fromNode,
+    fromValue,
+    delay: edge.delay,
+  });
   if (edge.delay === 0) {
     deltaMap.set(edge.toNode, (deltaMap.get(edge.toNode) ?? 0) + delta);
   } else {
-    newDelayedEffects.push({ applyAt: ctx.currentWeek + edge.delay, toNode: edge.toNode, delta, edgeId: edge.id });
+    newDelayedEffects.push({
+      applyAt: ctx.currentWeek + edge.delay,
+      toNode: edge.toNode,
+      delta,
+      edgeId: edge.id,
+    });
   }
 }
 ```
 
 **Step 3 — PlayerDecisions** (runs AFTER step 2 — AC-PLD-01 invariant):
-```
+```typescript
+// Note: This OVERRIDES story-004's "decisions do not produce log entries" choice.
+// Update the comment in cascade-engine.ts line 108 accordingly.
 for (const decision of decisions) {
   deltaMap.set(decision.nodeId, (deltaMap.get(decision.nodeId) ?? 0) + decision.delta);
-  log.push({ source: 'decision', edgeId: decision.source, toNode: decision.nodeId, delta: decision.delta });
+  log.push({
+    source: 'decision',
+    edgeId: decision.source,
+    nodeId: decision.nodeId,
+    delta: decision.delta,
+    week: ctx.currentWeek,
+  });
 }
 ```
 
@@ -63,10 +121,10 @@ Crucial invariants encoded in the implementation:
 2. **AC-PLD-02**: Edge C15 (placeholder: enqueues delayed effect with delta based on `prevState.ticket_price_index=80`) is followed by a decision setting `ticket_price_index=40`. THEN: `newDelayedEffects` contains the C15 effect with its delta computed from 80 (the old price), AND `nextState.ticket_price_index === 40`.
 3. **AC-PLD-04**: prevState `consecutive_wins=3, consecutive_losses=0` + decisions `[{nodeId:'consecutive_wins',delta:+1,source:'win'},{nodeId:'consecutive_losses',delta:0,source:'win-reset'}]` → `nextState.consecutive_wins===4, nextState.consecutive_losses===0`. (Edge case if prevState.losses > 0: the decision delta should be `-prevState.consecutive_losses` — documented but tested in match-sim integration, not here.)
 4. **AC-PLD-05**: prevState `consecutive_wins=2, consecutive_losses=0` + decisions `[{nodeId:'consecutive_wins',delta:-2,source:'loss-reset'},{nodeId:'consecutive_losses',delta:+1,source:'loss'}]` → `nextState.consecutive_wins===0, nextState.consecutive_losses===1`.
-5. **Guard skip**: An edge with `guardFn: () => false` does NOT call its `transferFn` (verify via spy/stub). The `log` contains a `'guarded'` entry referencing the edge id.
+5. **Guard skip**: An edge with `guardFn: () => false` does NOT call its `transferFn` (verify via spy/stub). The `log` contains an entry with `source: 'guarded'`, the edge's id, and `delta: 0`.
 6. **Delay routing**: An edge with `delay: 2` evaluated at `ctx.currentWeek=3` produces an entry in `newDelayedEffects` with `applyAt: 5` (AC-DEL-04 invariant).
 7. **Edge ordering independence**: The order of edges in `CASCADA_FC_GRAPH` does NOT affect `nextState`. Verify by running with a shuffled copy of the graph (deterministic shuffle via test seed) and asserting identical `nextState`. This proves Rule 3 holds — no edge reads partial-tick state.
-8. **CascadeLog completeness**: After a tick with N non-guarded edges + M decisions + K consumed delayed effects, `log.length === N + M + K + (# of guarded edges)`.
+8. **CascadeLog completeness**: After a tick with N non-guarded edges + M decisions + K consumed delayed effects + G guarded edges, `log.length === N + M + K + G`. Each entry has the correct `source` discriminator (`'edge' | 'decision' | 'delayed' | 'guarded'`).
 
 ## Test Requirements (Logic, BLOCKING)
 
@@ -79,6 +137,8 @@ Crucial invariants encoded in the implementation:
 - Delay routing — AC #6.
 - Edge ordering independence — AC #7. CRITICAL test — if this fails, Rule 3 is violated somewhere in the implementation (likely accidentally reading `deltaMap` instead of `prevState`).
 - Log completeness — AC #8.
+- CascadeLog shape verification — for each `source` value ('edge', 'decision', 'delayed', 'guarded'), verify the entry has the correct discriminator and required fields (edge entries must include `fromNode`, `fromValue`, `delay`).
+- Story-004 backward compatibility — verify the existing `runtick-skeleton.test.ts` suite still passes after CascadeLog extension (Step 1 entries now carry `source: 'delayed'`).
 
 ## Dependencies
 
@@ -95,3 +155,13 @@ Crucial invariants encoded in the implementation:
 - Per ADR-003 Rule 4 (additive composition): if two edges write to the same node, deltas SUM. Never overwrite. The `(deltaMap.get(node) ?? 0) + delta` pattern is the canonical idiom.
 - The CascadeLog source field distinguishes `'edge' | 'decision' | 'delayed' | 'guarded'`. Story 014 (thresholds) reads the log to surface "what fired" in dev tooling; staff-system (Core layer, separate epic) reads it for message templates.
 - Do NOT shortcut Step 3 by adding decision deltas directly to `nextState` after Step 4 clamp — that would re-introduce a clamp-twice bug. Decisions ALWAYS go into `deltaMap` so Step 4 clamps the combined value once. AC #3 (AC-PLD-04 with start at `consecutive_wins=3`) protects against this.
+- **Override de story-004**: el comentario en `cascade-engine.ts` línea 108 dice "Decisions are player agency — they do NOT produce CascadeLog entries". Story-005 cambia esa decisión: las decisions SÍ producen entries con `source: 'decision'`. Actualizar el comment durante la implementación. AC #8 cuenta las decisions en `log.length`.
+- **Story-004 Step 1 update**: el push actual de Step 1 (`{edgeId, nodeId, delta, week}`) necesita agregar `source: 'delayed'` para alinearse con el `CascadeLog` extendido. El test suite de story-004 sigue pasando porque ningún assert existente verifica la ausencia del campo `source`.
+
+## Completion Notes
+**Completed**: 2026-05-19
+**Criteria**: 8/8 passing
+**Deviations**: None
+**Scope note**: Also touched `cascade-types.ts` (CascadeLog extended + CascadeLogSource added) and `runtick-skeleton.test.ts` (backward compat: log entry assertion updated with `source: 'delayed'`). Both in-scope per story's stated scope.
+**Test Evidence**: Logic — unit test at `packages/shared/tests/cascade-engine/runtick-edges-decisions.test.ts` — 13/13 passing (143/143 suite)
+**Code Review**: Complete — APPROVED WITH SUGGESTIONS (2026-05-19, all applied: 4 as-casts removed, NODE_RANGES consistency fix, AC#7 discriminant rewrite, guarded+delayed test added, AC#1 non-zero variant added)

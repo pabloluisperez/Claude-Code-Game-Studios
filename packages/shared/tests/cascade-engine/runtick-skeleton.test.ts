@@ -308,6 +308,7 @@ describe('AC #9 — log ordering', () => {
 
     expect(result.log.length).toBe(1);
     expect(result.log[0]).toEqual({
+      source: 'delayed',
       edgeId: 'C9a-test',
       nodeId: 'staff_morale',
       delta: -4,

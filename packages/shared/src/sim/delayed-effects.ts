@@ -52,7 +52,7 @@ export type DelayedEffectsBuffer = readonly DelayedEffect[];
  * `toNode` is validated as non-empty string (NodeId union check is a TS concern).
  */
 export const DelayedEffectJsonSchema = z.object({
-  applyAt: z.number().int().positive(),
+  applyAt: z.number().int().min(1), // game weeks start at 1
   toNode: z.string().min(1),
   delta: z.number(),
   edgeId: z.string().min(1),
@@ -89,13 +89,9 @@ export function popEffectsDueAt(
     if (effect.applyAt === currentWeek) {
       due.push(effect);
     } else {
-      if (effect.applyAt < currentWeek) {
-        console.warn(
-          `[delayed-effects] Invariant violation: effect for edge "${effect.edgeId}" ` +
-          `targeting "${effect.toNode}" has applyAt=${effect.applyAt} but currentWeek=${currentWeek}. ` +
-          `Past effects are not applied retroactively. Effect kept in remaining.`,
-        );
-      }
+      // Past effects (applyAt < currentWeek) are kept in remaining — not applied,
+      // not dropped. The caller (advance-worker) is responsible for detecting
+      // this invariant violation; the pure simulation function stays side-effect-free.
       remaining.push(effect);
     }
   }
@@ -113,6 +109,9 @@ export function enqueueEffect(
   buffer: DelayedEffectsBuffer,
   effect: DelayedEffect,
 ): DelayedEffectsBuffer {
+  if (effect.applyAt < 1) {
+    throw new Error(`enqueueEffect: applyAt must be ≥ 1, got ${effect.applyAt}`);
+  }
   return [...buffer, effect];
 }
 
@@ -136,5 +135,6 @@ export function serializeBuffer(buffer: DelayedEffectsBuffer): string {
 export function deserializeBuffer(json: string): DelayedEffectsBuffer {
   const parsed: unknown = JSON.parse(json);
   const result = DelayedEffectsJsonSchema.parse(parsed);
+  // Zod infers mutable array; readonly widening is safe — NodeId = string.
   return result as DelayedEffectsBuffer;
 }

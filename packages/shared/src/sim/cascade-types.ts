@@ -169,11 +169,12 @@ export interface PlayerDecision {
 // ── Forward refs (populated by stories 003 + 014) ─────────────────────────────
 
 /**
- * Effect scheduled by a delayed edge. Full type body lives in
- * `packages/shared/src/sim/delayed-effects.ts` (story 003).
+ * Effect scheduled by a delayed edge.
+ * Source of truth: `packages/shared/src/sim/delayed-effects.ts` (story 003).
+ * This forward-ref must stay structurally identical to `DelayedEffect` there.
  *
- * Field names updated to match story 003 canonical spec:
- *   applyAtWeek → applyAt, nodeId → toNode, source → edgeId.
+ * Field names match story 003 canonical spec:
+ *   applyAt, toNode, delta, edgeId.
  */
 export interface DelayedEffect {
   readonly applyAt: number;
@@ -182,15 +183,31 @@ export interface DelayedEffect {
   readonly edgeId: string;
 }
 
+/** Discriminator for cascade log entries — used by story 014 (thresholds) and staff-system. */
+export type CascadeLogSource = 'edge' | 'decision' | 'delayed' | 'guarded';
+
 /**
- * Per-edge log entry produced during runTick. Used by tests + admin/debug
- * interface. Full structure may grow in story 014.
+ * Per-event log entry produced during runTick.
+ *
+ * `source` distinguishes the origin of each log entry:
+ * - 'edge': a cascade edge fired (delay:0 or delay>0)
+ * - 'delayed': a buffered effect was consumed from a prior tick
+ * - 'decision': a PlayerDecision was applied (Step 3)
+ * - 'guarded': an edge's guardFn returned false — transferFn was NOT called
+ *
+ * Optional fields `fromNode`, `fromValue`, `delay` are populated ONLY for 'edge' entries.
+ * Story 014 reads the full log for threshold tooling; staff-system uses it for message templates.
  */
 export interface CascadeLog {
-  readonly edgeId: string;
-  readonly nodeId: NodeId;
-  readonly delta: number;
-  readonly week: number;
+  readonly source: CascadeLogSource;
+  readonly edgeId: string;       // edge.id for edge/delayed/guarded; decision.source for 'decision'
+  readonly nodeId: NodeId;       // target node
+  readonly delta: number;        // applied delta (0 for 'guarded')
+  readonly week: number;         // ctx.currentWeek
+  // Optional — populated ONLY for 'edge' entries
+  readonly fromNode?: NodeId;
+  readonly fromValue?: number;
+  readonly delay?: 0 | 1 | 2;
 }
 
 /**

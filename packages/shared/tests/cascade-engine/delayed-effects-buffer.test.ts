@@ -95,6 +95,13 @@ describe('popEffectsDueAt — week=3 returns empty due', () => {
     expect(remainingEdgeIds).toContain('C1a');
     expect(remainingEdgeIds).toContain('C15');
   });
+
+  it('test_pop_effects_due_at_empty_buffer_returns_empty_due_and_remaining', () => {
+    // Edge case: empty buffer must not crash and must return both arrays empty.
+    const { due, remaining } = popEffectsDueAt([], 5);
+    expect(due).toHaveLength(0);
+    expect(remaining).toHaveLength(0);
+  });
 });
 
 // ── AC #4: Past-week effects are not consumed ─────────────────────────────────

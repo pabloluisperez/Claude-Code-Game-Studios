@@ -1,12 +1,12 @@
 /**
- * cascade-engine.ts — runTick() pure function, Steps 1/4/6 skeleton.
+ * cascade-engine.ts — runTick() pure function, Steps 1–4/6.
  *
  * Per ADR-002: pure function, no side effects, no Math.random(), no Date.now().
  * Per ADR-003 Rule 3: prevState is NEVER mutated.
  * Per ADR-003 Rule 4: clamping applies to the FINAL accumulated delta, not per-edge.
  * Per control-manifest Foundation Layer: ctx.rng() is the ONLY source of randomness.
  *
- * Story: CASCADE-ENGINE-004
+ * Story: CASCADE-ENGINE-004 (skeleton), CASCADE-ENGINE-005 (Steps 2/3 full impl)
  * Control Manifest: 2026-05-19
  */
 
@@ -36,19 +36,6 @@ export function clampToRange(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-// ── Internal stub: edge evaluation (story 005) ────────────────────────────────
-
-/**
- * Stub for Step 2 — evaluateEdges. Returns empty structures.
- * Full implementation lands in CASCADE-ENGINE-005.
- */
-function evaluateEdges(
-  _graph: readonly CascadeEdgeDef[],
-  _ctx: SimContext,
-): { deltas: Map<NodeId, number>; newDelayed: DelayedEffect[]; logs: CascadeLog[] } {
-  return { deltas: new Map(), newDelayed: [], logs: [] };
-}
-
 // ── Main tick function ─────────────────────────────────────────────────────────
 
 /**
@@ -56,8 +43,8 @@ function evaluateEdges(
  *
  * Steps implemented:
  *   1. Consume delayed effects due this week (popEffectsDueAt).
- *   2. Evaluate cascade edges — STUB (returns empty, story 005).
- *   3. Apply player decisions additively into deltaMap.
+ *   2. Evaluate cascade edges — guardFn gate, transferFn call, delay routing.
+ *   3. Apply player decisions additively into deltaMap (with decision log).
  *   4. Build nextState by clamping each node's final accumulated delta.
  *   5. Threshold crossing detection — STUB (story 014).
  *   6. Assemble and return TickResult.
@@ -80,11 +67,13 @@ export function runTick(
 
   const deltaMap = new Map<NodeId, number>();
   const log: CascadeLog[] = [];
+  const newDelayedEffects: DelayedEffect[] = [];
 
   for (const effect of due) {
     const prev = deltaMap.get(effect.toNode) ?? 0;
     deltaMap.set(effect.toNode, prev + effect.delta);
     log.push({
+      source: 'delayed',
       edgeId: effect.edgeId,
       nodeId: effect.toNode,
       delta: effect.delta,
@@ -92,23 +81,54 @@ export function runTick(
     });
   }
 
-  // ── Step 2: Evaluate cascade edges (STUB — story 005) ─────────────────────
-  const step2 = evaluateEdges(graph, ctx);
-
-  for (const [nodeId, delta] of step2.deltas) {
-    const prev = deltaMap.get(nodeId) ?? 0;
-    deltaMap.set(nodeId, prev + delta);
-  }
-  const newDelayedFromStep2 = step2.newDelayed;
-  for (const entry of step2.logs) {
-    log.push(entry);
+  // ── Step 2: Evaluate cascade edges ────────────────────────────────────────
+  for (const edge of graph) {
+    if (edge.guardFn && !edge.guardFn(prevState, ctx)) {
+      log.push({
+        source: 'guarded',
+        edgeId: edge.id,
+        nodeId: edge.toNode,
+        delta: 0,
+        week: ctx.currentWeek,
+      });
+      continue;
+    }
+    const fromValue = prevState[edge.fromNode] ?? NODE_RANGES[edge.fromNode]?.default ?? 0;
+    const delta = edge.transferFn(prevState, ctx);
+    log.push({
+      source: 'edge',
+      edgeId: edge.id,
+      nodeId: edge.toNode,
+      delta,
+      week: ctx.currentWeek,
+      fromNode: edge.fromNode,
+      fromValue,
+      delay: edge.delay,
+    });
+    if (edge.delay === 0) {
+      deltaMap.set(edge.toNode, (deltaMap.get(edge.toNode) ?? 0) + delta);
+    } else {
+      newDelayedEffects.push({
+        applyAt: ctx.currentWeek + edge.delay,
+        toNode: edge.toNode,
+        delta,
+        edgeId: edge.id,
+      });
+    }
   }
 
   // ── Step 3: Apply player decisions ────────────────────────────────────────
-  // Decisions are player agency — they do NOT produce CascadeLog entries.
+  // Per ADR-003 Rule 4: additive composition. Decisions log with source 'decision'
+  // (override of story-004's "no decision log" — required for AC #8 completeness).
   for (const decision of decisions) {
-    const prev = deltaMap.get(decision.nodeId) ?? 0;
-    deltaMap.set(decision.nodeId, prev + decision.delta);
+    deltaMap.set(decision.nodeId, (deltaMap.get(decision.nodeId) ?? 0) + decision.delta);
+    log.push({
+      source: 'decision',
+      edgeId: decision.source,
+      nodeId: decision.nodeId,
+      delta: decision.delta,
+      week: ctx.currentWeek,
+    });
   }
 
   // ── Step 4: Build nextState with final clamped values ─────────────────────
@@ -117,7 +137,7 @@ export function runTick(
   const nextState: WorldState = {} as WorldState;
 
   for (const key of Object.keys(NODE_RANGES) as NodeId[]) {
-    const baseValue = prevState[key] ?? NODE_RANGES[key].default;
+    const baseValue = prevState[key] ?? NODE_RANGES[key]?.default ?? 0;
     const delta = deltaMap.get(key) ?? 0;
     nextState[key] = clampToRange(
       baseValue + delta,
@@ -132,7 +152,7 @@ export function runTick(
   // ── Step 6: Assemble and return TickResult ─────────────────────────────────
   return {
     nextState,
-    newDelayedEffects: [...remaining, ...newDelayedFromStep2],
+    newDelayedEffects: [...remaining, ...newDelayedEffects],
     log,
     thresholdCrossings,
     week: ctx.currentWeek,

@@ -1,6 +1,6 @@
 ---
 Story: CASCADE-ENGINE-003
-Status: In Progress
+Status: Complete
 Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: AC-DEL-01, AC-DEL-02, AC-DEL-03, AC-DEL-04, AC-DEL-05, AC-SER-04
@@ -78,3 +78,11 @@ In `packages/shared/src/sim/delayed-effects.ts` (new file):
 - The buffer is an array, not a Map. Per control-manifest Forbidden, JSON-serialized payloads must not contain `Map<>`. The buffer is serialized into `world_snapshots.delayed_effects` per ADR-005.
 - `popEffectsDueAt` returns immutable copies. The `runTick()` caller composes the `remaining` array with `newDelayedEffects` from Step 2's delay-routed edges to produce the next tick's buffer.
 - Zod schemas live in this file; the API layer (story 015) re-uses them at the read boundary — no duplicate schemas.
+
+## Completion Notes
+**Completed**: 2026-05-19
+**Criteria**: 8/8 passing
+**Deviations**: None
+**Scope note**: `cascade-types.ts` forward-ref `DelayedEffect` updated to align field names (`applyAtWeek`→`applyAt`, `nodeId`→`toNode`, `source`→`edgeId`). Comment in cascade-types.ts already anticipated this update (story 003). 110/110 total package tests pass.
+**Test Evidence**: Logic — unit test at `packages/shared/tests/cascade-engine/delayed-effects-buffer.test.ts` — 22/22 passing
+**Code Review**: Complete — APPROVED WITH SUGGESTIONS (2026-05-19, all suggestions applied)
