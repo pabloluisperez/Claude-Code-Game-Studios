@@ -1,11 +1,12 @@
 ---
 Story: CASCADE-ENGINE-003
-Status: Pending
+Status: In Progress
+Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: AC-DEL-01, AC-DEL-02, AC-DEL-03, AC-DEL-04, AC-DEL-05, AC-SER-04
 Governing ADR: ADR-003 (Core Rule 5, delays as design intent), ADR-005 (persistence)
 Control Manifest: 2026-05-19
-Test Evidence: tests/unit/cascade-engine/delayed-effects-buffer.test.ts
+Test Evidence: packages/shared/tests/cascade-engine/delayed-effects-buffer.test.ts
 ---
 
 # Story: DelayedEffectsBuffer Data Structure + JSON Schema

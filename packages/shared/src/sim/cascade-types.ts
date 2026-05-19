@@ -171,14 +171,15 @@ export interface PlayerDecision {
 /**
  * Effect scheduled by a delayed edge. Full type body lives in
  * `packages/shared/src/sim/delayed-effects.ts` (story 003).
+ *
+ * Field names updated to match story 003 canonical spec:
+ *   applyAtWeek → applyAt, nodeId → toNode, source → edgeId.
  */
 export interface DelayedEffect {
-  readonly nodeId: NodeId;
+  readonly applyAt: number;
+  readonly toNode: NodeId;
   readonly delta: number;
-  /** Tick index at which this effect matures and is applied (Step 1 of next tick). */
-  readonly applyAtWeek: number;
-  /** Originating edge id, for audit/log only. */
-  readonly source: string;
+  readonly edgeId: string;
 }
 
 /**
