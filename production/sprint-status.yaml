@@ -9,120 +9,90 @@
 #   done           ↔  Complete
 #   blocked        ↔  Blocked
 
-sprint: 2
-goal: "Implement cascade chain formulas C0–C18 (linear batch) and match-sim type foundation"
-start: "2026-05-20"
-end: "2026-06-02"
+sprint: 3
+goal: "Complete the cascade engine epic — all 22 chains wired + threshold detection"
+start: "2026-06-03"
+end: "2026-06-16"
 generated: "2026-05-19"
-updated: "2026-05-19"  # CASCADE-006 done
+updated: "2026-05-19"
 
 stories:
-  - id: "002-01"
-    name: "Update ADR-003 (retro A2: field names + transferFn signature)"
-    file: "docs/architecture/ADR-003-cascade-graph-topology.md"
-    priority: must-have
-    status: done
-    owner: ""
-    estimate_days: 0.5
-    blocker: ""
-    completed: "2026-05-19"
-
-  - id: "002-02"
-    name: "Add tsc --noEmit to @smt/shared test script (retro A3)"
-    file: "packages/shared/package.json"
-    priority: must-have
-    status: done
-    owner: ""
-    estimate_days: 0.25
-    blocker: ""
-    completed: "2026-05-19"
-
-  - id: "002-03"
-    name: "CASCADE-006: Chains C0 + C1a + C1b"
-    file: "production/epics/cascade-engine/stories/cascade-engine-006-chain-c0-c1a-c1b.md"
-    priority: must-have
-    status: done
-    owner: ""
-    estimate_days: 2.0
-    blocker: ""
-    completed: "2026-05-19"
-
-  - id: "002-04"
-    name: "CASCADE-007: Chains C2 + C3 + C13"
-    file: "production/epics/cascade-engine/stories/cascade-engine-007-chain-c2-c3-c13.md"
-    priority: must-have
-    status: done
-    owner: ""
-    estimate_days: 1.5
-    blocker: ""
-    completed: "2026-05-19"
-
-  - id: "002-05"
-    name: "CASCADE-008: Chain C4 (C10 as multiplier)"
-    file: "production/epics/cascade-engine/stories/cascade-engine-008-chain-c4-c10.md"
-    priority: must-have
-    status: done
-    owner: ""
-    estimate_days: 2.0
-    blocker: ""
-    completed: "2026-05-19"
-
-  - id: "002-06"
-    name: "MATCH-SIM-001: Domain types + contracts"
-    file: "production/epics/match-simulation/stories/match-sim-001-types-and-contracts.md"
-    priority: must-have
-    status: done
-    owner: ""
-    estimate_days: 1.0
-    blocker: ""
-    completed: "2026-05-19"
-
-  - id: "002-07"
-    name: "MATCH-SIM-002: PRNG context stateful"
-    file: "production/epics/match-simulation/stories/match-sim-002-prng-context-stateful.md"
-    priority: must-have
-    status: done
-    owner: ""
-    estimate_days: 1.0
-    blocker: ""
-    completed: "2026-05-19"
-
-  - id: "002-08"
+  - id: "003-01"
     name: "CASCADE-009: Chains C5a + C5b + C16a + C16b + C17"
     file: "production/epics/cascade-engine/stories/cascade-engine-009-chain-c5-c16-c17.md"
-    priority: should-have
-    status: backlog
+    priority: must-have
+    status: ready-for-dev
     owner: ""
     estimate_days: 1.5
     blocker: ""
     completed: ""
 
-  - id: "002-09"
-    name: "MATCH-SIM-003: F1-F2 effective stats"
-    file: "production/epics/match-simulation/stories/match-sim-003-f1-f2-effective-stats.md"
-    priority: should-have
-    status: backlog
-    owner: ""
-    estimate_days: 0.5
-    blocker: "MATCH-SIM-001"
-    completed: ""
-
-  - id: "002-10"
-    name: "MATCH-SIM-004: F3-F4 momentum"
-    file: "production/epics/match-simulation/stories/match-sim-004-f3-f4-momentum.md"
-    priority: should-have
-    status: backlog
-    owner: ""
-    estimate_days: 1.0
-    blocker: "MATCH-SIM-002"
-    completed: ""
-
-  - id: "002-11"
+  - id: "003-02"
     name: "CASCADE-010: Chains C6 + C7 + C11 + C14"
     file: "production/epics/cascade-engine/stories/cascade-engine-010-chain-c6-c7-c11-c14.md"
+    priority: must-have
+    status: ready-for-dev
+    owner: ""
+    estimate_days: 2.0
+    blocker: ""
+    completed: ""
+
+  - id: "003-03"
+    name: "CASCADE-011: Chains C8 + C15"
+    file: "production/epics/cascade-engine/stories/cascade-engine-011-chain-c8-c15.md"
+    priority: must-have
+    status: ready-for-dev
+    owner: ""
+    estimate_days: 2.0
+    blocker: ""
+    completed: ""
+
+  - id: "003-04"
+    name: "CASCADE-012: Chains C9a + C9b"
+    file: "production/epics/cascade-engine/stories/cascade-engine-012-chain-c9a-c9b.md"
+    priority: must-have
+    status: ready-for-dev
+    owner: ""
+    estimate_days: 1.5
+    blocker: ""
+    completed: ""
+
+  - id: "003-05"
+    name: "CASCADE-013: Chains C12 + C18"
+    file: "production/epics/cascade-engine/stories/cascade-engine-013-chain-c12-c18.md"
+    priority: must-have
+    status: ready-for-dev
+    owner: ""
+    estimate_days: 2.0
+    blocker: ""
+    completed: ""
+
+  - id: "003-06"
+    name: "CASCADE-014: Threshold Detection"
+    file: "production/epics/cascade-engine/stories/cascade-engine-014-threshold-detection.md"
+    priority: should-have
+    status: backlog
+    owner: ""
+    estimate_days: 2.0
+    blocker: "CASCADE-009..013 (uses full graph)"
+    completed: ""
+
+  - id: "003-07"
+    name: "MATCH-SIM-003: F1 + F2 effective stats"
+    file: "production/epics/match-simulation/stories/match-sim-003-f1-f2-effective-stats.md"
     priority: nice-to-have
     status: backlog
     owner: ""
-    estimate_days: 2.0
+    estimate_days: 0.5
+    blocker: ""
+    completed: ""
+
+  - id: "003-08"
+    name: "MATCH-SIM-004: F3 + F4 momentum"
+    file: "production/epics/match-simulation/stories/match-sim-004-f3-f4-momentum.md"
+    priority: nice-to-have
+    status: backlog
+    owner: ""
+    estimate_days: 1.0
     blocker: ""
     completed: ""
