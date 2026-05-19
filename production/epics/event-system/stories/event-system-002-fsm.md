@@ -1,6 +1,6 @@
 ---
 Story: EVENT-SYSTEM-002
-Status: Ready
+Status: Complete
 Type: Logic
 Governing ADR: ADR-008, ADR-015
 Control Manifest: 2026-05-19

@@ -10,3 +10,4 @@ export * from './match-sessions';
 export * from './sponsors';
 export * from './manager-rpg';
 export * from './staff';
+export * from './calendar-events';

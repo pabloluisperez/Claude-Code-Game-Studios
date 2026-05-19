@@ -19,7 +19,7 @@ now Ready** as of 2026-05-19 — ADRs 014/015/016/017/018 Accepted.
 | 4 | [manager-rpg](manager-rpg/EPIC.md) | Core | manager-rpg | `design/gdd/manager-rpg.md` | 6/6 done | ✅ **Complete** (2026-05-19) — 32 unit tests; ADR-010 canonical impl |
 | 5 | [staff-system](staff-system/EPIC.md) | Core | staff-system | `design/gdd/staff-system.md` | 5/5 done | ✅ **Complete** (2026-05-19) — 18 unit tests; ADR-009 canonical impl |
 | 6 | [player-management](player-management/EPIC.md) | Core | player-management | `design/gdd/player-management.md` | 11/11 done | ✅ **Complete** (2026-05-19) — DB migrated, 91 unit tests |
-| 7 | [event-system](event-system/EPIC.md) | Feature | event-system | `design/gdd/event-system.md` | 6 stories | ✅ **Ready** — stories created 2026-05-19 |
+| 7 | [event-system](event-system/EPIC.md) | Feature | event-system | `design/gdd/event-system.md` | 6/6 done | ✅ **Complete** (2026-05-19) — 24 unit tests; 13-variant resolver |
 | 8 | [league-system](league-system/EPIC.md) | Feature | league-system | `design/gdd/league-system.md` | 7/7 done | ✅ **Complete** (2026-05-19) — 33 unit tests; integration code complete |
 | 9 | [hud-ui](hud-ui/EPIC.md) | Presentation | hud-ui | `design/gdd/hud-ui.md` | 8 stories | ✅ **Ready** — stories created 2026-05-19 |
 

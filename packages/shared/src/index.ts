@@ -224,3 +224,38 @@ export {
   type DerbyClub,
   type DerbyFixture,
 } from './sim/league-system/derby.js';
+
+// Event-system (EVENT-SYSTEM-001..006)
+export type {
+  EventPriority,
+  EventOption,
+  EventDecisionPayload,
+  EventChoiceId,
+  BoardMeetingCrisisPayload,
+  BoardMeetingQuiebraPayload,
+  NominaFrozenOfferPayload,
+  SponsorOfferPayload,
+  SponsorRenewalPayload,
+  ScandalResponsePayload,
+  CorruptionCaughtPayload,
+  TransferOfferPayload,
+  ContractRenewalOfferPayload,
+  YouthPromotionPayload,
+  AlcaldeMeetingPayload,
+  ExternalManagerOfferPayload,
+  StadiumUpgradeOfferPayload,
+  SideEffect,
+  ResolutionResult,
+} from './sim/event-system/types.js';
+export {
+  resolveEvent,
+  resolveDefault,
+  type EventResolveContext,
+} from './sim/event-system/resolver.js';
+export {
+  pickNextStopEvent,
+  pickAdvisoryEvents,
+  isAdvanceBlocked,
+  eventDefaultChoice,
+  type PendingEvent,
+} from './sim/event-system/fsm.js';

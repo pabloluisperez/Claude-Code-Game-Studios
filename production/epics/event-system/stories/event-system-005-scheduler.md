@@ -1,6 +1,6 @@
 ---
 Story: EVENT-SYSTEM-005
-Status: Ready
+Status: Complete
 Type: Integration
 Governing ADR: ADR-008, ADR-015
 Control Manifest: 2026-05-19

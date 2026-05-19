@@ -1,6 +1,6 @@
 ---
 Story: EVENT-SYSTEM-001
-Status: Ready
+Status: Complete
 Type: Integration
 Governing ADR: ADR-015 (Special Event Decision Schema), ADR-008 (Calendar event types)
 Control Manifest: 2026-05-19
