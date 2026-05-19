@@ -1,6 +1,7 @@
 ---
 Story: MATCH-SIM-002
-Status: Pending
+Status: Complete
+Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: AC-MATCH-01 (determinism with default decisions), AC-MATCH-02 (determinism with scripted decisions across pause boundaries)
 Governing ADR: ADR-002 (createSimContext + seedrandom discipline), ADR-013 (Option B PRNG state persistence)
@@ -73,9 +74,34 @@ In `packages/shared/package.json`:
 
 **1 day.** Small module, but the AC-MATCH-02 cornerstone test (round-trip continuation) is the critical correctness gate. Budget time for chasing the seedrandom typing quirks (slice has the playbook).
 
+## QA Test Cases
+
+**Test file**: `packages/shared/tests/match-sim/prng-state.test.ts`
+_(Use `packages/shared/tests/match-sim/` not `tests/unit/match-sim/`)_
+
+**Estimated test count**: ~8 unit tests
+
+### PRNG factory and serialization
+- `test_match_sim_context_stream_determinism_1000_values`: two fresh contexts with same seed produce identical first 1000 rng() values
+- `test_match_sim_context_rng_state_not_undefined`: `ctx.rng.state()` is NOT undefined — catches the documented gotcha
+- `test_match_sim_context_state_json_has_seedrandom_keys`: parsed state has keys i, j, S (seedrandom@3.0.5 shape)
+- `test_match_sim_context_round_trip_determinism_45_plus_45_equals_90`: ctx1[0..44] + ctx2[45..89] == ctx3[0..89] (AC-MATCH-02 cornerstone)
+- `test_match_sim_context_rehydrated_continues_at_position_46`: snapshot from position 45 → rehydrated ctx produces value [45], not [0]
+- `test_seedrandom_version_pinned_exactly_no_caret`: package.json has `"seedrandom": "3.0.5"` — no ^ or ~ (prevents silent state-format breaks in production)
+- `test_no_math_random_in_match_prng_file`: grep/static assertion — no Math.random() in match-prng.ts (control-manifest)
+
 ## Notes / Gotchas
 
 - **The slice gotcha**: `seedrandom(seed)` (no options) returns a PRNG where `.state()` is `undefined`. This is silent — no error thrown. The slice's match worker was broken until `{ state: true }` was added. This story enshrines that fix.
 - **`seedrandom('', { state: parsedState })` ignores the empty-string seed** — the state alone determines the next value. Slice verified.
 - **TypeScript types for seedrandom@3.0.5**: `@types/seedrandom` types `.state()` as `{ i: number; j: number; S: number[] }` but the `state` option type on the factory is loose. Use a typed wrapper to keep call sites clean.
 - **Version pin**: if anyone adds `"seedrandom": "^3.0.5"` later (npm install --save), patch upgrades that change the state shape would invalidate all in-flight live matches in production. The exact pin + the unit test gating it is the trip-wire.
+
+## Completion Notes
+**Completed**: 2026-05-19
+**Criteria**: 6/6 passing
+**Deviations**:
+  - ADVISORY: `createMatchSimContext` returns `{ ctx, rng }` instead of just `SimContext` — exposes raw PRNG for serialization without changing the SimContext interface. Documented in JSDoc.
+  - ADVISORY: `prevState: defaultWorldState()` is a placeholder — story 013 (match worker) will pass the real preMatchSnapshot WorldState.
+**Test Evidence**: Logic — `packages/shared/tests/match-sim/prng-state.test.ts` — 9/9 passing (227/227 suite)
+**Code Review**: Complete — APPROVED WITH SUGGESTIONS (2026-05-19, _seed param, carry comment, regex hardened)

@@ -1,6 +1,7 @@
 ---
 Story: MATCH-SIM-001
-Status: Pending
+Status: Complete
+Last Updated: 2026-05-19
 Type: Logic
 GDD Requirement: AC-MATCH-05 (worldStateDeltas contract: exactly 2 keys), AC-MATCH-30 (substitution_window excluded from MatchOutcome.events), AC-MATCH-28 (causal_node field present)
 Governing ADR: ADR-007 (SportPlugin + MatchOutcome shape), ADR-013 (MatchSessionSnapshot type)
@@ -119,8 +120,39 @@ In `packages/shared/src/sim/sports/football/football-types.ts` (new):
 
 **1 day.** Pure typing; reference the slice's `types.ts` as a starting point but rewrite (per prototype-code.md: production must rewrite from scratch).
 
+## QA Test Cases
+
+**Test file**: `packages/shared/tests/match-sim/types.test.ts`
+_(Use `packages/shared/tests/match-sim/` not `tests/unit/match-sim/`)_
+
+**Estimated test count**: ~10 unit tests
+
+### MatchOutcome contracts
+- `test_match_outcome_world_state_deltas_has_exactly_2_keys`: keys are `match_performance_index` and `injury_risk` only (AC-MATCH-05)
+- `test_match_event_injury_has_causal_node_injury_risk`: `causal_node = 'injury_risk'` on injury events (AC-MATCH-28)
+- `test_match_outcome_events_excludes_substitution_window`: events array has no type='substitution_window' (AC-MATCH-30)
+- `test_match_session_snapshot_events_includes_substitution_window`: eventsAccumulated in snapshot INCLUDES substitution_window (filtered at MatchOutcome stage only)
+
+### Type structural tests (compile-time contracts verified via runtime assertions)
+- `test_world_state_deltas_is_record_not_map`: worldStateDeltas is `Record<string, number>` — control-manifest forbids Map in JSON payloads
+- `test_match_session_state_includes_failed_state`: MatchSessionState union includes 'failed' (ADR-013 required state)
+- `test_lineup_max_18_players`: Lineup accepts up to 18 players (11 + 7 bench)
+- `test_emergency_gk_assigned_as_field`: PlayerStats with assignedAs='GOALKEEPER' and position='DEFENDER' uses derived reflexes = skill×0.4
+- `test_team_instruction_mutually_exclusive_per_gdd_comment`: at most one TeamInstruction per team (AC-MATCH-29 — document as a type contract, not a runtime check here)
+
 ## Notes / Gotchas
 
 - **ADR-007 vs control-manifest conflict (re-surface)**: ADR-007 source code shows `ReadonlyMap`. GDD R6 + control-manifest say `Record`. The slice already uses `Record`. We follow control-manifest. A sync chore must amend ADR-007 after this story lands. Flagged.
 - **GDD says `Map<player_id, number>` was the original output for F10**. GDD R6 corrected this to `Record`. Slice verified. Stay with Record.
 - The `assignedAs` field on `PlayerStats` is a runtime marker for emergency goalkeeping. The position remains `'DEFENDER'`; only `assignedAs` flips to `'GOALKEEPER'`. F7 (story 007) consults `assignedAs` to compute the derived `reflexes` and `handling`.
+
+## Completion Notes
+**Completed**: 2026-05-19
+**Criteria**: 9/9 passing
+**Deviations**:
+  - ADVISORY: MatchSessionSnapshot has richer shape than story scope minimum (awaySubstitutionsUsed, yellowCardsByPlayerId, formation/instruction fields, timeoutJobId) — all documented ADR-013 fields, correct.
+  - ADVISORY: Field name is `prngState` (not `rngState`) — follows story spec, MATCH-SIM-002 expects `prngState`.
+  - ADVISORY: AC-MATCH-30 test is fixture-proof only (TODO comment added for strengthening when construction function exists).
+  - ADVISORY: ADR-007 conflict resolved to Record<string, number> — ADR-007 needs sync chore amendment.
+**Test Evidence**: Logic — `packages/shared/tests/match-sim/types.test.ts` — 12/12 passing (218/218 suite)
+**Code Review**: Complete — APPROVED WITH SUGGESTIONS (2026-05-19, all 5 suggestions applied)

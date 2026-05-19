@@ -13,13 +13,17 @@
     "./sim/*": "./src/sim/*.ts"
   },
   "scripts": {
-    "test": "vitest run",
+    "test": "vitest run && tsc --noEmit",
+    "test:unit": "vitest run",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint src"
   },
   "dependencies": {
+    "seedrandom": "3.0.5",
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@types/seedrandom": "3.0.8",
     "typescript": "^5.4.0",
     "vitest": "^2.0.0"
   }
