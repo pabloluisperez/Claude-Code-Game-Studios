@@ -15,13 +15,13 @@ now Ready** as of 2026-05-19 — ADRs 014/015/016/017/018 Accepted.
 |---|---|---|---|---|---|---|
 | 1 | [cascade-engine](cascade-engine/EPIC.md) | Foundation | cascade-engine | `design/gdd/cascade-engine.md` | 14 done | ✅ **Complete** (Sprint 03, 2026-05-19) |
 | 2 | [match-simulation](match-simulation/EPIC.md) | Foundation | match-simulation | `design/gdd/match-simulation.md` | Not yet created | ✅ **Ready** |
-| 3 | [economy](economy/EPIC.md) | Foundation | economy | `design/gdd/economy.md` | Not yet created | ✅ **Ready** (ADR-014 Accepted 2026-05-19) |
-| 4 | [manager-rpg](manager-rpg/EPIC.md) | Core | manager-rpg | `design/gdd/manager-rpg.md` | Not yet created | ✅ **Ready** (AC-27/28 partial block on OQ-STAFF-04) |
-| 5 | [staff-system](staff-system/EPIC.md) | Core | staff-system | `design/gdd/staff-system.md` | Not yet created | ✅ **Ready** |
+| 3 | [economy](economy/EPIC.md) | Foundation | economy | `design/gdd/economy.md` | 8 stories | ✅ **Ready** — stories created 2026-05-19 |
+| 4 | [manager-rpg](manager-rpg/EPIC.md) | Core | manager-rpg | `design/gdd/manager-rpg.md` | 6 stories | ✅ **Ready** — stories created 2026-05-19 |
+| 5 | [staff-system](staff-system/EPIC.md) | Core | staff-system | `design/gdd/staff-system.md` | 5 stories | ✅ **Ready** — stories created 2026-05-19 |
 | 6 | [player-management](player-management/EPIC.md) | Core | player-management | `design/gdd/player-management.md` | 11/11 done | ✅ **Complete** (2026-05-19) — DB migrated, 91 unit tests |
-| 7 | [event-system](event-system/EPIC.md) | Feature | event-system | `design/gdd/event-system.md` | Not yet created | ✅ **Ready** (ADR-015 Accepted 2026-05-19) |
+| 7 | [event-system](event-system/EPIC.md) | Feature | event-system | `design/gdd/event-system.md` | 6 stories | ✅ **Ready** — stories created 2026-05-19 |
 | 8 | [league-system](league-system/EPIC.md) | Feature | league-system | `design/gdd/league-system.md` | 7 stories | ✅ **Ready** — stories created 2026-05-19 |
-| 9 | [hud-ui](hud-ui/EPIC.md) | Presentation | hud-ui | `design/gdd/hud-ui.md` | Not yet created | ✅ **Ready** (ADR-017+018 Accepted 2026-05-19; UX specs + art-bible addendum recommended in parallel) |
+| 9 | [hud-ui](hud-ui/EPIC.md) | Presentation | hud-ui | `design/gdd/hud-ui.md` | 8 stories | ✅ **Ready** — stories created 2026-05-19 |
 
 ## Coverage Map: Epic ↔ Governing ADRs
 
