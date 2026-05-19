@@ -1,7 +1,13 @@
 import { Queue } from 'bullmq';
 import { redis } from '../lib/redis.js';
+import type { MatchJobPayload } from '../workers/match-worker.js';
 
 export const seasonTickQueue = new Queue('season-tick', { connection: redis });
+
+export const matchQueue: Queue<MatchJobPayload> = new Queue<MatchJobPayload>(
+  'match-tick',
+  { connection: redis },
+);
 
 export async function registerScheduledJobs(): Promise<void> {
   // Advance the in-game world clock once per real-time day at 04:00

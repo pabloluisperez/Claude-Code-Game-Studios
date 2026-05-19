@@ -8,6 +8,12 @@ declare global {
     }
     interface PageData {
       user?: User | null;
+      activePlaythrough?: {
+        id: string;
+        clubId: string;
+        currentWeek: number;
+        clubName: string | null;
+      } | null;
     }
   }
 }

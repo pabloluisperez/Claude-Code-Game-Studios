@@ -28,7 +28,11 @@
 
 {#if showChrome}
   <div class="min-h-screen flex flex-col">
-    <Topbar user={data.user} onToggleSidebar={toggleSidebar} />
+    <Topbar
+      user={data.user}
+      week={data.activePlaythrough?.currentWeek ?? 0}
+      onToggleSidebar={toggleSidebar}
+    />
     <div class="flex flex-1">
       <Sidebar bind:open={sidebarOpen} />
       <main class="flex-1 container mx-auto px-4 py-8 max-w-7xl">

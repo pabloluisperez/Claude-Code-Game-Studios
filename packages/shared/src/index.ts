@@ -3,6 +3,19 @@ export * from './types/socket.js';
 export * from './schemas/auth.js';
 export * from './schemas/clubs.js';
 
+// Cascade-engine type exports (cascade-engine epic — consumed by staff-system,
+// match-simulation, and any consumer needing WorldState / NodeId / ThresholdCrossing).
+export {
+  type NodeId,
+  type WorldState,
+  type ThresholdCrossing,
+  type SimContext,
+  type TickResult,
+  type CascadeLog,
+  defaultWorldState,
+  NODE_IDS,
+} from './sim/cascade-types.js';
+
 // Player management exports (Story PM-003..009)
 export {
   computeSkill,

@@ -12,6 +12,8 @@
 import { and, desc, eq, inArray, not, sql } from 'drizzle-orm';
 import type { MatchSessionRow, NewMatchSessionRow } from '@smt/db';
 import { matchSessions } from '@smt/db';
+
+export type { MatchSessionRow, NewMatchSessionRow };
 import type { db as DBType } from '@smt/db';
 
 type Tx = Parameters<Parameters<typeof DBType.transaction>[0]>[0];
