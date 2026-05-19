@@ -3,8 +3,8 @@
 > **Layer**: Core
 > **GDD**: `design/gdd/player-management.md`
 > **Architecture Module**: `apps/api/src/modules/players/`
-> **Status**: ⚠ **Blocked on ADR-016** (Player Lifecycle)
-> **Stories**: Not yet created — run `/create-stories player-management` AFTER ADR-016 lands
+> **Status**: ✅ **Ready** (ADR-016 Accepted 2026-05-19)
+> **Stories**: Not yet created — run `/create-stories player-management`
 > **Control Manifest**: 2026-05-19
 
 ## Overview
@@ -23,7 +23,7 @@ be written before stories.
 | ADR | Decision Summary | Engine Risk |
 |-----|-----------------|-------------|
 | ADR-007 (indirect) | Defines the `PlayerStats` shape consumed by `simulateMatch()` | LOW |
-| **ADR-016: Player Lifecycle** (**REQUIRED — not yet written**) | Defines: world-gen algorithm with seeded attribute generation · F4 form rolling avg of last 5 · F11 morale per match · F12 skill degradation curves · contract renewal cycle · forfeit pct rule (canonical 63%) · transfer offer pipeline · basic aging | TBD |
+| ADR-016: Player Lifecycle | Players in dedicated table; world-gen as deterministic batch; F4 form rolling + F11 morale + F12 weekly drift + yearly aging at season_end; ContractRenewalOffer event variant (extends ADR-015); forfeit guard at fixture load | LOW |
 
 ## GDD Requirements
 
@@ -75,7 +75,4 @@ World-gen is deterministic from a seed.
 
 ## Next Step
 
-1. Run `/architecture-decision "Player Lifecycle"` → ADR-016
-2. Then `/create-stories player-management`
-
-**Until ADR-016 lands, this epic is blocked.**
+Run `/create-stories player-management`. ADR-016 is Accepted as of 2026-05-19.

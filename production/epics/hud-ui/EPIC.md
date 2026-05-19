@@ -3,8 +3,8 @@
 > **Layer**: Presentation
 > **GDD**: `design/gdd/hud-ui.md`
 > **Architecture Module**: `apps/web/`
-> **Status**: ⚠ **Partially Blocked on ADR-017 + ADR-018**
-> **Stories**: Not yet created — run `/create-stories hud-ui` AFTER critical UX specs land
+> **Status**: ✅ **Ready** (ADR-017 + ADR-018 Accepted 2026-05-19). Still recommended: 5 UX specs + art-bible MVP addendum before sprint, but story authoring can begin.
+> **Stories**: Not yet created — run `/create-stories hud-ui`
 > **Control Manifest**: 2026-05-19
 
 ## Overview
@@ -26,8 +26,8 @@ OQ-HUD-13 (playback speed).
 | ADR | Decision Summary | Engine Risk |
 |-----|-----------------|-------------|
 | ADR-012: UI Architecture (DOM ↔ Canvas Frontier) | MVP uses only DOM side of the frontier; canvas reserved for v1.1+ | LOW |
-| **ADR-017: UI Input Control Taxonomy** (**REQUIRED — not yet written**) | Defines: button group for categorical decisions; discrete-slider-in-€ for quantitative; select for items; domain-language formatting buckets at the UI boundary | TBD |
-| **ADR-018: Match Event Visual Feedback Library** (**REQUIRED — not yet written**) | Defines: pixel-art sprite-in-DOM contract for goals/injuries/expulsions; modal pacing (10s + countdown + skip + no backdrop blur on confetti); playback speed toggle + skip-to-end | TBD |
+| ADR-017: UI Input Control Taxonomy | 3 control families (button group / unit slider / item select); domain-language formatter library in packages/shared; translation at UI↔API boundary | HIGH (Svelte 5 runes — verified by slice) |
+| ADR-018: Match Event Visual Feedback Library | Pixel-art sprite-in-DOM contract (sprites under apps/web/static/sprites/match/); dramatic event pacing (teaser → 10s modal → optional VAR); Socket.IO match feed; 1s=1 in-game min default + ×1/×3/×10 + skip-to-end; confetti at z-index 110 (no backdrop blur) | MEDIUM (Socket.IO 4 + CSS stacking) |
 
 ## GDD Requirements
 
@@ -102,12 +102,16 @@ price slider — pending ADR-017 inclusion to formalize.
 
 ## Next Step
 
-1. Run `/architecture-decision "UI Input Control Taxonomy"` → ADR-017
-2. Run `/architecture-decision "Match Event Visual Feedback Library"` → ADR-018
-3. Run `/ux-design Dashboard`, `/ux-design Match-live`, `/ux-design Manager`,
-   `/ux-design Staff-inbox`, `/ux-design End-of-month` (5+ specs needed)
-4. Add MVP-scope addendum to `design/art/art-bible.md`
-5. Then `/create-stories hud-ui`
+ADR-017 and ADR-018 are Accepted as of 2026-05-19. Story authoring can begin.
 
-**Until ADR-017 + ADR-018 + 5 UX specs + art-bible addendum land, this epic
-is partially blocked.**
+Recommended sequence for full sprint-readiness (parallel work):
+1. Run `/ux-design Dashboard`, `/ux-design Match-live`, `/ux-design Manager`,
+   `/ux-design Staff-inbox`, `/ux-design End-of-month` (5 screens to resolve
+   OQ-HUD-08 empty states)
+2. Add MVP-scope addendum to `design/art/art-bible.md` (AD gate-check concern)
+3. Run `/create-stories hud-ui`
+
+Stories CAN be drafted in parallel with the UX specs — start with the
+foundational stories (component library: `<ButtonGroup>`, `<UnitSlider>`,
+`<ItemSelect>`, `<EventChoiceButtons>`, `<MatchEventSprite>`, `<Confetti>`)
+which are spec'd in ADR-017/018 and don't need per-screen UX specs.

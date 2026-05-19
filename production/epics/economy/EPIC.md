@@ -3,8 +3,8 @@
 > **Layer**: Foundation
 > **GDD**: `design/gdd/economy.md`
 > **Architecture Module**: `apps/api/src/modules/economy/` (new — to be created)
-> **Status**: ⚠ **Blocked on ADR-014** (Financial Flow + Bankruptcy Protocol)
-> **Stories**: Not yet created — run `/create-stories economy` AFTER ADR-014 lands
+> **Status**: ✅ **Ready** (ADR-014 Accepted 2026-05-19)
+> **Stories**: Not yet created — run `/create-stories economy`
 > **Control Manifest**: 2026-05-19
 
 ## Overview
@@ -23,7 +23,7 @@ demonstrates intent; production needs the server-side authoritative model.
 | ADR | Decision Summary | Engine Risk |
 |-----|-----------------|-------------|
 | ADR-005: WorldState persistence | Financial state lives in WorldState; persisted in `world_snapshots` | MEDIUM |
-| **ADR-014: Financial Flow + Bankruptcy** (**REQUIRED — not yet written**) | Defines: revenue/cost ledger model · sponsor lifecycle · bankruptcy FSM thresholds · board meeting trigger · catch-up mechanic (per economy.md §7.1) | TBD |
+| ADR-014: Financial Flow + Bankruptcy | revenue/cost ledger model · sponsor lifecycle · bankruptcy FSM (3 ThresholdCrossings) · MAX_TICKET_EUR formula · "Congelación de nómina" catch-up | LOW |
 
 ## GDD Requirements
 
@@ -75,7 +75,4 @@ Stories CANNOT be written until ADR-014 is Accepted.
 
 ## Next Step
 
-1. Run `/architecture-decision "Financial Flow + Bankruptcy Protocol"` → ADR-014
-2. Then `/create-stories economy`
-
-**Until ADR-014 lands, this epic is blocked.**
+Run `/create-stories economy`. ADR-014 is Accepted as of 2026-05-19.

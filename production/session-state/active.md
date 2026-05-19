@@ -192,3 +192,73 @@ stories written so first sprint can begin while ADRs 14-18 are authored in
 parallel. The 5 Ready epics cover ~60% of production work.
 
 `stage.txt` remains "Concept" (not yet advanced — gate has not formally PASSED).
+
+---
+
+## 2026-05-19 — Wake-up update: 5 ADRs written, all 9 epics now READY
+
+Pablo's authorization "termina los ADRs y por la mañana reviso y seguimos con
+stories" executed in this session. All five Required New ADRs written and
+Accepted same-day:
+
+| ADR | Title | Lines | Resolves |
+|---|---|---|---|
+| ADR-014 | Financial Flow + Bankruptcy Protocol | ~250 | economy epic; OQ-ECO-06; bankruptcy FSM via ADR-008 ThresholdCrossings |
+| ADR-015 | Special Event Decision Schema | ~300 | event-system epic; 13-variant typed payload union + exhaustive resolver |
+| ADR-016 | Player Lifecycle | ~280 | player-management epic; world-gen + F4 form + F11 morale + F12 drift + aging + ContractRenewalOffer event variant |
+| ADR-017 | UI Input Control Taxonomy | ~250 | hud-ui epic (partial); OQ-HUD-09 + OQ-HUD-10; 3 control families + domain formatter library |
+| ADR-018 | Match Event Visual Feedback Library | ~280 | hud-ui epic (partial); OQ-HUD-11 + OQ-HUD-12 + OQ-HUD-13; pixel-art-in-DOM + modal pacing + Socket.IO match feed + playback timing |
+
+### Cascading updates
+
+- `docs/architecture/architecture.md` bumped to v1.1; "Required New ADRs"
+  section updated — all 5 are now Accepted; 4 previously-blocked epics
+  flipped to Ready.
+- `production/epics/economy/EPIC.md` → status Ready
+- `production/epics/event-system/EPIC.md` → status Ready
+- `production/epics/player-management/EPIC.md` → status Ready
+- `production/epics/hud-ui/EPIC.md` → status Ready (UX specs + art-bible
+  addendum remain recommended but don't block story authoring; component-
+  library stories can start immediately per ADR-017+018 specs)
+- `production/epics/index.md` updated with recommended Sprint 0-4 sequence
+
+### What this unlocks
+
+ALL 9 epics are now in **Ready** status. Story authoring can begin on any of
+them. The critical path to the Pre-Production → Production gate is:
+
+1. `/create-stories` for the 9 epics (rough sprint order: cascade-engine,
+   match-simulation, league-system → economy, player-management →
+   manager-rpg, staff-system, event-system → hud-ui)
+2. `/ux-design` for 5 screens (Dashboard, Match-live, Manager, Staff-inbox,
+   End-of-month) — resolves OQ-HUD-08 empty states, gives stories acceptance
+   criteria
+3. Art-bible MVP-scope addendum (~30 min — AD gate-check concern)
+4. `/asset-spec` (no args) → `design/assets/entity-inventory.md`
+5. `/sprint-plan new`
+6. Re-run `/gate-check pre-production`
+
+Producer's 2-3 productive day estimate from 2026-05-18 stands. ADR writing
+took the chunk of overnight time; UX specs + entity inventory + sprint plan
++ stories are next.
+
+### Recommended next session (morning of 2026-05-19)
+
+**Option A (recommended)**: Start `/create-stories cascade-engine` — the
+foundational epic. The slice provides 6/18 chains as test templates;
+production rewrites with the full set. This is the most leverage per hour of
+work because cascade-engine is the dependency of 5 other systems.
+
+**Option B**: Start `/ux-design Dashboard` — orthogonal track. The Dashboard
+spec resolves OQ-HUD-08 empty states + grounds the input-control taxonomy
+(ADR-017) in concrete copy + layout. Useful to do BEFORE writing hud-ui
+stories so stories have UX specs to point at.
+
+**Option C**: Both A and B in parallel — write cascade-engine stories first,
+then switch context to dashboard UX spec while the cascade-engine stories
+are in review.
+
+Whichever option Pablo picks, the work is now unblocked on every front.
+
+`stage.txt` still "Concept" (gate not yet passed formally — needs stories +
+sprint-plan + gate re-run).

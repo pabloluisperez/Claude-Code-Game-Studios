@@ -3,8 +3,8 @@
 > **Layer**: Feature
 > **GDD**: `design/gdd/event-system.md`
 > **Architecture Module**: `apps/api/src/modules/event-system/`
-> **Status**: ⚠ **Blocked on ADR-015** (Special Event Decision Schema)
-> **Stories**: Not yet created — run `/create-stories event-system` AFTER ADR-015 lands
+> **Status**: ✅ **Ready** (ADR-015 Accepted 2026-05-19)
+> **Stories**: Not yet created — run `/create-stories event-system`
 > **Control Manifest**: 2026-05-19
 
 ## Overview
@@ -25,7 +25,7 @@ event templates — production extends to the ~50 events of MVP.
 | ADR | Decision Summary | Engine Risk |
 |-----|-----------------|-------------|
 | ADR-008: World clock + event loop | `advance()` consumes ThresholdCrossings and emits PlayerDecisions; BLOCKING crossings halt advance | LOW |
-| **ADR-015: Special Event Decision Schema** (**REQUIRED — not yet written**) | Defines payload types for special PlayerDecisions: corruption_caught, scandal_response, sponsor_offer, cena_reconciliacion, alcalde_meeting, etc. Each is a typed object with explicit WorldState deltas. | TBD |
+| ADR-015: Special Event Decision Schema | EventDecisionPayload discriminated union (13 MVP variants); exhaustive resolver; persistence in calendar_events.metadata.payload | LOW |
 
 ## GDD Requirements
 
@@ -80,7 +80,4 @@ LOW. Server-side TypeScript with Drizzle. The `nextEventPreview` mechanism
 
 ## Next Step
 
-1. Run `/architecture-decision "Special Event Decision Schema"` → ADR-015
-2. Then `/create-stories event-system`
-
-**Until ADR-015 lands, this epic is blocked.**
+Run `/create-stories event-system`. ADR-015 is Accepted as of 2026-05-19.

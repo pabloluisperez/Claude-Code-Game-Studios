@@ -4,12 +4,12 @@
 
 | Field | Value |
 |---|---|
-| Version | 1.0 |
-| Last Updated | 2026-05-18 |
+| Version | 1.1 |
+| Last Updated | 2026-05-19 |
 | Engine | Web — TypeScript full-stack monorepo (SvelteKit 2 + Hono 4 + Drizzle 0.36+ + Socket.IO 4 + BullMQ 5) |
 | Engine reference pinned | 2026-05-15 (`docs/engine-reference/web/`) |
 | GDDs Covered | 9 MVP GDDs (Approved 2026-05-18) |
-| ADRs Referenced | ADR-001 through ADR-013 (12 Accepted; ADR-004 & ADR-006 deferred to v1.1+/v1.2+) |
+| ADRs Referenced | ADR-001 through ADR-018 (17 Accepted; ADR-004 & ADR-006 deferred to v1.1+/v1.2+; ADR-014/015/016/017/018 Accepted 2026-05-19) |
 | Technical Director Sign-Off | 2026-05-18 — **APPROVED WITH CONDITIONS** (review-mode: lean — LP-FEASIBILITY skipped per gate protocol) |
 | Lead Programmer Feasibility | SKIPPED — lean mode |
 | Vertical Slice Validation | CONFIRMED PROCEED (2026-05-18) — full game loop demonstrated end-to-end |
@@ -502,52 +502,29 @@ Coverage of the 9 GDDs by ADRs is high but not complete:
 
 ## Required New ADRs
 
-Grouped by priority:
+### Accepted 2026-05-19 (resolved)
 
-### Must have before coding starts (Foundation & Core)
+| ADR | Title | Status | Resolves |
+|---|---|---|---|
+| **ADR-014** | Financial Flow + Bankruptcy Protocol | ✅ Accepted | economy epic; OQ-ECO-06 (MAX_TICKET_EUR formula); bankruptcy FSM via ADR-008 ThresholdCrossings |
+| **ADR-015** | Special Event Decision Schema | ✅ Accepted | event-system epic; typed PlayerDecisionPayload union (13 MVP variants); HUD modal rendering contract |
+| **ADR-016** | Player Lifecycle | ✅ Accepted | player-management epic; world-gen + form rolling F4 + skill drift F12 + aging at season_end + contract renewal pipeline |
+| **ADR-017** | UI Input Control Taxonomy | ✅ Accepted | hud-ui epic (partial); OQ-HUD-09 (input control families); OQ-HUD-10 (domain-language formatters) |
+| **ADR-018** | Match Event Visual Feedback Library | ✅ Accepted | hud-ui epic (partial); OQ-HUD-11 (pixel-art sprite-in-DOM); OQ-HUD-12 (modal pacing); OQ-HUD-13 (playback timing + fast-forward) |
 
-1. **ADR-014 — Financial Flow + Bankruptcy Protocol** (Foundation/economy)
-   - Covers: weekly revenue/cost accounting; balance/cashflow nodes; bankruptcy
-     state machine; board meeting of crisis triggers
-   - Unblocks: `apps/api/src/modules/economy/`, stories that touch fan_attendance
-     → revenue
-   - Owner: economy-designer + web-backend-specialist
-
-2. **ADR-016 — Player Lifecycle** (Core/player-management)
-   - Covers: player generation algorithm (slice has a placeholder); form
-     rolling (post-match `match_rating` → rolling avg of 5); contract
-     lifecycle; transfer offers; basic aging (per game-concept.md "jugadores
-     pueden envejecer básico")
-   - Unblocks: `apps/api/src/modules/players/`, all squad-affecting features
-   - Owner: systems-designer + economy-designer
-
-### Should have before the relevant system is built
-
-3. **ADR-015 — Special Event Decision Schema** (Feature/event-system)
-   - Covers: PlayerDecision payload types for special events (corruption,
-     scandal, sponsor offer, cena de reconciliación); how event-system writes
-     deltas to WorldState
-   - Unblocks: event-system module stories
-   - Owner: systems-designer
-
-4. **ADR-017 — UI Input Control Taxonomy** (Presentation/hud-ui)
-   - Covers: when to use button group vs slider vs select (post-slice OQ-HUD-09);
-     how the UI↔engine index translation happens (per slice's MARKET_TICKET_EUR
-     example); domain-language formatting buckets (OQ-HUD-10)
-   - Unblocks: `/ux-design Dashboard`, `/ux-design Match-live`
-   - Owner: ux-designer
-
-5. **ADR-018 — Match Event Visual Feedback Library** (Presentation/hud-ui)
-   - Covers: pixel-art sprite-in-DOM contract (post-slice OQ-HUD-11); animation
-     timing (OQ-HUD-12); playback pacing + fast-forward toggle (OQ-HUD-13)
-   - Unblocks: art-bible MVP addendum + match-live UI sprint
-   - Owner: art-director + ux-designer
+The 4 previously-blocked epics now have governing ADRs and can write stories.
+**Epic status changes (2026-05-19)**:
+- `economy` epic: ⚠ → ✅ Ready
+- `event-system` epic: ⚠ → ✅ Ready
+- `player-management` epic: ⚠ → ✅ Ready
+- `hud-ui` epic: ⚠ partial → ✅ Ready (still waits on 5 UX specs + art-bible MVP
+  addendum for full readiness, but ADR-level blockers cleared)
 
 ### Can defer to implementation
 
-6. **ADR-019 — Background Match Sim Concurrency** — when simulating 10 other
-   matches per week (non-player) becomes a perf issue, decide batching strategy.
-   Not blocking initial slice-derived implementation.
+| ADR | Title | Notes |
+|---|---|---|
+| **ADR-019** | Background Match Sim Concurrency | When simulating 10 other matches per week (non-player) becomes a perf issue, decide batching strategy. Not blocking initial implementation. |
 
 ---
 
