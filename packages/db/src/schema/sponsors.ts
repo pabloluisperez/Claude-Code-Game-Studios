@@ -27,6 +27,13 @@ export const sponsors = pgTable(
       .references(() => clubs.id, { onDelete: 'cascade' }),
     /** Sponsor brand/name (procedural — placeholder until UX surface defined). */
     name: text('name').notNull(),
+    /**
+     * Sponsorship slot — which physical surface the brand goes on.
+     *   'kit'             — jersey (1 active max)
+     *   'stadium_boards'  — pitch-side LED boards (clubs.boards_capacity max)
+     *   'press_room'      — back-drop in press conferences (1 active max)
+     */
+    slot: text('slot').notNull().default('kit'),
     /** Tier 1=local, 2=regional, 3=national; affects weekly_eur_k + sponsor_quality contribution. */
     tier: integer('tier').notNull(),
     /** Weekly income in €K (typically 0.5..15). */

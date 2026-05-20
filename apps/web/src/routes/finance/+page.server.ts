@@ -94,6 +94,8 @@ export const load: PageServerLoad = async ({ parent }) => {
     .where(eq(clubs.id, activePlaythrough.clubId))
     .limit(1);
 
+  const boardsCapacity = club?.boardsCapacity ?? 4;
+
   const pretemporada = await isPretemporada(activePlaythrough.id);
 
   // Weeks remaining until kick-off — used to warn the user when the window closes.
@@ -139,6 +141,7 @@ export const load: PageServerLoad = async ({ parent }) => {
     })),
     sponsors: sponsorRows,
     pendingSponsorOffers,
+    boardsCapacity,
     club: club
       ? {
           seasonTicketPriceEur: club.seasonTicketPriceEur,
@@ -298,10 +301,12 @@ export const actions: Actions = {
         metadata.weeklyAmountEurK &&
         metadata.contractWeeks
       ) {
+        const slot = (metadata as { slot?: string }).slot ?? 'kit';
         await tx.insert(sponsors).values({
           playthroughId: active.id,
           clubId: active.clubId,
           name: metadata.brand,
+          slot,
           tier: 1,
           weeklyEurK: metadata.weeklyAmountEurK,
           qualityContribution: metadata.qualityDelta ?? 0,
@@ -310,10 +315,11 @@ export const actions: Actions = {
           endsWeek: active.currentWeek + metadata.contractWeeks,
         });
 
-        // Auto-expire competing offers for the same week.
-        await tx
-          .update(calendarEvents)
-          .set({ status: 'expired', consumed: true })
+        // Auto-expire competing offers for the SAME SLOT and same week
+        // (so accepting a kit sponsor doesn't kill stadium-board offers).
+        const competing = await tx
+          .select()
+          .from(calendarEvents)
           .where(
             and(
               eq(calendarEvents.playthroughId, active.id),
@@ -322,6 +328,14 @@ export const actions: Actions = {
               eq(calendarEvents.status, 'pending'),
             ),
           );
+        for (const e of competing) {
+          const eSlot = (e.metadata as { slot?: string } | null)?.slot ?? 'kit';
+          if (eSlot !== slot) continue;
+          await tx
+            .update(calendarEvents)
+            .set({ status: 'expired', consumed: true })
+            .where(eq(calendarEvents.id, e.id));
+        }
       }
     });
 

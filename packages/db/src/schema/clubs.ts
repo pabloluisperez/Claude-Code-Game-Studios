@@ -26,6 +26,11 @@ export const clubs = pgTable('clubs', {
   /** Highest season number whose season-ticket lump-sum was already paid. */
   lastSeasonTicketPaidSeason: integer('last_season_ticket_paid_season').notNull().default(0),
   /**
+   * Number of stadium-board sponsorship slots available. Increases with
+   * stadium upgrades; default 4 reflects a Quinta División stadium.
+   */
+  boardsCapacity: integer('boards_capacity').notNull().default(4),
+  /**
    * Season number for which the ticket price has been locked by the user.
    * Once set, the price cannot be changed for that season. Reset on
    * season rollover so the next pretemporada unlocks again.

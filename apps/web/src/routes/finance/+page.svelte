@@ -335,120 +335,145 @@
     {/if}
 
     {#if activeTab === 'patrocinadores'}
-    <section class="card bg-base-100 shadow">
-      <div class="card-body">
-        <h2 class="card-title">Patrocinadores</h2>
-        {#if data.sponsors.length === 0}
-          <p class="opacity-60 text-sm">Aún no hay patrocinadores registrados.</p>
-        {:else}
-          <div class="overflow-x-auto">
-            <table class="table table-sm">
-              <thead>
-                <tr>
-                  <th>Marca</th><th>Tier</th><th class="text-right">€K/sem</th><th>Estado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {#each data.sponsors as s}
-                  <tr>
-                    <td class="font-semibold">{s.name}</td>
-                    <td><span class="badge">Tier {s.tier}</span></td>
-                    <td class="text-right font-mono">{s.weeklyEurK}</td>
-                    <td>
-                      <span class="badge {s.status === 'active' ? 'badge-success' : s.status === 'cancelled' ? 'badge-error' : 'badge-ghost'}">
-                        {s.status}
-                      </span>
-                      {#if s.cancellationReason}
-                        <span class="text-xs opacity-60 ml-2">{s.cancellationReason}</span>
-                      {/if}
-                    </td>
-                  </tr>
-                {/each}
-              </tbody>
-            </table>
-          </div>
-        {/if}
-      </div>
-    </section>
+    {@const SLOT_META = {
+      kit:             { label: '👕 Camiseta',        capacity: 1 },
+      stadium_boards:  { label: '🪧 Carteles del estadio', capacity: data.boardsCapacity ?? 4 },
+      press_room:      { label: '🎙 Sala de prensa',  capacity: 1 },
+    } as const}
+    {@const slotsOrder = ['kit', 'stadium_boards', 'press_room'] as const}
+    {@const sponsorsBySlot = slotsOrder.reduce((acc, s) => {
+      acc[s] = data.sponsors.filter((x) => (x as { slot?: string }).slot === s && x.status === 'active');
+      return acc;
+    }, {} as Record<string, typeof data.sponsors>)}
+    {@const offersBySlot = slotsOrder.reduce((acc, s) => {
+      acc[s] = (data.pendingSponsorOffers ?? []).filter(
+        (o) => ((o.metadata as { slot?: string } | null)?.slot ?? 'kit') === s,
+      );
+      return acc;
+    }, {} as Record<string, typeof data.pendingSponsorOffers>)}
 
-    <!-- Pending sponsor offers — accept / reject inline -->
-    {#if data.pendingSponsorOffers && data.pendingSponsorOffers.length > 0}
-      <section class="card bg-base-100 shadow border-2 border-warning/40">
-        <div class="card-body">
-          <h2 class="card-title">📬 Ofertas de patrocinio</h2>
-          <p class="text-xs opacity-70">
-            Aceptar una expira automáticamente las otras ofertas de la misma semana.
-          </p>
-          <div class="space-y-3 mt-2">
-            {#each data.pendingSponsorOffers as offer}
-              {@const meta = offer.metadata as { brand?: string; weeklyAmountEurK?: number; contractWeeks?: number; description?: string; qualityDelta?: number } | null}
-              <div class="p-3 bg-base-200 rounded">
-                <div class="flex items-baseline justify-between flex-wrap gap-2">
-                  <div class="font-semibold text-lg">{meta?.brand ?? 'Patrocinador'}</div>
-                  <div class="text-sm opacity-70">Semana {offer.week}</div>
-                </div>
-                <div class="text-sm opacity-80 mt-1">
-                  {#if meta?.weeklyAmountEurK}<strong>{meta.weeklyAmountEurK} €K/sem</strong>{/if}
-                  {#if meta?.contractWeeks} · {meta.contractWeeks} semanas{/if}
-                  {#if meta?.weeklyAmountEurK && meta?.contractWeeks}
-                    <span class="text-xs opacity-60 ml-1">
-                      (≈ {Math.round(meta.weeklyAmountEurK * meta.contractWeeks)} k€ totales)
+    <div class="space-y-3">
+      {#each slotsOrder as slotKey}
+        {@const slotInfo = SLOT_META[slotKey]}
+        {@const active = sponsorsBySlot[slotKey] ?? []}
+        {@const offers = offersBySlot[slotKey] ?? []}
+        <section class="card bg-base-100 shadow">
+          <div class="card-body">
+            <div class="flex items-baseline justify-between flex-wrap gap-2">
+              <h2 class="card-title">{slotInfo.label}</h2>
+              <span class="text-xs opacity-70">
+                {active.length} / {slotInfo.capacity} ocupado{slotInfo.capacity === 1 ? '' : 's'}
+              </span>
+            </div>
+
+            <!-- Active sponsors in this slot -->
+            {#if active.length === 0}
+              <p class="text-xs opacity-60 mt-1">Slot libre.</p>
+            {:else}
+              <div class="space-y-2 mt-2">
+                {#each active as s}
+                  {@const weeksLeft = s.endsWeek - (latest?.week ?? 0)}
+                  <div class="flex items-center gap-3 p-2 bg-base-200 rounded">
+                    <div class="flex-1">
+                      <div class="font-semibold">{s.name}</div>
+                      <div class="text-xs opacity-70">
+                        <span class="badge badge-sm">Nivel {s.tier}</span>
+                        · <span class="font-mono">{s.weeklyEurK} €K/sem</span>
+                      </div>
+                      <div class="text-xs opacity-60 mt-0.5">
+                        Contrato hasta sem {s.endsWeek}
+                        {#if weeksLeft > 0}
+                          <span class="opacity-70">({weeksLeft} semana{weeksLeft === 1 ? '' : 's'} restante{weeksLeft === 1 ? '' : 's'})</span>
+                        {:else}
+                          <span class="badge badge-warning badge-xs ml-1">expira ya</span>
+                        {/if}
+                      </div>
+                    </div>
+                    <span class="badge {s.status === 'active' ? 'badge-success' : 'badge-ghost'}">
+                      {s.status}
                     </span>
-                  {/if}
-                </div>
-                {#if meta?.description}
-                  <div class="text-xs opacity-70 mt-1">{meta.description}</div>
-                {/if}
-                {#if meta?.qualityDelta !== undefined && meta.qualityDelta < 0}
-                  <div class="text-xs text-warning mt-1">
-                    ⚠ Impacto en la afición: {meta.qualityDelta}
                   </div>
-                {/if}
+                {/each}
+              </div>
+            {/if}
 
-                <div class="flex gap-2 mt-3">
-                  <form method="POST" action="?/decideSponsor" use:enhance bind:this={sponsorForms[`${offer.id}:accept`]}>
-                    <input type="hidden" name="eventId" value={offer.id} />
-                    <input type="hidden" name="choice" value="accept" />
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-primary"
-                      onclick={() =>
-                        askSponsorConfirm(
-                          `Aceptar ${meta?.brand ?? 'patrocinador'}`,
-                          `Firmas con ${meta?.brand ?? 'el patrocinador'} por ${meta?.weeklyAmountEurK ?? 0} €K/sem durante ${meta?.contractWeeks ?? 0} semanas. Las otras ofertas de esta semana se descartarán.`,
-                          'Aceptar',
-                          false,
-                          () => sponsorForms[`${offer.id}:accept`]?.requestSubmit(),
-                        )}
-                    >
-                      Aceptar
-                    </button>
-                  </form>
-                  <form method="POST" action="?/decideSponsor" use:enhance bind:this={sponsorForms[`${offer.id}:reject`]}>
-                    <input type="hidden" name="eventId" value={offer.id} />
-                    <input type="hidden" name="choice" value="reject" />
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-ghost"
-                      onclick={() =>
-                        askSponsorConfirm(
-                          `Rechazar ${meta?.brand ?? 'oferta'}`,
-                          `La oferta de ${meta?.brand ?? 'este patrocinador'} desaparecerá. Las otras ofertas de esta semana siguen disponibles.`,
-                          'Rechazar',
-                          true,
-                          () => sponsorForms[`${offer.id}:reject`]?.requestSubmit(),
-                        )}
-                    >
-                      Rechazar
-                    </button>
-                  </form>
+            <!-- Pending offers for this slot -->
+            {#if offers.length > 0}
+              <div class="mt-3 pt-3 border-t border-base-300">
+                <div class="text-xs uppercase opacity-70 mb-2 font-semibold">
+                  📬 Ofertas pendientes ({offers.length})
+                </div>
+                <div class="space-y-2">
+                  {#each offers as offer}
+                    {@const meta = offer.metadata as { brand?: string; weeklyAmountEurK?: number; contractWeeks?: number; description?: string; qualityDelta?: number } | null}
+                    <div class="p-2 bg-warning/5 border border-warning/30 rounded">
+                      <div class="flex items-baseline justify-between flex-wrap gap-1">
+                        <div class="font-semibold">{meta?.brand ?? 'Patrocinador'}</div>
+                        <div class="text-xs opacity-70">Sem {offer.week}</div>
+                      </div>
+                      <div class="text-xs opacity-80 mt-1">
+                        {#if meta?.weeklyAmountEurK}<strong>{meta.weeklyAmountEurK} €K/sem</strong>{/if}
+                        {#if meta?.contractWeeks} · {meta.contractWeeks} sem{/if}
+                        {#if meta?.weeklyAmountEurK && meta?.contractWeeks}
+                          <span class="opacity-60">(≈{Math.round(meta.weeklyAmountEurK * meta.contractWeeks)} k€)</span>
+                        {/if}
+                      </div>
+                      {#if meta?.description}
+                        <div class="text-xs opacity-60 mt-1">{meta.description}</div>
+                      {/if}
+                      {#if meta?.qualityDelta !== undefined && meta.qualityDelta < 0}
+                        <div class="text-xs text-warning mt-1">
+                          ⚠ Afición: {meta.qualityDelta}
+                        </div>
+                      {/if}
+                      <div class="flex gap-2 mt-2">
+                        <form method="POST" action="?/decideSponsor" use:enhance bind:this={sponsorForms[`${offer.id}:accept`]}>
+                          <input type="hidden" name="eventId" value={offer.id} />
+                          <input type="hidden" name="choice" value="accept" />
+                          <button
+                            type="button"
+                            class="btn btn-xs btn-primary"
+                            onclick={() =>
+                              askSponsorConfirm(
+                                `Aceptar ${meta?.brand ?? 'patrocinador'}`,
+                                `Firmas con ${meta?.brand ?? 'el patrocinador'} por ${meta?.weeklyAmountEurK ?? 0} €K/sem durante ${meta?.contractWeeks ?? 0} semanas. Las otras ofertas del mismo slot esta semana se descartarán.`,
+                                'Aceptar',
+                                false,
+                                () => sponsorForms[`${offer.id}:accept`]?.requestSubmit(),
+                              )}
+                          >
+                            Aceptar
+                          </button>
+                        </form>
+                        <form method="POST" action="?/decideSponsor" use:enhance bind:this={sponsorForms[`${offer.id}:reject`]}>
+                          <input type="hidden" name="eventId" value={offer.id} />
+                          <input type="hidden" name="choice" value="reject" />
+                          <button
+                            type="button"
+                            class="btn btn-xs btn-ghost"
+                            onclick={() =>
+                              askSponsorConfirm(
+                                `Rechazar ${meta?.brand ?? 'oferta'}`,
+                                `La oferta de ${meta?.brand ?? 'este patrocinador'} desaparecerá. Las otras ofertas siguen disponibles.`,
+                                'Rechazar',
+                                true,
+                                () => sponsorForms[`${offer.id}:reject`]?.requestSubmit(),
+                              )}
+                          >
+                            Rechazar
+                          </button>
+                        </form>
+                      </div>
+                    </div>
+                  {/each}
                 </div>
               </div>
-            {/each}
+            {/if}
           </div>
-        </div>
-      </section>
-    {/if}
+        </section>
+      {/each}
+    </div>
+
     {/if}
   {/if}
 </div>
