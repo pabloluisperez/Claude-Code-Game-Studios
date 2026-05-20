@@ -19,12 +19,11 @@ import type { db as DBType } from '@smt/db';
 import type { WorldState } from '@smt/shared';
 import {
   bankruptcyTransition,
+  computeEffectiveTicketPrice as computeEffectiveTicketPriceShared,
   computeFinancialStatus,
   computeMatchDayRevenue,
   computeWeeklyCosts,
   computeWeeklyRevenue,
-  marketTicketEur,
-  maxTicketEur,
   type BankruptcyTransition,
 } from '@smt/shared';
 
@@ -42,6 +41,13 @@ export interface ApplyWeeklyFlowArgs {
   readonly effectiveTicketPriceEur: number;
   /** Player wages multiplier (1.0 normally; 0.75 during freeze). */
   readonly payrollMultiplier?: number;
+  /**
+   * Per ADR-019 / TR-TVR-009: TV revenue from the tv-rights module's current
+   * ACTIVE contract (0 if NONE/CANCELLED/EXPIRED). The advance() pipeline reads
+   * this via `TVRightsService.readTVWeeklyRevenue(tx, playthroughId)` before
+   * calling this service. When provided, replaces the legacy flat constant.
+   */
+  readonly tvWeeklyEurKOverride?: number;
 }
 
 export interface WeeklyFlowResult {
@@ -91,6 +97,9 @@ export async function applyWeeklyFlow(
     matchDayRevenue,
     sponsors: sponsorRows,
     divisionTier: args.divisionTier,
+    ...(args.tvWeeklyEurKOverride !== undefined && {
+      tvWeeklyEurKOverride: args.tvWeeklyEurKOverride,
+    }),
   });
 
   // 3. Compute costs (staff payroll handled by staff-system; not loaded here)
@@ -128,32 +137,5 @@ export async function applyWeeklyFlow(
   };
 }
 
-/**
- * Compute the effective ticket price for a club given its WorldState +
- * ticket_price_index slider value (0..100).
- */
-export function computeEffectiveTicketPrice(args: {
-  readonly stadiumCapacity: number;
-  readonly divisionTier: 1 | 2;
-  readonly fanCultureIndex: number;
-  readonly ticketPriceIndex: number; // 0..100 cascade node
-}): { effectivePriceEur: number; maxEur: number; marketEur: number } {
-  const maxEur = maxTicketEur({
-    stadiumCapacity: args.stadiumCapacity,
-    divisionTier: args.divisionTier,
-    fanCultureIndex: args.fanCultureIndex,
-  });
-  const marketEur = marketTicketEur(maxEur);
-  // Linear interpolation: index=0 → market×0.5; index=50 → market; index=100 → max
-  let priceEur: number;
-  if (args.ticketPriceIndex <= 50) {
-    priceEur = marketEur * 0.5 + (marketEur * 0.5 * args.ticketPriceIndex) / 50;
-  } else {
-    priceEur = marketEur + ((maxEur - marketEur) * (args.ticketPriceIndex - 50)) / 50;
-  }
-  return {
-    effectivePriceEur: Math.round(priceEur),
-    maxEur,
-    marketEur,
-  };
-}
+/** Re-export of the shared `computeEffectiveTicketPrice` for legacy callers. */
+export const computeEffectiveTicketPrice = computeEffectiveTicketPriceShared;

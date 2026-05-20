@@ -76,6 +76,50 @@ export function computeMatchDayRevenue(args: Readonly<MatchDayRevenueArgs>): num
   return Math.round(grossEur / 1000);
 }
 
+// ── Effective ticket price (ADR-014 §Ticket Price Index) ─────────────────────
+
+export interface EffectiveTicketPriceArgs {
+  readonly stadiumCapacity: number;
+  readonly divisionTier: 1 | 2;
+  readonly fanCultureIndex: number;
+  /** Manager-controlled ticket_price_index 0..100. */
+  readonly ticketPriceIndex: number;
+}
+
+export interface EffectiveTicketPriceResult {
+  readonly effectivePriceEur: number;
+  readonly maxEur: number;
+  readonly marketEur: number;
+}
+
+/**
+ * Linear interpolation of effective ticket price from `ticket_price_index`:
+ *   index=0   → market × 0.5
+ *   index=50  → market
+ *   index=100 → max
+ */
+export function computeEffectiveTicketPrice(
+  args: Readonly<EffectiveTicketPriceArgs>,
+): EffectiveTicketPriceResult {
+  const maxEur = maxTicketEur({
+    stadiumCapacity: args.stadiumCapacity,
+    divisionTier: args.divisionTier,
+    fanCultureIndex: args.fanCultureIndex,
+  });
+  const marketEur = marketTicketEur(maxEur);
+  let priceEur: number;
+  if (args.ticketPriceIndex <= 50) {
+    priceEur = marketEur * 0.5 + (marketEur * 0.5 * args.ticketPriceIndex) / 50;
+  } else {
+    priceEur = marketEur + ((maxEur - marketEur) * (args.ticketPriceIndex - 50)) / 50;
+  }
+  return {
+    effectivePriceEur: Math.round(priceEur),
+    maxEur,
+    marketEur,
+  };
+}
+
 // ── Sponsor income ───────────────────────────────────────────────────────────
 
 export interface ActiveSponsorRow {
@@ -94,7 +138,15 @@ export function computeSponsorIncome(sponsors: readonly ActiveSponsorRow[]): num
 
 // ── TV rights ────────────────────────────────────────────────────────────────
 
-/** TV rights per division tier (D1=Primera, D2=Segunda). */
+/**
+ * @deprecated Per ADR-019 + tv-rights GDD F-TV1: TV revenue is now contract-driven,
+ *   not a flat constant per division. Callers should use the tv-rights service's
+ *   `readTVWeeklyRevenue(tx, playthroughId)` and pass the result to
+ *   `computeWeeklyRevenue` via the `tvWeeklyEurKOverride` parameter.
+ *
+ * Kept temporarily to preserve compatibility with callers that haven't migrated.
+ * Will be removed when all callers pass `tvWeeklyEurKOverride`.
+ */
 export function computeTvRights(divisionTier: 1 | 2): number {
   return divisionTier === 1 ? TV_RIGHTS_PRIMERA : TV_RIGHTS_SEGUNDA;
 }
@@ -105,6 +157,15 @@ export interface WeeklyRevenueArgs {
   readonly matchDayRevenue: number;        // 0 when no home match this week
   readonly sponsors: readonly ActiveSponsorRow[];
   readonly divisionTier: 1 | 2;
+  /**
+   * Per ADR-019 / TR-TVR-009: override TV revenue with the actual contract rate
+   * from the tv-rights module (0 if no ACTIVE contract). When provided, this
+   * value replaces the flat `computeTvRights(divisionTier)` lookup.
+   *
+   * Callers without a tv-rights integration may omit this and fall back to the
+   * deprecated flat constants — to be removed once all callers migrate.
+   */
+  readonly tvWeeklyEurKOverride?: number;
 }
 
 export interface WeeklyRevenueBreakdown {
@@ -118,7 +179,12 @@ export function computeWeeklyRevenue(
   args: Readonly<WeeklyRevenueArgs>,
 ): WeeklyRevenueBreakdown {
   const sponsorIncome = computeSponsorIncome(args.sponsors);
-  const tvRights = computeTvRights(args.divisionTier);
+  // Per TR-TVR-009: prefer the contract-driven override when provided.
+  // Falls back to the legacy flat constant if not (during migration window).
+  const tvRights =
+    args.tvWeeklyEurKOverride !== undefined
+      ? args.tvWeeklyEurKOverride
+      : computeTvRights(args.divisionTier);
   const total = args.matchDayRevenue + sponsorIncome + tvRights;
   return {
     matchDay: args.matchDayRevenue,

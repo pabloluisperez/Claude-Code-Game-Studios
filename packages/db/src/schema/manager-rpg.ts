@@ -29,6 +29,12 @@ export const managerProfiles = pgTable('manager_profiles', {
   name: text('name').notNull(),
   /** ManagerSkills (5-skill bundle) as JSONB. */
   skills: jsonb('skills').notNull(),
+  /**
+   * fan_loyalty per ADR-019 + tv-rights GDD F-TV4. Range [0, 50].
+   * Incremented by 10 on rejecting tv_auction / tv_midseason_offer (cap at 50).
+   * No decay. Used by F-TV4: fan_attendance_effective = min(1.0, fan_attendance × (1 + fan_loyalty × 0.005)).
+   */
+  fanLoyalty: integer('fan_loyalty').notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),

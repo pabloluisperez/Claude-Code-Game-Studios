@@ -99,6 +99,28 @@ state_ownership:
     added: "2026-05-16"
     revised: ""
 
+  - state: tv_contract
+    status: active
+    owner_system: tv-rights
+    adr: docs/architecture/ADR-019-tv-rights-implementation-contract.md
+    interface: "tv_contracts Drizzle table (NOT WorldState JSON). FSM: NONE→ACTIVE→CANCELLED/EXPIRED→NONE. Reads: any module; writes: tv-rights module only (TVRightsRepo). advance() reads contract to compute revenue; writes final state after tick."
+    write_access: tv-rights-module-only
+    referenced_by:
+      - docs/architecture/ADR-019-tv-rights-implementation-contract.md
+    added: "2026-05-20"
+    revised: ""
+
+  - state: fan_loyalty
+    status: active
+    owner_system: tv-rights
+    adr: docs/architecture/ADR-019-tv-rights-implementation-contract.md
+    interface: "fan_loyalty INTEGER column on managers table (NOT WorldState node, NOT cascade node). Range [0, 50]. Only source: tv_auction / tv_midseason_offer rejection (+10 per reject, cap 50). Used by F-TV4 in matchday revenue calculation."
+    write_access: tv-rights-module-only
+    referenced_by:
+      - docs/architecture/ADR-019-tv-rights-implementation-contract.md
+    added: "2026-05-20"
+    revised: ""
+
 # Example:
 #
 # state_ownership:
@@ -270,6 +292,39 @@ interfaces:
     added: "2026-05-16"
     revised: ""
 
+  - contract: tv_corruption_delta
+    status: active
+    pattern: direct_call
+    producer: tv-rights (applyTVCorruptionDelta)
+    consumers:
+      - advance (via applyTVPrePhase — pre-cascade sub-phase)
+      - test suite (AC-TV-22a unit test)
+    adr: docs/architecture/ADR-019-tv-rights-implementation-contract.md
+    signal_signature: "applyTVCorruptionDelta(tier: 'LOCAL'|'REGIONAL'|'NACIONAL', prevCorruption: number, status: TVStatus): number"
+    notes: "Pure function — no I/O. Returns corruption_exposure rounded to 2 decimals.
+      Returns prevCorruption unchanged if status !== 'ACTIVE'. Called at paso 2 of the
+      8-step TV Tick Order (before cascade injection)."
+    referenced_by:
+      - docs/architecture/ADR-019-tv-rights-implementation-contract.md
+    added: "2026-05-20"
+    revised: ""
+
+  - contract: tv_sign_endpoint
+    status: active
+    pattern: rpc
+    producer: tv-rights (POST /api/tv/sign)
+    consumers:
+      - apps/web (SvelteKit form action in /finance)
+    adr: docs/architecture/ADR-019-tv-rights-implementation-contract.md
+    signal_signature: "POST /api/tv/sign { offerId: number, tier: TVTier, durationSeasons: 1|2|3 } → { ok: true } | HTTP 400 | HTTP 409"
+    notes: "Single Drizzle transaction: resolve calendarEvent (consumed=true) + insert tvContract +
+      grant XP. HTTP 409 if contract already ACTIVE or offer already consumed.
+      HTTP 400 if illegal tier+duration combination (F-TV1 guard)."
+    referenced_by:
+      - docs/architecture/ADR-019-tv-rights-implementation-contract.md
+    added: "2026-05-20"
+    revised: ""
+
 # Example:
 #
 # interfaces:
@@ -388,6 +443,20 @@ api_decisions:
       - docs/architecture/ADR-012-ui-architecture-dom-canvas-frontier.md
       - docs/architecture/ADR-006-isometric-rendering.md
     added: "2026-05-16"
+    revised: ""
+
+  - purpose: corruption_exposure_precision
+    status: active
+    api: "roundCorruption(value: number): number — Math.round(value * 100) / 100"
+    not: "Raw float arithmetic on corruption_exposure without rounding; DB round-trip within a single tick cycle"
+    adr: docs/architecture/ADR-019-tv-rights-implementation-contract.md
+    reason: "corruption_exposure stored as numeric(5,2) in DB. Drizzle returns it as string.
+      All arithmetic must use roundCorruption() immediately after each step to prevent
+      float drift (e.g., 59.9999... vs 60.00) that would cause false-negative threshold crossings.
+      No intra-tick DB round-trip needed — in-memory rounding provides identical precision."
+    referenced_by:
+      - docs/architecture/ADR-019-tv-rights-implementation-contract.md
+    added: "2026-05-20"
     revised: ""
 
 # Example:
@@ -554,6 +623,28 @@ forbidden_patterns:
       from the browser's perspective. No lint error — fails silently in visual testing."
     adr: docs/architecture/ADR-012-ui-architecture-dom-canvas-frontier.md
     added: "2026-05-16"
+
+  - pattern: corruption_arithmetic_without_rounding
+    status: active
+    description: "Never compute arithmetic on corruption_exposure without wrapping the result in
+      roundCorruption(). Applies to F-TV3 delta (paso 2), cascade injection (paso 6), and any
+      other operation that modifies corruption_exposure within a tick."
+    why: "IEEE 754 float arithmetic on values like 59.5 + 0.5 can produce 59.999999... instead of 60.0
+      in JavaScript. The threshold predicate (prev < 60 AND new >= 60) would silently give a
+      false-negative, meaning the contract is never cancelled even when it should be.
+      roundCorruption() ensures the comparison uses the same precision as the DB column numeric(5,2)."
+    adr: docs/architecture/ADR-019-tv-rights-implementation-contract.md
+    added: "2026-05-20"
+
+  - pattern: drizzle_numeric_without_parsefloat
+    status: active
+    description: "Never use tvContracts.weeklyRateEurK (or any other Drizzle numeric column) in
+      arithmetic without first calling parseFloat(). Drizzle returns numeric columns as strings."
+    why: "JavaScript's + operator on a string and a number silently concatenates instead of adding:
+      '7.16' + 0 === '7.160'. This produces NaN or string concatenation bugs in revenue calculations.
+      Use parseCorruption() for corruption_exposure and parseFloat() for weeklyRateEurK."
+    adr: docs/architecture/ADR-019-tv-rights-implementation-contract.md
+    added: "2026-05-20"
 
 # Example:
 #

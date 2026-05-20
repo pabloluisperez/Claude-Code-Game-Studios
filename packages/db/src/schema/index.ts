@@ -12,3 +12,4 @@ export * from './manager-rpg';
 export * from './staff';
 export * from './calendar-events';
 export * from './milestones';
+export * from './tv-contracts.js';

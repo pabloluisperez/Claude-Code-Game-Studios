@@ -134,6 +134,13 @@
       "when": 1779278454597,
       "tag": "0018_legal_mongu",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1779311049510,
+      "tag": "0019_shallow_captain_marvel",
+      "breakpoints": true
     }
   ]
 }

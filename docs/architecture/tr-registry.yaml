@@ -176,3 +176,101 @@ requirements:
     created: "2026-05-19"
     revised: ""
     status: active
+
+  # ── tv-rights ──────────────────────────────────────────────────────────────
+
+  - id: TR-TVR-001
+    system: tv-rights
+    gdd: design/gdd/tv-rights.md
+    requirement: "tv_contracts Drizzle table (NOT WorldState JSON): id, playthroughId FK, seasonId, tier ('LOCAL'|'REGIONAL'|'NACIONAL'), durationSeasons ∈ {1,2,3}, seasonInContract ∈ [1..durationSeasons], weeklyRateEurK numeric(10,2), divisionAtSigning ('D1'|'D2'), status FSM (NONE|ACTIVE|CANCELLED|EXPIRED), signedAt/cancelledAt/cancelledReason. UNIQUE (playthroughId, seasonId). fan_loyalty INTEGER NOT NULL DEFAULT 0 column on managers table, range [0,50]."
+    created: "2026-05-20"
+    revised: ""
+    status: active
+
+  - id: TR-TVR-002
+    system: tv-rights
+    gdd: design/gdd/tv-rights.md
+    requirement: "F-TV1: calculateTVRate(tier, division, durationSeasons) = Math.round(TV_BASE_CENTS[tier] × DIVISION_MULTIPLIER_CENTS[div] × DURATION_MULTIPLIER_CENTS[dur] / 10000) / 100. Guards: RangeError → HTTP 400 for division∉{D1,D2}, duration∉{1,2,3}, illegal combos (LOCAL 2yr/3yr, REGIONAL 3yr, NACIONAL 2yr). Results: LOCAL D2=0.53, REGIONAL D2=1.75, NACIONAL D1=7.16, REGIONAL 2yr D2=1.84, NACIONAL 3yr D1=7.87."
+    created: "2026-05-20"
+    revised: ""
+    status: active
+
+  - id: TR-TVR-003
+    system: tv-rights
+    gdd: design/gdd/tv-rights.md
+    requirement: "tv_auction STOP event at season_start (scheduled_week=0, consumed=false). Unlock rules: LOCAL always; REGIONAL if D2 prev_pos≤10 OR rep≥2 OR D1 actual; NACIONAL if D1 actual OR rep≥4. Blocked if corruption_exposure≥60 (REGIONAL+NACIONAL unavailable). T1 (prev_season_final_position=null) = only LOCAL. advance() blocked while tv_auction consumed=false (HTTP 409 on /advance). TVAuctionPayload variant extends ADR-015 union."
+    created: "2026-05-20"
+    revised: ""
+    status: active
+
+  - id: TR-TVR-004
+    system: tv-rights
+    gdd: design/gdd/tv-rights.md
+    requirement: "F-TV3 8-step Tick Order within advance(): (1) prevCorruptionTV; (2) delta=LOCAL:-0.5/REGIONAL:+0.5/NACIONAL:+1.5, clamp [0,CORRUPTION_MAX=100] via roundCorruption(); (3) threshold_crossed_upward_tv (prev<60 AND new≥60); (4) if crossed→CANCELLED+midseason if week≤35; (5) revenue=rate if ACTIVE else 0; (6) cascade injects externalDelta via roundCorruption(); (7) threshold_crossed_upward_cascade; (8) if crossed→CANCELLED. Revenue asymmetry: F-TV3 cancel = revenue 0 (paso 4 before paso 5); cascade cancel = revenue preserved (paso 8 after paso 5)."
+    created: "2026-05-20"
+    revised: ""
+    status: active
+
+  - id: TR-TVR-005
+    system: tv-rights
+    gdd: design/gdd/tv-rights.md
+    requirement: "F-TV2 tv_midseason_offer: STOP event generated if cancellation AND current_week≤35. tier=TIER_BELOW[cancelled_tier] ({NACIONAL→REGIONAL, REGIONAL→LOCAL, LOCAL→LOCAL}). rate=Math.round(TV_BASE_CENTS[midTier]×DIVISION_MULTIPLIER_CENTS[currentDiv]×70/10000)/100. Always duration_seasons=1. Idempotent: UNIQUE partial index on calendar_events (playthrough_id, season_id, type) WHERE type IN ('tv_auction','tv_midseason_offer')."
+    created: "2026-05-20"
+    revised: ""
+    status: active
+
+  - id: TR-TVR-006
+    system: tv-rights
+    gdd: design/gdd/tv-rights.md
+    requirement: "Multi-year rollover: on season_end if season_in_contract < duration_seasons → season_in_contract+=1, no tv_auction generated, weekly_rate_eur_k immutable (division_at_signing). On season_end if season_in_contract=duration_seasons → ACTIVE→EXPIRED, next season_start generates tv_auction. CANCELLED on season_end = no-op; CANCELLED→NONE on season_start. Cancellation annuls remaining multi-year seasons. Corruption does NOT reset on rollover."
+    created: "2026-05-20"
+    revised: ""
+    status: active
+
+  - id: TR-TVR-007
+    system: tv-rights
+    gdd: design/gdd/tv-rights.md
+    requirement: "F-TV4 fan_loyalty → fan_attendance_effective: min(1.0, fan_attendance × (1 + fan_loyalty × 0.005)). Fan loyalty +10 on rejecting tv_auction (NONE, AC-TV-21) or tv_midseason_offer (CANCELLED, AC-TV-24). Cap 50. BREAKING CHANGE: matchday revenue consumers must apply F-TV4 (pending OQ-TV-03 cross-review — location: economy §F3 or cascade C8). fan_loyalty registered in entities.yaml before implementation."
+    created: "2026-05-20"
+    revised: ""
+    status: active
+
+  - id: TR-TVR-008
+    system: tv-rights
+    gdd: design/gdd/tv-rights.md
+    requirement: "XP grants on tv_auction resolution: signing REGIONAL → financial_acumen_xp +10; signing NACIONAL → financial_acumen_xp +25; signing LOCAL → no change; rejection → no XP change. Granted inside POST /api/tv/sign transaction."
+    created: "2026-05-20"
+    revised: ""
+    status: active
+
+  - id: TR-TVR-009
+    system: tv-rights
+    gdd: design/gdd/tv-rights.md
+    requirement: "TV revenue in cashflow: tv_weekly_eur_k = contract.weekly_rate_eur_k if ACTIVE else 0. Replaces economy.md §F2 flat constant. BREAKING CHANGE: delete getTVRightsWeekly() from league-system module + constants TV_RIGHTS_SEGUNDA/TV_RIGHTS_PRIMERA from constants.ts. ACs AC-LGS-18/19 deprecated."
+    created: "2026-05-20"
+    revised: ""
+    status: active
+
+  - id: TR-TVR-010
+    system: tv-rights
+    gdd: design/gdd/tv-rights.md
+    requirement: "TV_SCANDAL_THRESHOLD=60 cancellation: threshold_crossed_upward_tv (paso 3, F-TV3 delta) or threshold_crossed_upward_cascade (paso 7, after cascade injection). Revenue asymmetry: F-TV3 cancellation tick revenue=0 (cancel in paso 4, before revenue paso 5); cascade cancellation tick revenue=ACTIVE rate (cancel in paso 8, after revenue paso 5). Week 38: CANCELLED (not EXPIRED) if threshold crossed; season_end treats CANCELLED as no-op."
+    created: "2026-05-20"
+    revised: ""
+    status: active
+
+  - id: TR-TVR-011
+    system: tv-rights
+    gdd: design/gdd/tv-rights.md
+    requirement: "UI in /finance: active contract panel (tier, channel name, weekly rate, weeks remaining, 'Year N of M' for multi-year); tv_auction offers list (tier+duration, weekly_rate, corruption_delta, risk flags ⚠️ NACIONAL 3yr corruption>0 and REGIONAL 2yr corruption≥22); tv_midseason_offer display (tier, 70% rate, weeks remaining). UX spec: design/ux/tv-rights.md (pending /ux-design tv-rights)."
+    created: "2026-05-20"
+    revised: ""
+    status: active
+
+  - id: TR-TVR-012
+    system: tv-rights
+    gdd: design/gdd/tv-rights.md
+    requirement: "POST /api/tv/sign: validate tier+durationSeasons (HTTP 400 for illegal combos), reject if tv_contract_status=ACTIVE (HTTP 409), calculate F-TV1 rate, resolve tv_auction event (consumed=true), create tv_contract ACTIVE — all in single Drizzle transaction. Also: POST /api/tv/reject: set event consumed=true, fan_loyalty+=10 (min(50,X+10)), no contract created. Both guarded by session auth."
+    created: "2026-05-20"
+    revised: ""
+    status: active
