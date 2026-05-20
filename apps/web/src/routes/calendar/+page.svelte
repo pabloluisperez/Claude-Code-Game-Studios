@@ -8,7 +8,7 @@
 <script lang="ts">
   import type { PageData } from './$types';
   import { enhance } from '$app/forms';
-  import { eventDisplay } from '$lib/event-labels';
+  import { eventDisplay, eventNeedsAction } from '$lib/event-labels';
   import { onMount } from 'svelte';
 
   let { data }: { data: PageData } = $props();
@@ -219,7 +219,7 @@
             </div>
           {/if}
 
-          {#if openEvent.status === 'pending'}
+          {#if openEvent.status === 'pending' && eventNeedsAction(openEvent.type, openEvent.priority)}
             <div class="flex flex-col gap-2 mt-4">
               {#each optEntries as [optKey, opt]}
                 <form method="POST" action="?/decide" use:enhance>
@@ -239,6 +239,10 @@
             </div>
             <p class="text-xs opacity-60 mt-3">
               La opción por defecto se aplicará pasados 24h si no decides.
+            </p>
+          {:else if openEvent.status === 'pending'}
+            <p class="text-xs opacity-60 mt-3 italic">
+              Aviso del calendario — es lo que hay, no requiere decisión.
             </p>
           {:else}
             <p class="text-sm opacity-80 mt-3">
