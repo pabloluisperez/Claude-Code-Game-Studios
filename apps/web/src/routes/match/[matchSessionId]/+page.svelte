@@ -22,6 +22,16 @@
   const skipToEnd = $derived($page.url.searchParams.get('skipToEnd') === '1');
   const returnTo = $derived($page.url.searchParams.get('return'));
   let finalWhistle = $state(false);
+  // Tracks whether the user has already seen the result of THIS fixture.
+  // Stored client-side per session so that walking away mid-game doesn't
+  // accidentally spoil the result on /calendar or /league.
+  let seenInSession = $state(false);
+  const SEEN_KEY = `tsm-seen-fixture:${data.fixture.id}`;
+
+  // "Today's" match = same week as the playthrough's current week.
+  const isToday = $derived(data.fixture.week === data.currentWeek);
+  // Hide the result until the user has watched (or expanded) it.
+  const resultHidden = $derived(isToday && !seenInSession && !finalWhistle);
 
   interface FeedEvent {
     minute: number;
@@ -264,14 +274,33 @@
   }
 
   onMount(() => {
-    if (skipToEnd) {
+    // Restore "seen" flag from sessionStorage so revisits don't re-hide
+    // results the user already watched in this session.
+    if (typeof sessionStorage !== 'undefined') {
+      seenInSession = sessionStorage.getItem(SEEN_KEY) === '1';
+    }
+
+    if (skipToEnd && !isToday) {
       // Treat as if the match already finished — show score + recap + all
-      // events upfront, no replay.
+      // events upfront, no replay. Only allowed for past matches; today's
+      // match must be watched.
       finalWhistle = true;
+      seenInSession = true;
+      if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(SEEN_KEY, '1');
       return;
     }
     if (autoplay && persistedEvents.length > 0) {
       startReplay();
+    }
+  });
+
+  // When the replay reaches the final whistle, mark this fixture as seen.
+  $effect(() => {
+    if (finalWhistle) {
+      seenInSession = true;
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem(SEEN_KEY, '1');
+      }
     }
   });
 
@@ -283,11 +312,10 @@
 
 <div class="grid grid-cols-1 lg:grid-cols-[1fr_22rem] gap-4 max-w-6xl mx-auto">
 <div class="space-y-6">
-  <p class="opacity-60 text-xs">
-    Fixture: <span class="font-mono">{data.fixture.id.slice(0, 8)}</span> ·
-    Semana <span class="font-mono">{data.fixture.week}</span> ·
-    Jornada <span class="font-mono">{data.fixture.matchday}</span>
-  </p>
+  <header class="flex items-baseline gap-3 flex-wrap">
+    <h1 class="text-3xl font-bold">Jornada {data.fixture.matchday}</h1>
+    <span class="opacity-60 text-sm">· Semana {data.fixture.week}</span>
+  </header>
 
   <!-- Scoreboard -->
   <section class="card bg-base-200 shadow">
@@ -300,6 +328,8 @@
         <div class="text-5xl font-mono font-bold">
           {#if isReplaying}
             {homeLive} <span class="opacity-50">-</span> {awayLive}
+          {:else if resultHidden}
+            — <span class="opacity-50">-</span> —
           {:else if data.fixture.status === 'played' && data.fixture.homeScore !== null}
             {data.fixture.homeScore} <span class="opacity-50">-</span> {data.fixture.awayScore}
           {:else}
@@ -314,6 +344,8 @@
       <div class="text-center text-sm opacity-60 mt-2">
         {#if isReplaying}
           Minuto <span class="font-mono">{liveMinute}'</span>
+        {:else if resultHidden}
+          <span class="badge badge-warning">Por jugar — vívelo antes de ver el resultado</span>
         {:else if data.fixture.status === 'played'}
           Estado <span class="badge badge-success">FINAL</span>
         {:else}
@@ -348,8 +380,9 @@
     </div>
   {/if}
 
-  <!-- Match recap (newspaper-style) — hidden while replay is in progress -->
-  {#if recap && (!isReplaying || finalWhistle)}
+  <!-- Match recap (newspaper-style) — hidden while replay is in progress
+       AND hidden if the result hasn't been "seen" yet (today's match). -->
+  {#if recap && !resultHidden && (!isReplaying || finalWhistle)}
     <section class="card bg-base-100 shadow border-2 border-base-300">
       <div class="card-body py-4">
         <div class="flex items-baseline justify-between border-b border-base-300 pb-2 mb-2">
@@ -361,24 +394,42 @@
     </section>
   {/if}
 
-  <!-- Event feed -->
+  <!-- Event feed — home events left, away events right -->
   <section class="card bg-base-100 shadow">
     <div class="card-body">
       <h2 class="card-title">Eventos del partido</h2>
-      {#if persistedEvents.length === 0}
+      <div class="grid grid-cols-2 text-xs opacity-60 uppercase tracking-wide mt-1 mb-2">
+        <div class="text-left">🏠 {data.fixture.homeName}</div>
+        <div class="text-right">✈️ {data.fixture.awayName}</div>
+      </div>
+      {#if resultHidden && !isReplaying}
+        <p class="opacity-60 text-sm">
+          Pulsa "Reproducir en vivo" para vivir el partido — los eventos se revelan minuto a minuto.
+        </p>
+      {:else if persistedEvents.length === 0}
         <p class="opacity-60 text-sm">Sin eventos registrados.</p>
       {:else}
         <div class="space-y-1">
           {#each (isReplaying ? liveEvents : persistedEvents) as e}
-            <div class="flex items-center gap-3 p-2 bg-base-200 rounded">
-              <div class="font-mono text-sm opacity-70 w-12">{e.minute}'</div>
-              <span class="badge {eventBadge(e.type)}">{eventLabel(e.type)}</span>
-              <div class="flex-1 text-sm">
-                <span class="opacity-60 text-xs uppercase">{e.team === 'home' ? data.fixture.homeName : data.fixture.awayName}</span>
+            {@const isHome = e.team === 'home'}
+            <div
+              class="flex items-center gap-3 p-2 bg-base-200 rounded
+                     {isHome ? '' : 'flex-row-reverse text-right'}"
+            >
+              <div class="font-mono text-sm opacity-70 w-10 flex-shrink-0
+                          {isHome ? '' : 'text-right'}">
+                {e.minute}'
+              </div>
+              <span class="badge {eventBadge(e.type)} flex-shrink-0">{eventLabel(e.type)}</span>
+              <div class="flex-1 text-sm min-w-0">
                 {#if e.playerName}
-                  <span class="font-semibold ml-2">{e.playerName}</span>
+                  <span class="font-semibold">{e.playerName}</span>
+                {:else}
+                  <span class="opacity-60">—</span>
                 {/if}
               </div>
+              <!-- Spacer column on opposite side so events visually stick to their half -->
+              <div class="flex-1"></div>
             </div>
           {/each}
         </div>

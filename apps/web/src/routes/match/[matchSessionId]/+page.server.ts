@@ -26,7 +26,7 @@ import {
 } from '@smt/db';
 
 export const load: PageServerLoad = async ({ params, parent }) => {
-  const { user } = await parent();
+  const { user, activePlaythrough } = await parent();
   if (!user) throw redirect(303, '/login');
 
   const homeClubs = alias(clubs, 'home_clubs');
@@ -105,5 +105,6 @@ export const load: PageServerLoad = async ({ params, parent }) => {
     fixture: fx,
     otherFixtures,
     liveStandings,
+    currentWeek: activePlaythrough?.currentWeek ?? 0,
   };
 };

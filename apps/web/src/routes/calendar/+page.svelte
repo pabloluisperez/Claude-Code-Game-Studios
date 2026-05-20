@@ -9,8 +9,30 @@
   import type { PageData } from './$types';
   import { enhance } from '$app/forms';
   import { eventDisplay } from '$lib/event-labels';
+  import { onMount } from 'svelte';
 
   let { data }: { data: PageData } = $props();
+
+  // Fixtures the user has watched this session — read from sessionStorage
+  // so today's match result stays hidden until the user actively replays.
+  let seenFixtures = $state<Set<string>>(new Set());
+  onMount(() => {
+    if (typeof sessionStorage === 'undefined') return;
+    const out = new Set<string>();
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const k = sessionStorage.key(i);
+      if (k?.startsWith('tsm-seen-fixture:') && sessionStorage.getItem(k) === '1') {
+        out.add(k.slice('tsm-seen-fixture:'.length));
+      }
+    }
+    seenFixtures = out;
+  });
+
+  function shouldHideScore(fx: { week: number; id: string }): boolean {
+    if (!data.hasPlaythrough) return false;
+    if (fx.week !== data.currentWeek) return false;
+    return !seenFixtures.has(fx.id);
+  }
 
   type EventRow = Extract<PageData, { hasPlaythrough: true }>['events'][number];
   type FixtureRow = Extract<PageData, { hasPlaythrough: true }>['fixtures'][number];
@@ -115,10 +137,12 @@
                       </div>
                     </div>
                     <div class="font-mono text-sm">
-                      {#if fixture.status === 'played' && fixture.homeScore !== null && fixture.awayScore !== null}
+                      {#if fixture.status === 'played' && fixture.homeScore !== null && fixture.awayScore !== null && !shouldHideScore(fixture)}
                         <span class="badge badge-neutral">
                           {fixture.homeScore}-{fixture.awayScore}
                         </span>
+                      {:else if shouldHideScore(fixture)}
+                        <span class="badge badge-warning">por jugar</span>
                       {:else}
                         <span class="badge badge-ghost">pendiente</span>
                       {/if}

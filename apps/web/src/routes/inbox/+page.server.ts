@@ -5,14 +5,16 @@
  * Control Manifest: 2026-05-20
  */
 
-import type { PageServerLoad } from './$types';
-import { redirect } from '@sveltejs/kit';
+import type { Actions, PageServerLoad } from './$types';
+import { fail, redirect } from '@sveltejs/kit';
 import {
   db,
   staffMessages,
   staff,
   calendarEvents,
+  playthroughs,
   eq,
+  and,
   desc,
 } from '@smt/db';
 import { weekToDate } from '@smt/shared';
@@ -58,4 +60,54 @@ export const load: PageServerLoad = async ({ parent }) => {
       date: weekToDate(e.week),
     })),
   };
+};
+
+export const actions: Actions = {
+  markRead: async ({ request, locals }) => {
+    if (!locals.user) throw redirect(303, '/login');
+    const form = await request.formData();
+    const id = String(form.get('id') ?? '');
+    if (!id) return fail(400, { error: 'Falta id.' });
+
+    const [active] = await db
+      .select()
+      .from(playthroughs)
+      .where(eq(playthroughs.userId, locals.user.id))
+      .orderBy(desc(playthroughs.updatedAt))
+      .limit(1);
+    if (!active) return fail(400, { error: 'No hay carrera activa.' });
+
+    await db
+      .update(staffMessages)
+      .set({ isRead: true })
+      .where(
+        and(
+          eq(staffMessages.id, id),
+          eq(staffMessages.playthroughId, active.id),
+        ),
+      );
+    return { ok: true };
+  },
+
+  markAllRead: async ({ locals }) => {
+    if (!locals.user) throw redirect(303, '/login');
+    const [active] = await db
+      .select()
+      .from(playthroughs)
+      .where(eq(playthroughs.userId, locals.user.id))
+      .orderBy(desc(playthroughs.updatedAt))
+      .limit(1);
+    if (!active) return fail(400, { error: 'No hay carrera activa.' });
+
+    await db
+      .update(staffMessages)
+      .set({ isRead: true })
+      .where(
+        and(
+          eq(staffMessages.playthroughId, active.id),
+          eq(staffMessages.isRead, false),
+        ),
+      );
+    return { ok: true };
+  },
 };

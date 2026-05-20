@@ -14,6 +14,7 @@
 -->
 <script lang="ts">
   import type { PageData } from './$types';
+  import { enhance } from '$app/forms';
   import { eventDisplay, eventNeedsAction } from '$lib/event-labels';
   let { data }: { data: PageData } = $props();
 
@@ -69,40 +70,58 @@
       <span>Necesitas iniciar una carrera para tener bandeja.</span>
     </div>
   {:else}
-    <div role="tablist" class="tabs tabs-boxed w-fit">
-      <button
-        role="tab"
-        class="tab {tab === 'all' ? 'tab-active' : ''}"
-        onclick={() => (tab = 'all')}
-      >
-        Todo ({data.messages.length + data.events.length})
-      </button>
-      <button
-        role="tab"
-        class="tab {tab === 'messages' ? 'tab-active' : ''}"
-        onclick={() => (tab = 'messages')}
-      >
-        Mensajes ({data.messages.length})
-      </button>
-      <button
-        role="tab"
-        class="tab {tab === 'events' ? 'tab-active' : ''}"
-        onclick={() => (tab = 'events')}
-      >
-        Eventos ({data.events.length})
-      </button>
+    {@const unreadCount = data.messages.filter((m) => !m.isRead).length}
+    <div class="flex items-center justify-between flex-wrap gap-2">
+      <div role="tablist" class="tabs tabs-boxed">
+        <button
+          role="tab"
+          class="tab {tab === 'all' ? 'tab-active' : ''}"
+          onclick={() => (tab = 'all')}
+        >
+          Todo ({data.messages.length + data.events.length})
+        </button>
+        <button
+          role="tab"
+          class="tab {tab === 'messages' ? 'tab-active' : ''}"
+          onclick={() => (tab = 'messages')}
+        >
+          Mensajes ({data.messages.length})
+        </button>
+        <button
+          role="tab"
+          class="tab {tab === 'events' ? 'tab-active' : ''}"
+          onclick={() => (tab = 'events')}
+        >
+          Eventos ({data.events.length})
+        </button>
+      </div>
+      {#if unreadCount > 0}
+        <form method="POST" action="?/markAllRead" use:enhance>
+          <button type="submit" class="btn btn-xs btn-ghost">
+            ✓ Marcar todos leídos ({unreadCount})
+          </button>
+        </form>
+      {/if}
     </div>
 
     <div class="space-y-1">
       {#if (tab === 'all' || tab === 'messages')}
         {#each data.messages as m}
           {@const tone = messageTone(m.priority)}
-          <div class="flex items-start gap-2 px-3 py-1.5 rounded text-xs {toneClasses(tone)}">
-            <span class="opacity-60 font-mono w-24 flex-shrink-0">{m.date.display}</span>
-            <span class="opacity-50 text-[10px] uppercase w-12 flex-shrink-0">S{m.week}</span>
-            <span class="flex-1 leading-snug">{m.content}</span>
-            {#if !m.isRead}<span class="badge badge-primary badge-xs flex-shrink-0">nuevo</span>{/if}
-          </div>
+          <form method="POST" action="?/markRead" use:enhance class="contents">
+            <input type="hidden" name="id" value={m.id} />
+            <button
+              type={m.isRead ? 'button' : 'submit'}
+              class="flex items-start gap-2 px-3 py-1.5 rounded text-xs text-left w-full
+                     {toneClasses(tone)}
+                     {!m.isRead ? 'hover:brightness-95 cursor-pointer' : 'cursor-default'}"
+            >
+              <span class="opacity-60 font-mono w-24 flex-shrink-0">{m.date.display}</span>
+              <span class="opacity-50 text-[10px] uppercase w-12 flex-shrink-0">S{m.week}</span>
+              <span class="flex-1 leading-snug">{m.content}</span>
+              {#if !m.isRead}<span class="badge badge-primary badge-xs flex-shrink-0">nuevo</span>{/if}
+            </button>
+          </form>
         {/each}
       {/if}
 

@@ -132,6 +132,7 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 
   let position: number | null = null;
   let standingsCount = 0;
+  const positionByClubId = new Map<string, number>();
   if (activeSeasonForPlaythrough) {
     const sameDivision = await db
       .select({ clubId: standings.clubId, points: standings.points, goalsFor: standings.goalsFor })
@@ -139,8 +140,9 @@ export const load: PageServerLoad = async ({ parent, url }) => {
       .where(eq(standings.seasonId, activeSeasonForPlaythrough.seasonId))
       .orderBy(desc(standings.points), desc(standings.goalsFor));
     standingsCount = sameDivision.length;
-    const idx = sameDivision.findIndex((s) => s.clubId === activePlaythrough.clubId);
-    if (idx >= 0) position = idx + 1;
+    sameDivision.forEach((s, idx) => positionByClubId.set(s.clubId, idx + 1));
+    const myIdx = sameDivision.findIndex((s) => s.clubId === activePlaythrough.clubId);
+    if (myIdx >= 0) position = myIdx + 1;
   }
 
   // Most recent past fixture for the user (used in "Week summary").
@@ -178,12 +180,17 @@ export const load: PageServerLoad = async ({ parent, url }) => {
     week,
     weekDate: weekToDate(week),
     messages: recentMessages,
-    nextFixtures: nextFixtures.map((f) => ({
-      ...f,
-      date: weekToDate(f.week),
-      isHome: f.homeClubId === activePlaythrough.clubId,
-      opponentName: f.homeClubId === activePlaythrough.clubId ? f.awayName : f.homeName,
-    })),
+    nextFixtures: nextFixtures.map((f) => {
+      const isHome = f.homeClubId === activePlaythrough.clubId;
+      const opponentClubId = isHome ? f.awayClubId : f.homeClubId;
+      return {
+        ...f,
+        date: weekToDate(f.week),
+        isHome,
+        opponentName: isHome ? f.awayName : f.homeName,
+        opponentPosition: positionByClubId.get(opponentClubId) ?? null,
+      };
+    }),
     pendingEvents: pendingEvents.map((e) => ({ ...e, date: weekToDate(e.week) })),
     position,
     standingsCount,

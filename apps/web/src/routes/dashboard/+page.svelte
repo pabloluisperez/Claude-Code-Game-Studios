@@ -136,7 +136,7 @@
       },
       {
         nodeId: 'team_fitness',
-        label: 'Fitness equipo',
+        label: 'Estado físico del equipo',
         display: `${fitness}%`,
         progressValue: fitness,
       },
@@ -385,14 +385,24 @@
           {/if}
 
           {#each nextFixtures as f}
+            {@const isToday = f.week === data.week}
             <a
-              href="/match/{f.id}"
-              class="flex items-center justify-between p-3 rounded bg-base-200 hover:bg-base-300"
+              href="/match/{f.id}{isToday ? '?autoplay=1&return=dashboard' : ''}"
+              class="flex items-center justify-between p-3 rounded
+                     {isToday ? 'bg-primary/20 border-2 border-primary' : 'bg-base-200 hover:bg-base-300'}"
             >
-              <div>
-                <div class="text-xs opacity-60">⚽ Partido · {f.date.display}</div>
-                <div class="font-semibold">
+              <div class="flex-1">
+                <div class="text-xs opacity-70">
+                  {#if isToday}
+                    <span class="badge badge-primary badge-sm mr-1">¡HOY!</span>
+                  {/if}
+                  ⚽ Partido · {f.date.display}
+                </div>
+                <div class="font-semibold {isToday ? 'text-lg' : ''}">
                   {f.isHome ? '🏠' : '✈️'} vs {f.opponentName}
+                  {#if f.opponentPosition !== null}
+                    <span class="opacity-60 text-sm font-normal">({f.opponentPosition}º)</span>
+                  {/if}
                 </div>
               </div>
               <span class="badge badge-primary">Jor {f.matchday}</span>

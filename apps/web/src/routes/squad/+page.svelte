@@ -13,10 +13,14 @@
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
-  type SortKey = 'lastName' | 'position' | 'skill' | 'form' | 'morale' | 'fitness';
+  type SortKey =
+    | 'lastName' | 'position' | 'skill'
+    | 'velocidad' | 'resistencia' | 'agresividad' | 'calidad'
+    | 'form' | 'morale' | 'fitness';
   let sortKey = $state<SortKey>('skill');
   let sortDir = $state<'asc' | 'desc'>('desc');
-  let filterPos = $state<'all' | 'GK' | 'DEF' | 'MID' | 'FWD'>('all');
+  /** Set of selected positions. Empty OR all = show all. */
+  let posFilter = $state<Set<string>>(new Set());
   let selected = $state<(typeof data.players)[number] | null>(null);
 
   // Position labels in Spanish (display only — DB keeps internal codes).
@@ -82,8 +86,9 @@
   }
 
   const sorted = $derived.by(() => {
+    const allPositions = posFilter.size === 0 || posFilter.size >= 4;
     const filtered = data.players.filter(
-      (p) => filterPos === 'all' || p.position === filterPos,
+      (p) => allPositions || posFilter.has(p.position),
     );
     return [...filtered].sort((a, b) => {
       const dir = sortDir === 'asc' ? 1 : -1;
@@ -158,42 +163,73 @@
         <span>El club no tiene jugadores registrados. Esperando seeding inicial.</span>
       </div>
     {:else}
-      <div class="flex flex-wrap gap-2">
-        <select class="select select-bordered select-sm" bind:value={filterPos}>
-          <option value="all">Todas posiciones</option>
-          <option value="GK">Porteros (POR)</option>
-          <option value="DEF">Defensas (DEF)</option>
-          <option value="MID">Mediocentros (MED)</option>
-          <option value="FWD">Delanteros (DEL)</option>
-        </select>
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="text-xs opacity-70 uppercase">Filtrar por posición</span>
+        <div class="join">
+          {#each ['GK', 'DEF', 'MID', 'FWD'] as p}
+            {@const isActive = posFilter.has(p)}
+            <button
+              type="button"
+              class="join-item btn btn-sm {isActive ? 'btn-primary' : 'btn-outline'}"
+              onclick={() => {
+                const next = new Set(posFilter);
+                if (next.has(p)) next.delete(p);
+                else next.add(p);
+                posFilter = next;
+              }}
+            >
+              {posLabel(p)}
+            </button>
+          {/each}
+          <button
+            type="button"
+            class="join-item btn btn-sm btn-ghost"
+            onclick={() => (posFilter = new Set())}
+          >
+            Todas
+          </button>
+        </div>
+        <span class="text-xs opacity-60">
+          {sorted.length} jugador{sorted.length === 1 ? '' : 'es'}
+        </span>
       </div>
 
       <div class="overflow-x-auto">
-        <table class="table table-zebra">
+        <table class="table table-zebra table-sm">
           <thead>
-            <tr>
-              <th class="cursor-pointer" onclick={() => toggleSort('lastName')}>Nombre</th>
+            <tr class="text-xs">
+              <th class="cursor-pointer" onclick={() => toggleSort('lastName')}>Jugador</th>
               <th class="cursor-pointer" onclick={() => toggleSort('position')}>Pos</th>
-              <th class="cursor-pointer text-right" onclick={() => toggleSort('skill')}>Skill</th>
-              <th class="cursor-pointer text-right" onclick={() => toggleSort('form')}>Forma</th>
-              <th class="cursor-pointer text-right" onclick={() => toggleSort('morale')}>Moral</th>
-              <th class="cursor-pointer text-right" onclick={() => toggleSort('fitness')}>Fitness</th>
+              <th class="cursor-pointer text-right border-l border-base-300" onclick={() => toggleSort('skill')}>OVR</th>
+              <!-- Atributos base -->
+              <th class="cursor-pointer text-right" title="Velocidad" onclick={() => toggleSort('velocidad')}>VEL</th>
+              <th class="cursor-pointer text-right" title="Resistencia" onclick={() => toggleSort('resistencia')}>RES</th>
+              <th class="cursor-pointer text-right" title="Agresividad" onclick={() => toggleSort('agresividad')}>AGR</th>
+              <th class="cursor-pointer text-right" title="Calidad" onclick={() => toggleSort('calidad')}>CAL</th>
+              <!-- Estado dinámico -->
+              <th class="cursor-pointer text-right border-l border-base-300" title="Forma" onclick={() => toggleSort('form')}>FOR</th>
+              <th class="cursor-pointer text-right" title="Moral" onclick={() => toggleSort('morale')}>MOR</th>
+              <th class="cursor-pointer text-right" title="Fitness" onclick={() => toggleSort('fitness')}>FIT</th>
             </tr>
           </thead>
           <tbody>
             {#each sorted as p}
-              <tr class="hover cursor-pointer" onclick={() => (selected = p)}>
+              <tr class="hover cursor-pointer text-sm" onclick={() => (selected = p)}>
                 <td class="font-semibold">
                   <div class="flex items-center gap-2">
-                    <Avatar seed={`player:${p.id}:${p.firstName}${p.lastName}`} size={32} />
-                    <span>{p.firstName} {p.lastName}</span>
+                    <Avatar seed={`player:${p.id}:${p.firstName}${p.lastName}`} size={28} />
+                    <span class="truncate">{p.firstName[0]}. {p.lastName}</span>
                   </div>
                 </td>
-                <td><span class="badge badge-outline">{posLabel(p.position)}</span></td>
-                <td class="text-right font-mono">{p.skill}</td>
-                <td class="text-right font-mono">{p.form}</td>
-                <td class="text-right font-mono">{p.morale}</td>
-                <td class="text-right font-mono">{p.fitness}</td>
+                <td><span class="badge badge-outline badge-sm">{posLabel(p.position)}</span></td>
+                <td class="text-right font-mono font-bold border-l border-base-300">{p.skill}</td>
+                <td class="text-right font-mono opacity-90">{p.velocidad}</td>
+                <td class="text-right font-mono opacity-90">{p.resistencia}</td>
+                <td class="text-right font-mono opacity-90">{p.agresividad}</td>
+                <td class="text-right font-mono opacity-90">{p.calidad}</td>
+                <td class="text-right font-mono opacity-70 border-l border-base-300">{p.form}</td>
+                <td class="text-right font-mono opacity-70">{p.morale}</td>
+                <td class="text-right font-mono opacity-70">{p.fitness}</td>
               </tr>
             {/each}
           </tbody>

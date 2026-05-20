@@ -6,7 +6,29 @@
 -->
 <script lang="ts">
   import type { PageData } from './$types';
+  import { onMount } from 'svelte';
   let { data }: { data: PageData } = $props();
+
+  // Fixtures the user has already watched this session — others stay
+  // result-hidden until they're seen.
+  let seenFixtures = $state<Set<string>>(new Set());
+  onMount(() => {
+    if (typeof sessionStorage === 'undefined') return;
+    const out = new Set<string>();
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const k = sessionStorage.key(i);
+      if (k?.startsWith('tsm-seen-fixture:') && sessionStorage.getItem(k) === '1') {
+        out.add(k.slice('tsm-seen-fixture:'.length));
+      }
+    }
+    seenFixtures = out;
+  });
+
+  function shouldHideScore(fx: { week: number; id: string }): boolean {
+    if (!data.hasPlaythrough) return false;
+    if (fx.week !== data.currentWeek) return false;
+    return !seenFixtures.has(fx.id);
+  }
 
   const myClubId = $derived(data.hasPlaythrough ? data.myClubId : '');
 
@@ -155,8 +177,10 @@
                         <span class="{f.awayClubId === myClubId ? 'font-bold' : ''}">{f.awayName}</span>
                       </div>
                       <div class="font-mono ml-2">
-                        {#if f.status === 'played' && f.homeScore !== null && f.awayScore !== null}
+                        {#if f.status === 'played' && f.homeScore !== null && f.awayScore !== null && !shouldHideScore(f)}
                           <span class="badge badge-neutral">{f.homeScore}-{f.awayScore}</span>
+                        {:else if shouldHideScore(f)}
+                          <span class="badge badge-warning badge-sm">por jugar</span>
                         {:else}
                           <span class="opacity-30 text-xs">—</span>
                         {/if}
