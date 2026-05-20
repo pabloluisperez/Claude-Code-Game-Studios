@@ -14,10 +14,10 @@
  * Control Manifest: 2026-05-19
  */
 
-/** Anchor: Saturday 1 August 2026 — pre-season starts here. */
-export const CALENDAR_ANCHOR_ISO = '2026-08-01';
+/** Anchor: Sunday 2 August 2026 — pre-season starts here. Matchdays are Sundays. */
+export const CALENDAR_ANCHOR_ISO = '2026-08-02';
 
-/** First league matchday: Saturday 5 September 2026 = week 5 from anchor. */
+/** First league matchday: Sunday 6 September 2026 = week 5 from anchor. */
 export const LEAGUE_KICKOFF_WEEK = 5;
 
 export interface InGameDate {

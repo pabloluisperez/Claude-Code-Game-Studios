@@ -17,7 +17,8 @@
     "clsx": "^2.1.0",
     "hono": "^4.0.0",
     "pixi.js": "^8.0.0",
-    "socket.io-client": "^4.7.0"
+    "socket.io-client": "^4.7.0",
+    "svelte-range-slider-pips": "^4.1.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.48.0",

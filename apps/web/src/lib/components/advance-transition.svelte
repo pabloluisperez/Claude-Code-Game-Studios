@@ -202,14 +202,12 @@
       hourPhase = 0;
       dayIndex += 1;
       if (dayIndex >= 7) {
+        // Always pause at day 7 — the user must explicitly confirm before
+        // the week commits. If a match is pending they pick "Vivir/Saltar";
+        // otherwise just "Volver al dashboard".
         completed = true;
         clearResume();
-        if (matchPendingThisAdvance) {
-          // Don't auto-commit — wait for the user to pick how to watch.
-          return;
-        }
-        // No match this advance: commit automatically after a brief pause.
-        setTimeout(() => onComplete(), 300);
+        return;
       }
     }
     raf = requestAnimationFrame(tick);
@@ -388,6 +386,15 @@
             <button class="btn btn-warning btn-sm" type="button" onclick={handlePause}>
               ⏸ Pausar
             </button>
+            {#if matchPendingThisAdvance && onMatchChoice}
+              <button
+                class="btn btn-primary btn-sm"
+                type="button"
+                onclick={() => onMatchChoice('autoplay')}
+              >
+                ⚽ Ir al partido
+              </button>
+            {/if}
           {:else}
             <button class="btn btn-success btn-sm" type="button" onclick={handleResume}>
               ▶ Reanudar
@@ -395,6 +402,15 @@
             <button class="btn btn-error btn-sm" type="button" onclick={handleCancel}>
               🛑 Cancelar y actuar
             </button>
+            {#if matchPendingThisAdvance && onMatchChoice}
+              <button
+                class="btn btn-primary btn-sm"
+                type="button"
+                onclick={() => onMatchChoice('autoplay')}
+              >
+                ⚽ Ir al partido
+              </button>
+            {/if}
           {/if}
         {/if}
       </div>
@@ -416,23 +432,35 @@
         </div>
       {/if}
 
-      <!-- Match arrival CTA: shown when day 7 hits AND there's a user fixture. -->
-      {#if completed && matchPendingThisAdvance && onMatchChoice}
+      <!-- End-of-week CTA: ALWAYS shown when day 7 closes. The buttons
+           depend on whether there's a user match this week. -->
+      {#if completed && onMatchChoice}
         <div class="action-panel mt-6 text-center">
-          <div class="text-3xl mb-2">⚽</div>
-          <div class="text-lg font-bold">¡Llegó el día del partido!</div>
-          <p class="text-sm opacity-80 mb-3">¿Cómo quieres vivirlo?</p>
-          <div class="flex gap-2 justify-center flex-wrap">
-            <button class="btn btn-primary" type="button" onclick={() => onMatchChoice('autoplay')}>
-              ▶ Vivir el partido
+          {#if matchPendingThisAdvance}
+            <div class="text-3xl mb-2">⚽</div>
+            <div class="text-lg font-bold">¡Llegó el día del partido!</div>
+            <p class="text-sm opacity-80 mb-3">¿Cómo quieres vivirlo?</p>
+            <div class="flex gap-2 justify-center flex-wrap">
+              <button class="btn btn-primary" type="button" onclick={() => onMatchChoice('autoplay')}>
+                ▶ Vivir el partido
+              </button>
+              <button class="btn btn-outline" type="button" onclick={() => onMatchChoice('skip')}>
+                ⏭ Saltar al resultado
+              </button>
+              <button class="btn btn-ghost btn-sm" type="button" onclick={() => onMatchChoice('dashboard')}>
+                Volver al dashboard
+              </button>
+            </div>
+          {:else}
+            <div class="text-3xl mb-2">📅</div>
+            <div class="text-lg font-bold">Semana terminada</div>
+            <p class="text-sm opacity-80 mb-3">
+              No hay partido tuyo esta jornada. Vuelve al despacho cuando quieras.
+            </p>
+            <button class="btn btn-primary" type="button" onclick={() => onMatchChoice('dashboard')}>
+              → Volver al dashboard
             </button>
-            <button class="btn btn-outline" type="button" onclick={() => onMatchChoice('skip')}>
-              ⏭ Saltar al resultado
-            </button>
-            <button class="btn btn-ghost btn-sm" type="button" onclick={() => onMatchChoice('dashboard')}>
-              Volver al dashboard
-            </button>
-          </div>
+          {/if}
         </div>
       {/if}
     </div>

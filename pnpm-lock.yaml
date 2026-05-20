@@ -108,7 +108,13 @@ importers:
       socket.io-client:
         specifier: ^4.7.0
         version: 4.8.3
+      svelte-range-slider-pips:
+        specifier: ^4.1.1
+        version: 4.1.1(svelte@5.55.7)
     devDependencies:
+      '@playwright/test':
+        specifier: ^1.48.0
+        version: 1.60.0
       '@sveltejs/adapter-node':
         specifier: ^5.2.0
         version: 5.5.4(@sveltejs/kit@2.60.1(@sveltejs/vite-plugin-svelte@4.0.4(svelte@5.55.7)(vite@5.4.21(@types/node@22.19.19)))(svelte@5.55.7)(typescript@5.9.3)(vite@5.4.21(@types/node@22.19.19)))
@@ -173,10 +179,16 @@ importers:
 
   packages/shared:
     dependencies:
+      seedrandom:
+        specifier: 3.0.5
+        version: 3.0.5
       zod:
         specifier: ^3.23.0
         version: 3.25.76
     devDependencies:
+      '@types/seedrandom':
+        specifier: 3.0.8
+        version: 3.0.8
       typescript:
         specifier: ^5.4.0
         version: 5.9.3
@@ -1306,6 +1318,9 @@ packages:
   '@types/resolve@1.20.2':
     resolution: {integrity: sha512-60BCwRFOZCQhDncwQdxxeOEEkbc5dIMccYLwbxsS4TUNeVECQ/pBJ0j09mrHOl/JJvpRPGwO9SvE4nR2Nb/a4Q==}
 
+  '@types/seedrandom@3.0.8':
+    resolution: {integrity: sha512-TY1eezMU2zH2ozQoAFAQFOPpvP15g+ZgSfTZt31AUUH/Rxtnz3H+A/Sv1Snw2/amp//omibc+AEkTaA8KUeOLQ==}
+
   '@types/trusted-types@2.0.7':
     resolution: {integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==}
 
@@ -2407,6 +2422,9 @@ packages:
   secure-json-parse@2.7.0:
     resolution: {integrity: sha512-6aU+Rwsezw7VR8/nyvKTx8QpWH9FrcYiXXlqC4z5d5XQBDRqtbfsRjnwGyqbi3gddNtWHuEk9OANUotL26qKUw==}
 
+  seedrandom@3.0.5:
+    resolution: {integrity: sha512-8OwmbklUNzwezjGInmZ+2clQmExQPvomqjL7LFqOYqtmuxRgQYqOD3mHaU+MvZn5FLUeVxVfQjwLZW/n/JFuqg==}
+
   semver@7.8.0:
     resolution: {integrity: sha512-AcM7dV/5ul4EekoQ29Agm5vri8JNqRyj39o0qpX6vDF2GZrtutZl5RwgD1XnZjiTAfncsJhMI48QQH3sN87YNA==}
     engines: {node: '>=10'}
@@ -2499,6 +2517,11 @@ packages:
     peerDependencies:
       svelte: ^4.0.0 || ^5.0.0-next.0
       typescript: '>=5.0.0'
+
+  svelte-range-slider-pips@4.1.1:
+    resolution: {integrity: sha512-PWOZh1QYeQoCDloO2l4xmb9gttooMjk6Sbb4skDMzNH33UlRUHnc1tVwNmEC1IAzGiQVBxjUmNXlNEA6bKLugQ==}
+    peerDependencies:
+      svelte: ^4.2.7 || ^5.0.0
 
   svelte@5.55.7:
     resolution: {integrity: sha512-ymI5ykLPwIHW839E053FQbI1G+jnRFJEw3Kv5Y4njixVWywQBx+NUFpkkKyk5LIb36Fg9DVXSYpqiGekLD0hyw==}
@@ -3456,6 +3479,8 @@ snapshots:
       pg-types: 2.2.0
 
   '@types/resolve@1.20.2': {}
+
+  '@types/seedrandom@3.0.8': {}
 
   '@types/trusted-types@2.0.7': {}
 
@@ -4543,6 +4568,8 @@ snapshots:
 
   secure-json-parse@2.7.0: {}
 
+  seedrandom@3.0.5: {}
+
   semver@7.8.0: {}
 
   set-cookie-parser@3.1.0: {}
@@ -4656,6 +4683,10 @@ snapshots:
       typescript: 5.9.3
     transitivePeerDependencies:
       - picomatch
+
+  svelte-range-slider-pips@4.1.1(svelte@5.55.7):
+    dependencies:
+      svelte: 5.55.7
 
   svelte@5.55.7:
     dependencies:

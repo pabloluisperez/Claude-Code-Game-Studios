@@ -7,7 +7,15 @@
 <script lang="ts">
   import type { PageData, ActionData } from './$types';
   import { enhance } from '$app/forms';
+  import RangeSlider from 'svelte-range-slider-pips';
+  import 'svelte-range-slider-pips/dist/range-slider-pips.css';
   let { data, form }: { data: PageData; form: ActionData } = $props();
+
+  // Slider state mirrors the form input; submits on release via on:stop.
+  let priceValues = $state<[number]>([data.club?.seasonTicketPriceEur ?? 35]);
+  $effect(() => {
+    priceValues = [data.club?.seasonTicketPriceEur ?? 35];
+  });
 
   const latest = $derived(data.hasPlaythrough ? data.snapshots[0] : undefined);
   const balance = $derived(Math.round(latest?.state.financial_balance ?? 0));
@@ -95,21 +103,24 @@
               </span>
             </div>
             <form method="POST" action="?/setTicketPrice" use:enhance class="mt-2">
-              <label class="form-control w-full max-w-xs">
-                <span class="label-text text-xs">Fijar precio del abono (5-200 €)</span>
-                <div class="join">
-                  <input
-                    class="join-item input input-bordered"
-                    type="number"
-                    name="priceEur"
-                    min="5"
-                    max="200"
-                    step="5"
-                    value={data.club.seasonTicketPriceEur}
-                  />
-                  <button type="submit" class="join-item btn btn-primary">Fijar</button>
-                </div>
-              </label>
+              <div class="text-xs label-text mb-2">
+                Fijar precio del abono: <strong>{priceValues[0]} €</strong>
+              </div>
+              <div class="ticket-slider mb-2 max-w-md">
+                <RangeSlider
+                  bind:values={priceValues}
+                  min={5}
+                  max={100}
+                  step={5}
+                  pips
+                  pipstep={3}
+                  all="label"
+                  float
+                  ariaLabels={['Precio del abono en euros']}
+                />
+              </div>
+              <input type="hidden" name="priceEur" value={priceValues[0]} />
+              <button type="submit" class="btn btn-primary btn-sm">Fijar precio</button>
             </form>
             <p class="text-xs opacity-60 mt-2">
               ≤ 25 € → más abonados, peor margen.

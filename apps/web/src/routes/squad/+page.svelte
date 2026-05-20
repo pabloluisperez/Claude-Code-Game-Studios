@@ -9,6 +9,7 @@
   import { enhance } from '$app/forms';
   import { describeTraits } from '@smt/shared';
   import Avatar from '$lib/components/avatar.svelte';
+  import BucketGroup from '$lib/components/bucket-group.svelte';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -52,6 +53,25 @@
         Math.abs(b.index - data.trainingIntensity) < Math.abs(best.index - data.trainingIntensity) ? b : best,
       ).id
     );
+  });
+
+  let pendingBucket = $state<IntensityBucket>('normal');
+  let intensityFormEl: HTMLFormElement | undefined = $state();
+
+  // Keep pendingBucket in sync with the persisted value when data refreshes.
+  $effect(() => {
+    pendingBucket = currentBucket;
+  });
+
+  // When the user picks a different bucket, submit the form automatically.
+  $effect(() => {
+    if (
+      data.hasPlaythrough &&
+      pendingBucket !== currentBucket &&
+      intensityFormEl
+    ) {
+      intensityFormEl.requestSubmit();
+    }
   });
 
   function dangerColor(d: BucketDef['danger']): string {
@@ -112,26 +132,20 @@
           </div>
         {/if}
 
-        <div
-          role="radiogroup"
-          aria-label="Intensidad de entrenamiento"
-          class="join mt-2 w-full"
+        <form
+          method="POST"
+          action="?/setIntensity"
+          use:enhance
+          class="mt-2"
+          bind:this={intensityFormEl}
         >
-          {#each BUCKETS as b}
-            {@const isActive = b.id === currentBucket}
-            <form method="POST" action="?/setIntensity" class="flex-1" use:enhance>
-              <input type="hidden" name="bucket" value={b.id} />
-              <button
-                type="submit"
-                role="radio"
-                aria-checked={isActive}
-                class="join-item btn w-full {isActive ? dangerColor(b.danger) || 'btn-primary' : 'btn-outline'}"
-              >
-                {b.label}
-              </button>
-            </form>
-          {/each}
-        </div>
+          <input type="hidden" name="bucket" bind:value={pendingBucket} />
+          <BucketGroup
+            options={BUCKETS.map((b) => ({ id: b.id, label: b.label, danger: b.danger }))}
+            ariaLabel="Intensidad de entrenamiento"
+            bind:value={pendingBucket}
+          />
+        </form>
 
         <p class="text-xs opacity-70 mt-2">
           {BUCKETS.find((b) => b.id === currentBucket)?.hint ?? ''}

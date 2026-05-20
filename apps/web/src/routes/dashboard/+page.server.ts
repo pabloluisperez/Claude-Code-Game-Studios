@@ -39,6 +39,7 @@ import { checkAndRolloverSeason } from '$lib/server/season-rollover';
 import { detectAndPersistMilestones } from '$lib/server/milestones';
 import { grantWeeklyManagerXp } from '$lib/server/manager-xp';
 import { maybeDripSeasonTickets } from '$lib/server/season-tickets';
+import { generateAmbientStaffMessages } from '$lib/server/ambient-staff';
 
 export const load: PageServerLoad = async ({ parent, url }) => {
   const { user, activePlaythrough } = await parent();
@@ -375,51 +376,67 @@ export const actions: Actions = {
         thresholdCrossings: result.thresholdCrossings,
       });
 
-      if (generated.length > 0) {
-        // Look up the active season to tag messages with the right season number.
-        const [activeSeason] = await db
-          .select({ seasonNumber: seasons.seasonNumber })
-          .from(seasons)
-          .innerJoin(
-            // Sub-select to constrain by playthrough's leagues — simpler: use any active season.
-            seasons,
-            eq(seasons.status, 'active'),
-          )
-          .limit(1)
-          .catch(() => [{ seasonNumber: 1 }] as Array<{ seasonNumber: number }>);
+      // Prefix each message with the staff member's name + role label so
+      // the dashboard shows a proper "Marta (preparadora física): ..." voice
+      // instead of bare templates.
+      const ROLE_LABEL: Readonly<Record<string, string>> = {
+        groundskeeper: 'jardinero',
+        fitness_coach: 'preparador físico',
+        commercial_director: 'director comercial',
+        scouting_director: 'director de scouting',
+        finance_director: 'director financiero',
+        head_coach: 'segundo entrenador',
+      };
+      const staffById = new Map(activeStaff.map((s) => [s.id, s]));
 
-        // Prefix each message with the staff member's name + role label so
-        // the dashboard shows a proper "Marta (preparadora física): ..." voice
-        // instead of bare templates.
-        const ROLE_LABEL: Readonly<Record<string, string>> = {
-          groundskeeper: 'jardinero',
-          fitness_coach: 'preparador físico',
-          commercial_director: 'director comercial',
-          scouting_director: 'director de scouting',
-          finance_director: 'director financiero',
-          head_coach: 'segundo entrenador',
+      const voicedThresholdMessages = generated.map((m) => {
+        const s = staffById.get(m.staffId);
+        const firstName = (s?.name ?? 'Staff').split(' ')[0];
+        const roleLabel = ROLE_LABEL[m.role] ?? m.role;
+        const verb = m.priority === 'URGENT' ? 'avisa' : 'comenta';
+        const voiced = `${firstName} (${roleLabel}) ${verb}: ${m.content}`;
+        return {
+          playthroughId: active.id,
+          staffId: m.staffId,
+          week: nextWeek,
+          season: 1,
+          priority: m.priority,
+          templateKey: m.templateKey,
+          content: voiced,
+          isRead: false,
         };
-        const staffById = new Map(activeStaff.map((s) => [s.id, s]));
+      });
 
-        await db.insert(staffMessages).values(
-          generated.map((m) => {
-            const s = staffById.get(m.staffId);
-            const firstName = (s?.name ?? 'Staff').split(' ')[0];
-            const roleLabel = ROLE_LABEL[m.role] ?? m.role;
-            const verb = m.priority === 'URGENT' ? 'avisa' : 'comenta';
-            const voiced = `${firstName} (${roleLabel}) ${verb}: ${m.content}`;
-            return {
-              playthroughId: active.id,
-              staffId: m.staffId,
-              week: nextWeek,
-              season: activeSeason?.seasonNumber ?? 1,
-              priority: m.priority,
-              templateKey: m.templateKey,
-              content: voiced,
-              isRead: false,
-            };
-          }),
-        );
+      // Ambient weekly check-ins so every staff member says something even
+      // if no thresholds were crossed. Tags as templateKey 'ambient:*' to
+      // dedupe (one per role per week) and skip staff who already produced
+      // a threshold message this tick.
+      const rolesAlreadyVocal = new Set(voicedThresholdMessages.map((m) => m.staffId));
+      const ambientMsgs = generateAmbientStaffMessages({
+        activeStaff: activeStaff
+          .filter((s) => !rolesAlreadyVocal.has(s.id))
+          .map((s) => ({
+            id: s.id,
+            role: s.role,
+            qualityTier: s.qualityTier as number,
+            name: s.name,
+          })),
+        worldState: eco.patchedState,
+      });
+      const ambientRows = ambientMsgs.map((m) => ({
+        playthroughId: active.id,
+        staffId: m.staffId,
+        week: nextWeek,
+        season: 1,
+        priority: m.priority,
+        templateKey: m.templateKey,
+        content: m.content,
+        isRead: false,
+      }));
+
+      const allRows = [...voicedThresholdMessages, ...ambientRows];
+      if (allRows.length > 0) {
+        await db.insert(staffMessages).values(allRows);
       }
     }
 

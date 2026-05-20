@@ -2,19 +2,20 @@ import { describe, expect, it } from 'vitest';
 import { weekToDate, weekPhase, CALENDAR_ANCHOR_ISO, LEAGUE_KICKOFF_WEEK } from '../src/sim/calendar.js';
 
 describe('weekToDate', () => {
-  it('week 0 maps to the anchor (1 Aug 2026)', () => {
+  it('week 0 maps to the anchor (2 Aug 2026)', () => {
     const d = weekToDate(0);
     expect(d.iso).toBe(CALENDAR_ANCHOR_ISO);
     expect(d.year).toBe(2026);
     expect(d.month).toBe(8);
-    expect(d.day).toBe(1);
+    expect(d.day).toBe(2);
   });
 
-  it('week 5 maps to the league kickoff (5 Sep 2026)', () => {
+  it('week 5 maps to the league kickoff (6 Sep 2026, Sunday)', () => {
     const d = weekToDate(LEAGUE_KICKOFF_WEEK);
-    expect(d.iso).toBe('2026-09-05');
+    expect(d.iso).toBe('2026-09-06');
     expect(d.display).toContain('sep');
     expect(d.display).toContain('2026');
+    expect(d.display.toLowerCase()).toMatch(/dom/);
   });
 
   it('week 22 maps to early 2027 (mid league)', () => {
