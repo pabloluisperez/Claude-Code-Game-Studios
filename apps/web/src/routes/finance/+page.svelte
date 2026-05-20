@@ -75,28 +75,45 @@
             </div>
           </div>
 
-          <form method="POST" action="?/setTicketPrice" use:enhance class="mt-3">
-            <label class="form-control w-full max-w-xs">
-              <span class="label-text text-xs">Cambiar precio del abono (5-200 €)</span>
-              <div class="join">
-                <input
-                  class="join-item input input-bordered"
-                  type="number"
-                  name="priceEur"
-                  min="5"
-                  max="200"
-                  step="5"
-                  value={data.club.seasonTicketPriceEur}
-                />
-                <button type="submit" class="join-item btn btn-primary">Guardar</button>
-              </div>
-            </label>
-          </form>
-          <p class="text-xs opacity-60 mt-2">
-            ≤ 25 € → más abonados, peor margen.
-            ≥ 50 € → menos abonados pero más caro por persona.
-            El cambio aplica para próxima temporada.
-          </p>
+          {#if data.pretemporada}
+            <div class="alert alert-info py-2 mt-3">
+              <span class="text-xs">
+                ✅ Pretemporada — puedes cambiar el precio del abono.
+                {#if data.weeksUntilKickoff !== null && data.weeksUntilKickoff > 0}
+                  Quedan {data.weeksUntilKickoff} semana{data.weeksUntilKickoff === 1 ? '' : 's'} hasta la jornada 1.
+                {/if}
+              </span>
+            </div>
+            <form method="POST" action="?/setTicketPrice" use:enhance class="mt-2">
+              <label class="form-control w-full max-w-xs">
+                <span class="label-text text-xs">Cambiar precio del abono (5-200 €)</span>
+                <div class="join">
+                  <input
+                    class="join-item input input-bordered"
+                    type="number"
+                    name="priceEur"
+                    min="5"
+                    max="200"
+                    step="5"
+                    value={data.club.seasonTicketPriceEur}
+                  />
+                  <button type="submit" class="join-item btn btn-primary">Guardar</button>
+                </div>
+              </label>
+            </form>
+            <p class="text-xs opacity-60 mt-2">
+              ≤ 25 € → más abonados, peor margen.
+              ≥ 50 € → menos abonados pero más caro por persona.
+              El cambio aplica a esta temporada que está a punto de empezar.
+            </p>
+          {:else}
+            <div class="alert alert-warning py-2 mt-3">
+              <span class="text-xs">
+                🔒 Solo puedes cambiar el precio del abono en pretemporada.
+                Espera al final de la temporada actual.
+              </span>
+            </div>
+          {/if}
         </div>
       </section>
     {/if}

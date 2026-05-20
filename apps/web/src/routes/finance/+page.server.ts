@@ -13,9 +13,44 @@ import {
   sponsors,
   clubs,
   playthroughs,
+  seasons,
+  leagues,
   eq,
+  and,
   desc,
 } from '@smt/db';
+import { LEAGUE_KICKOFF_WEEK } from '@smt/shared';
+
+/**
+ * The window in which the user can change the season-ticket price for the
+ * NEXT season: from the moment the previous season ends (or career start)
+ * until the kick-off week of the current season.
+ *
+ * Returns null if there's no active season yet (treat as pretemporada).
+ */
+async function isPretemporada(playthroughId: string): Promise<boolean> {
+  const [league] = await db
+    .select()
+    .from(leagues)
+    .where(eq(leagues.playthroughId, playthroughId))
+    .limit(1);
+  if (!league) return true; // career being created — allow
+
+  const [activeSeason] = await db
+    .select()
+    .from(seasons)
+    .where(and(eq(seasons.leagueId, league.id), eq(seasons.status, 'active')))
+    .orderBy(desc(seasons.seasonNumber))
+    .limit(1);
+
+  const [pt] = await db.select().from(playthroughs).where(eq(playthroughs.id, playthroughId)).limit(1);
+  if (!pt) return true;
+  const currentWeek = pt.currentWeek;
+
+  if (!activeSeason) return true;
+  // Pretemporada = before season's first matchday.
+  return currentWeek < activeSeason.startWeek;
+}
 
 export const load: PageServerLoad = async ({ parent }) => {
   const { user, activePlaythrough } = await parent();
@@ -44,6 +79,27 @@ export const load: PageServerLoad = async ({ parent }) => {
     .where(eq(clubs.id, activePlaythrough.clubId))
     .limit(1);
 
+  const pretemporada = await isPretemporada(activePlaythrough.id);
+
+  // Weeks remaining until kick-off — used to warn the user when the window closes.
+  const [league] = await db
+    .select()
+    .from(leagues)
+    .where(eq(leagues.playthroughId, activePlaythrough.id))
+    .limit(1);
+  let weeksUntilKickoff: number | null = null;
+  if (league) {
+    const [activeSeason] = await db
+      .select()
+      .from(seasons)
+      .where(and(eq(seasons.leagueId, league.id), eq(seasons.status, 'active')))
+      .orderBy(desc(seasons.seasonNumber))
+      .limit(1);
+    if (activeSeason && activePlaythrough.currentWeek < activeSeason.startWeek) {
+      weeksUntilKickoff = activeSeason.startWeek - activePlaythrough.currentWeek;
+    }
+  }
+
   return {
     hasPlaythrough: true as const,
     snapshots: snapshots.map((s) => ({
@@ -58,6 +114,8 @@ export const load: PageServerLoad = async ({ parent }) => {
           fanBase: club.fanBase,
         }
       : null,
+    pretemporada,
+    weeksUntilKickoff,
   };
 };
 
@@ -78,6 +136,12 @@ export const actions: Actions = {
       .orderBy(desc(playthroughs.updatedAt))
       .limit(1);
     if (!active) return fail(400, { error: 'No hay carrera activa.' });
+
+    if (!(await isPretemporada(active.id))) {
+      return fail(400, {
+        error: 'El precio de los abonos solo se puede cambiar en pretemporada.',
+      });
+    }
 
     // Adjust holder count based on the new price vs market reference (35€).
     // - 25€ or less → +10% holders (cap at fanBase × 0.4)

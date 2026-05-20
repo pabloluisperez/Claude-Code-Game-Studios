@@ -15,6 +15,14 @@
 
   let showTransition = $state(false);
   let advanceFormEl: HTMLFormElement | undefined = $state();
+  let redirectModeInput: HTMLInputElement | undefined = $state();
+
+  // The next user fixture (if it's this advance) — drives the match-arrival CTA.
+  const userMatchNextAdvance = $derived.by(() => {
+    if (!data.hasPlaythrough) return null;
+    const f = data.nextFixtures.find((nf) => nf.week === data.week + 1);
+    return f ?? null;
+  });
 
   function handleAdvanceClick(e: Event) {
     e.preventDefault();
@@ -22,6 +30,10 @@
   }
   function onTransitionComplete() {
     // Submit the actual form once the 7-day animation finishes.
+    advanceFormEl?.requestSubmit();
+  }
+  function onTransitionMatchChoice(mode: 'autoplay' | 'skip' | 'dashboard') {
+    if (redirectModeInput) redirectModeInput.value = mode;
     advanceFormEl?.requestSubmit();
   }
   function onTransitionCancel() {
@@ -133,6 +145,23 @@
     return 'progress-success';
   }
 
+  // Headline tag → Spanish display label (mirrors advance-transition.svelte).
+  function tagLabel(tag: string): string {
+    switch (tag) {
+      case 'match': return 'Partido';
+      case 'finance': return 'Finanzas';
+      case 'sponsor': return 'Patrocinador';
+      case 'medical': return 'Médico';
+      case 'mood': return 'Clasificación';
+      case 'training': return 'Entrenamiento';
+      case 'board': return 'Directiva';
+      case 'youth': return 'Cantera';
+      case 'fans': return 'Afición';
+      case 'ambient': return 'Ambiente';
+      default: return tag;
+    }
+  }
+
   function outcomeBadge(outcome: 'win' | 'draw' | 'loss' | null): string {
     if (outcome === 'win') return 'badge-success';
     if (outcome === 'loss') return 'badge-error';
@@ -160,7 +189,9 @@
   fromWeek={data.hasPlaythrough ? data.week : 0}
   headlines={transitionHeadlines}
   msPerDay={5000}
+  matchPendingThisAdvance={userMatchNextAdvance !== null}
   onComplete={onTransitionComplete}
+  onMatchChoice={onTransitionMatchChoice}
   onCancel={onTransitionCancel}
 />
 
@@ -205,7 +236,14 @@
             action="/dashboard?/advance"
             class="contents"
             use:enhance
-          ></form>
+          >
+            <input
+              type="hidden"
+              name="redirectMode"
+              value="dashboard"
+              bind:this={redirectModeInput}
+            />
+          </form>
           <button
             type="button"
             class="btn btn-primary btn-lg"
@@ -278,8 +316,8 @@
           {#each transitionHeadlines.slice(0, 4) as h, i}
             <div class="flex gap-3 items-start py-1
                         {i === 0 ? 'font-serif text-lg font-bold leading-tight' : 'text-sm'}">
-              <span class="opacity-50 text-xs uppercase tracking-wider mt-1 w-16 flex-shrink-0">
-                {h.tag}
+              <span class="opacity-50 text-xs uppercase tracking-wider mt-1 w-24 flex-shrink-0">
+                {tagLabel(h.tag)}
               </span>
               <p class="flex-1">{h.text}</p>
             </div>

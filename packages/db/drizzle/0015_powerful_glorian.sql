@@ -1,0 +1,1 @@
+ALTER TABLE "playthroughs" ADD COLUMN "advance_resume_day" integer DEFAULT 0 NOT NULL;

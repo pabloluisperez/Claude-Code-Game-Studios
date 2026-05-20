@@ -30,9 +30,21 @@
     open: boolean;
     fromWeek: number;
     headlines: readonly Headline[];
-    /** Wall-clock duration of one in-game day (default 1.5s). */
+    /** Wall-clock duration of one in-game day (default 5s). */
     msPerDay?: number;
+    /** True when the destination week has a user-club fixture. */
+    matchPendingThisAdvance?: boolean;
+    /**
+     * Called when day 7 closes WITHOUT a match — auto-commit. Should
+     * submit the form.
+     */
     onComplete: () => void;
+    /**
+     * Called when day 7 closes WITH a match and the user picks how to
+     * view it. The string identifies the chosen mode. The parent should
+     * submit the form with the right redirect hint.
+     */
+    onMatchChoice?: (mode: 'autoplay' | 'skip' | 'dashboard') => void;
     onCancel?: () => void;
   }
 
@@ -41,7 +53,9 @@
     fromWeek,
     headlines,
     msPerDay = 5000,
+    matchPendingThisAdvance = false,
     onComplete,
+    onMatchChoice,
     onCancel,
   }: Props = $props();
 
@@ -75,16 +89,10 @@
   const celestialX = $derived(celestialProgress * 100);
   const celestialY = $derived(50 - 35 * Math.sin(Math.PI * celestialProgress));
 
-  // Time-of-day label so the user sees in-day progression even between day ticks.
-  const timeOfDay = $derived.by(() => {
-    const p = hourPhase;
-    if (p < 0.15) return 'Amanecer';
-    if (p < 0.4)  return 'Mañana';
-    if (p < 0.5)  return 'Mediodía';
-    if (p < 0.6)  return 'Atardecer';
-    if (p < 0.85) return 'Noche';
-    return 'Madrugada';
-  });
+  // 24H digital clock — minutes advance smoothly within each day cycle.
+  const clockTotalMinutes = $derived(Math.floor(hourPhase * 24 * 60));
+  const clockHH = $derived(String(Math.floor(clockTotalMinutes / 60) % 24).padStart(2, '0'));
+  const clockMM = $derived(String(clockTotalMinutes % 60).padStart(2, '0'));
 
   // Sky: dawn (warm) → noon (clear blue) → dusk (orange) → night (indigo).
   const skyTop = $derived.by(() => {
@@ -140,8 +148,11 @@
       dayIndex += 1;
       if (dayIndex >= 7) {
         completed = true;
-        // Schedule the server submit on the next tick so the final frame
-        // (day 7 at dawn) is visible to the user briefly before navigation.
+        if (matchPendingThisAdvance) {
+          // Don't auto-commit — wait for the user to pick how to watch.
+          return;
+        }
+        // No match this advance: commit automatically after a brief pause.
         setTimeout(() => onComplete(), 300);
       }
     }
@@ -206,7 +217,27 @@
     if (tag === 'sponsor') return 'border-l-info';
     if (tag === 'medical') return 'border-l-error';
     if (tag === 'mood') return 'border-l-secondary';
+    if (tag === 'training') return 'border-l-accent';
+    if (tag === 'board') return 'border-l-warning';
+    if (tag === 'youth') return 'border-l-success';
+    if (tag === 'fans') return 'border-l-info';
     return 'border-l-neutral';
+  }
+
+  function headlineTagLabel(tag: Headline['tag'] | undefined): string {
+    switch (tag) {
+      case 'match': return 'Partido';
+      case 'finance': return 'Finanzas';
+      case 'sponsor': return 'Patrocinador';
+      case 'medical': return 'Médico';
+      case 'mood': return 'Clasificación';
+      case 'training': return 'Entrenamiento';
+      case 'board': return 'Directiva';
+      case 'youth': return 'Cantera';
+      case 'fans': return 'Afición';
+      case 'ambient': return 'Ambiente';
+      default: return tag ?? '';
+    }
   }
 </script>
 
@@ -254,13 +285,16 @@
           {:else if paused && autoPausedOnce && worryingHeadline}
             ⚠ Pausa automática — hay una noticia importante
           {:else if paused}
-            ⏸ Pausado en
+            ⏸ Pausado
           {:else}
-            Avanzando · {timeOfDay}
+            Avanzando una semana
           {/if}
         </div>
         <div class="text-2xl md:text-4xl font-bold text-base-100 drop-shadow-lg mt-1">
           {#if paused}📍 {/if}{currentDate.display}
+        </div>
+        <div class="font-mono text-3xl md:text-5xl font-bold text-base-100 drop-shadow-lg tabular-nums mt-1">
+          {clockHH}:{clockMM}
         </div>
         <div class="text-base-100/70 text-sm mt-1">
           Día {dayIndex + 1} / 7 · destino {targetDate.display}
@@ -273,7 +307,7 @@
           {#key currentHeadline.text}
             <div class="ticker-card border-l-4 {headlineColor(currentHeadline.tag)}">
               <div class="text-xs uppercase opacity-50 tracking-wide">
-                {currentHeadline.tag}
+                {headlineTagLabel(currentHeadline.tag)}
               </div>
               <div class="text-base md:text-lg font-semibold">
                 {currentHeadline.text}
@@ -314,6 +348,26 @@
               <a href="/squad" class="btn btn-sm btn-outline" onclick={handleCancel}>Ver plantilla</a>
               <a href="/staff" class="btn btn-sm btn-outline" onclick={handleCancel}>Contratar médico</a>
             {/if}
+          </div>
+        </div>
+      {/if}
+
+      <!-- Match arrival CTA: shown when day 7 hits AND there's a user fixture. -->
+      {#if completed && matchPendingThisAdvance && onMatchChoice}
+        <div class="action-panel mt-6 text-center">
+          <div class="text-3xl mb-2">⚽</div>
+          <div class="text-lg font-bold">¡Llegó el día del partido!</div>
+          <p class="text-sm opacity-80 mb-3">¿Cómo quieres vivirlo?</p>
+          <div class="flex gap-2 justify-center flex-wrap">
+            <button class="btn btn-primary" type="button" onclick={() => onMatchChoice('autoplay')}>
+              ▶ Vivir el partido
+            </button>
+            <button class="btn btn-outline" type="button" onclick={() => onMatchChoice('skip')}>
+              ⏭ Saltar al resultado
+            </button>
+            <button class="btn btn-ghost btn-sm" type="button" onclick={() => onMatchChoice('dashboard')}>
+              Volver al dashboard
+            </button>
           </div>
         </div>
       {/if}

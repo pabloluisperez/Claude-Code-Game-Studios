@@ -39,6 +39,12 @@ export const playthroughs = pgTable('playthroughs', {
    *   descanso=10 · suave=30 · normal=50 · fuerte=70 · brutal=90
    */
   trainingIntensity: integer('training_intensity').notNull().default(50),
+  /**
+   * Day (0-6) the advance-week modal was paused on. 0 = no resume needed
+   * (fresh week). The modal reads this on open to resume from the paused
+   * day, writes to it on cancel, and resets it to 0 when the week commits.
+   */
+  advanceResumeDay: integer('advance_resume_day').notNull().default(0),
   lastTickAt: timestamp('last_tick_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()

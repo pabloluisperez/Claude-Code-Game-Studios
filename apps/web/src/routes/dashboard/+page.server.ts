@@ -225,8 +225,11 @@ export const actions: Actions = {
    * Redirects back to /dashboard?advanced=1 so the page can show the
    * weekly summary panel.
    */
-  advance: async ({ locals }) => {
+  advance: async ({ locals, request }) => {
     if (!locals.user) throw redirect(303, '/login');
+
+    const form = await request.formData();
+    const redirectMode = String(form.get('redirectMode') ?? 'dashboard');
 
     const [active] = await db
       .select()
@@ -392,6 +395,56 @@ export const actions: Actions = {
       }
     }
 
+    // 5b. Pretemporada reminder: 2 weeks before kickoff, finance director
+    // pings the manager about adjusting the abono price. Only emits once
+    // per (season, week) pair via UNIQUE templateKey + week dedup.
+    const [activeStaffFinance] = await db
+      .select({ id: staff.id })
+      .from(staff)
+      .where(
+        and(
+          eq(staff.playthroughId, active.id),
+          eq(staff.role, 'finance_director'),
+          eq(staff.status, 'active'),
+        ),
+      )
+      .limit(1);
+
+    if (activeStaffFinance) {
+      const [activeSeasonRow] = await db
+        .select({ startWeek: seasons.startWeek, seasonNumber: seasons.seasonNumber })
+        .from(seasons)
+        .innerJoin(leagues, eq(leagues.id, seasons.leagueId))
+        .where(
+          and(
+            eq(leagues.playthroughId, active.id),
+            eq(seasons.status, 'active'),
+          ),
+        )
+        .orderBy(desc(seasons.seasonNumber))
+        .limit(1);
+
+      if (activeSeasonRow) {
+        const weeksLeft = activeSeasonRow.startWeek - nextWeek;
+        if (weeksLeft === 2) {
+          await db
+            .insert(staffMessages)
+            .values({
+              playthroughId: active.id,
+              staffId: activeStaffFinance.id,
+              week: nextWeek,
+              season: activeSeasonRow.seasonNumber,
+              priority: 'URGENT',
+              templateKey: 'finance:abono_reminder',
+              content:
+                'Director financiero avisa: quedan 2 semanas para el inicio de la temporada. Revisa el precio del abono en Finanzas antes de que cierre la pretemporada.',
+              isRead: false,
+            })
+            .onConflictDoNothing();
+        }
+      }
+    }
+
     // 6. Manager XP grants from this week's outcome.
     await grantWeeklyManagerXp({
       playthroughId: active.id,
@@ -416,9 +469,30 @@ export const actions: Actions = {
       throw redirect(303, `/season-end?from=${rollover.fromSeason}`);
     }
 
-    // Land back on the dashboard with the weekly summary. If the user
-    // played, the dashboard's `lastResult` card surfaces two CTAs:
-    // "Ir a partido" (autoplay replay) and "Solo resultado" (skip-to-end).
+    // Redirect based on the mode the user chose in the AdvanceTransition
+    // modal. If they picked "vivir" or "saltar" and there's a user match,
+    // jump straight to /match/[id]. Otherwise back to dashboard.
+    if (redirectMode === 'autoplay' || redirectMode === 'skip') {
+      const userFixture = await db
+        .select({ id: fixtures.id })
+        .from(fixtures)
+        .where(
+          and(
+            eq(fixtures.week, nextWeek),
+            eq(fixtures.status, 'played'),
+            or(
+              eq(fixtures.homeClubId, active.clubId),
+              eq(fixtures.awayClubId, active.clubId),
+            ),
+          ),
+        )
+        .limit(1);
+      if (userFixture[0]) {
+        const qs = redirectMode === 'autoplay' ? 'autoplay=1' : 'skipToEnd=1';
+        throw redirect(303, `/match/${userFixture[0].id}?${qs}&return=dashboard`);
+      }
+    }
+
     throw redirect(303, '/dashboard?advanced=1');
   },
 };
