@@ -1,7 +1,7 @@
 <!--
-  Top bar — club name + in-game date + hamburger toggle.
+  Top bar — club name + in-game date + balance + hamburger toggle.
 
-  Story: HUD-UI-001 + MVP UX fixes (real dates)
+  Story: HUD-UI-001 (layout shell, balance added 2026-05-21 overnight per audit)
   Control Manifest: 2026-05-19
 -->
 <script lang="ts">
@@ -9,10 +9,28 @@
     user: { username: string } | null;
     week?: number;
     dateDisplay?: string | undefined;
+    balanceEurK?: number | null;
     inboxUnread?: number;
     onToggleSidebar?: () => void;
   }
-  let { user, week = 0, dateDisplay, inboxUnread = 0, onToggleSidebar }: Props = $props();
+  let {
+    user,
+    week = 0,
+    dateDisplay,
+    balanceEurK = null,
+    inboxUnread = 0,
+    onToggleSidebar,
+  }: Props = $props();
+
+  // Color-tier the balance for at-a-glance read.
+  // < 0 → red ("debt"); 0..50 €K → warning yellow; > 50 €K → neutral.
+  // Tuning informed by economy.md F5 (CRITICAL ≈ 3 weeks of costs ≈ ~50 €K for D2).
+  const balanceClass = $derived.by(() => {
+    if (balanceEurK === null) return 'opacity-50';
+    if (balanceEurK < 0) return 'text-error font-bold';
+    if (balanceEurK < 50) return 'text-warning';
+    return '';
+  });
 </script>
 
 <nav class="navbar bg-base-200 px-4 sticky top-0 z-10 border-b border-base-300">
@@ -41,6 +59,18 @@
       <span class="opacity-50">Semana</span>
       <span class="font-mono font-semibold">{week}</span>
     </div>
+    {#if balanceEurK !== null}
+      <a
+        href="/finance"
+        class="hidden sm:flex flex-col items-end text-xs leading-tight no-underline hover:opacity-80"
+        aria-label="Ver finanzas"
+      >
+        <span class="opacity-50">Balance</span>
+        <span class="font-mono font-semibold {balanceClass}">
+          {Math.round(balanceEurK)} €K
+        </span>
+      </a>
+    {/if}
     {#if user}
       <a href="/inbox" class="btn btn-ghost btn-sm indicator" aria-label="Bandeja de entrada">
         {#if inboxUnread > 0}

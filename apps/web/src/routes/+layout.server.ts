@@ -5,6 +5,7 @@ import {
   clubs,
   calendarEvents,
   staffMessages,
+  worldSnapshots,
   eq,
   and,
   desc,
@@ -66,11 +67,24 @@ export const load: LayoutServerLoad = async ({ locals }) => {
       ),
     );
 
+  const [latestSnapshot] = await db
+    .select({ worldState: worldSnapshots.worldState })
+    .from(worldSnapshots)
+    .where(eq(worldSnapshots.playthroughId, active.id))
+    .orderBy(desc(worldSnapshots.week))
+    .limit(1);
+
+  const worldState = (latestSnapshot?.worldState ?? null) as
+    | Record<string, number>
+    | null;
+  const balanceEurK = worldState?.['financial_balance'] ?? null;
+
   return {
     user: locals.user,
     activePlaythrough: {
       ...active,
       date: weekToDate(active.currentWeek),
+      balanceEurK,
     },
     badges: {
       pendingStops: Number(pendingStops?.count ?? 0),

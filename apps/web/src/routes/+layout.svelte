@@ -32,6 +32,7 @@
       user={data.user}
       week={data.activePlaythrough?.currentWeek ?? 0}
       dateDisplay={data.activePlaythrough?.date?.display}
+      balanceEurK={data.activePlaythrough?.balanceEurK ?? null}
       inboxUnread={data.badges?.inboxUnread ?? 0}
       onToggleSidebar={toggleSidebar}
     />
