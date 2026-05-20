@@ -452,3 +452,81 @@ Mismas 3 opciones que antes — el cierre limpio de tv-rights está completo:
 1. **Unblock sprint-06** — `/create-stories player-management` + `/create-stories league-system`.
 2. **Nuevo epic** — `/create-stories economy` o `/create-stories staff-system`.
 3. **Re-correr `/gate-check pre-production`**.
+
+---
+
+## 2026-05-21 — Overnight autonomous session (Pablo asleep, broad authorization)
+
+**Trigger**: Pablo said "me voy a dormir, crea todas las stories que puedas y implementalo todo" after the consistency-check cleanup. New memory `feedback_overnight_autonomous.md` captures the pattern.
+
+### State discovered (not just the 3 fixes from earlier)
+
+The `production/epics/index.md` actually had 9/10 epics Complete (not the sprint-06-snapshot view that showed match-sim 14/18 with 4 Blocked). Real state:
+- 9/10 epics Complete with full implementations.
+- hud-ui Ready with 8 routes shipped from slice + tv-rights waves — but stories left Status: Ready.
+- 3 cascade-engine stories (015 Integration, 016 Pending, 017 Pending) — perf + determinism validation, not implementation gaps.
+- sprint-06 status stale (said 4 Blocked, all actually Complete).
+- `pnpm test` script failing on `tsc --noEmit` with 3 exactOptionalPropertyTypes errors (vitest passes 918).
+- ADR-019 header `Proposed` despite epic shipped.
+- entities.yaml had 3 YAML structural bugs from earlier sessions (collapsed fields + duplicated keys).
+
+### Work done (9 commits this overnight session)
+
+| Commit | Subject |
+|---|---|
+| `1fd54f8` | fix(shared): widen optional event props to allow explicit undefined (3 TS errors → 0; tests pass) |
+| `9bafe57` | chore(registry+adr): bump ADR-019 to Accepted; fix 3 YAML structural bugs in entities.yaml |
+| `d58e683` | docs(epics): reconcile stale match-simulation EPIC and sprint-06 headers |
+| `66570d5` | feat(ui): balance in topbar (HUD-UI-001 AC closure) — financial_balance loaded from latest worldSnapshot |
+| `9a418e8` | docs(hud-ui): close epic — audit 8 stories, resolve ADR-010 conflict, mark Complete |
+| `d5bb916` | docs(gate-check): pre-production verdict CONCERNS — 4-director lean review |
+| `de8c5e6` | feat(cascade-engine): CASCADE-016 perf + CASCADE-017 (partial) determinism tests |
+
+Plus 3 earlier commits from the same session (tv-rights consistency-check closure):
+| `e1c55e5` | docs(tv-rights): propagate authority to economy/league-system/cascade-engine GDDs |
+| `32a9e4b` | fix(ui): announcement events hide decision UI + range-slider compiled-bundle alias |
+| `ba46784` | docs(tv-rights): resolve 3 consistency conflicts from epic closure |
+
+### Highlights
+
+**HUD-UI epic closed**: All 8 stories Complete. Audit doc at `production/qa/evidence/hud-ui-audit-2026-05-21.md`. Notable conflict resolution: HUD-UI-008 story spec contradicted ADR-010 (manual allocation vs XP-driven). Aligned story with ADR-010; production /manager route's read-only model is the correct implementation. Slice's clickable-allocation was prototype-only per `.claude/rules/prototype-code.md`.
+
+**Pre-production gate verdict**: CONCERNS (1 of 4 directors). Director panel ran in parallel (lean mode):
+- CD: READY (core fantasy preserved despite 2-pillar MVP cut)
+- TD: CONCERNS (CASCADE-016 + 017 must complete; svelte-check tech debt)
+- PR: READY (solo dev posture ideal entering Production)
+- AD: READY (DOM-only MVP visual production has adequate direction)
+
+Then materially closed TD's concerns: CASCADE-016 fully Complete (4 tests passing, perf 700-475× under budget); CASCADE-017 partially Complete (8/15 ACs covering the core determinism + clamp safety contract). Remaining 7 ACs of CASCADE-017 are validation polish (precise equilibrium bands, counterintuitive proof suite, 4-week scripted snapshot) — documented + scheduled in the story's Completion Notes.
+
+### Test count
+
+- @smt/shared: 918 → 930 tests passing (+12: 4 perf + 8 determinism). 62 test files.
+- `tsc --noEmit` clean across all workspace packages.
+- `pnpm test` runs clean (3 packages all pass).
+
+### Blockers / Risks for Pablo
+
+1. **Pre-existing svelte-check error**: `apps/api/src/server.ts:47` — Hono+Node 26 Http2Server vs Server typing mismatch. Runtime-safe, upstream issue. Not introduced by overnight work. Filing as tech debt is recommended.
+2. **CASCADE-017 7 ACs deferred**: Counterintuitive proof suite + 4-week scripted snapshot + all-chains coverage + precise equilibrium bands. Suggested for Production Sprint 7. Not gate-fatal per current verdict.
+3. **`team_fitness` reaches 100 by week 5 under default + no-decisions + no-match + rng=0.5** — discovered during CASCADE-017 implementation. Engine documented guarantee (AC-THR-06) is "no threshold crossings", not "no clamp reachability", so this is technically not a bug. But it may indicate the C-chain coverage doesn't adequately model downward pressure on team_fitness under low-intensity / mid-tier-budget play. **Worth a game-design review.**
+4. **Entity inventory missing** (`design/assets/entity-inventory.md`). Recommended but non-blocking per gate-check skill. Run `/asset-spec` (no args) when convenient.
+5. **`stage.txt` still `Concept`** — not advanced per user policy. Pablo's call whether to advance now with CONCERNS or close the deferred CASCADE-017 ACs first.
+
+### Recommended next moves (your call in the morning)
+
+Path A — advance to Production now with documented CONCERNS:
+1. `echo -n "Production" > production/stage.txt` (your explicit consent required)
+2. Schedule Sprint 7 with: CASCADE-015 persistence-recovery + CASCADE-017 deferred ACs + cross-epic integration tests + e2e smoke + entity inventory.
+
+Path B — close remaining concerns first for a clean PASS gate:
+1. Implement the 7 deferred ACs of CASCADE-017 (~2-3 productive days).
+2. File the svelte-check error as tech debt.
+3. Run `/asset-spec` (no args) for entity inventory.
+4. Re-run `/gate-check pre-production` — expected clean PASS.
+5. Then advance stage.txt.
+
+Path C — investigate the team_fitness drift finding first (recommended if Pilar 1 cascade-discovery is precious):
+1. `/balance-check` on cascade-engine.md to validate the C-chain downward pressure on team_fitness.
+2. Game-designer review of whether C0/C3/C5 fan-in needs an additional dampening edge.
+3. Then resume Path A or B.
