@@ -273,6 +273,22 @@
     onCancel?.();
   }
 
+  /** Skip the remaining days and trigger the end-of-week panel. */
+  function handleFastForward() {
+    dayIndex = 6;
+    hourPhase = 0.95; // almost at the close
+    paused = false;
+  }
+
+  // Persist resume continuously as the cycle progresses — survives the
+  // user clicking deep links in the action panel, which trigger navigation
+  // before handleCancel can finish writing.
+  $effect(() => {
+    if (open && !completed && dayIndex > 0) {
+      writeResume({ fromWeek, dayIndex });
+    }
+  });
+
   function headlineColor(tag: Headline['tag'] | undefined): string {
     if (tag === 'match') return 'border-l-primary';
     if (tag === 'finance') return 'border-l-warning';
@@ -386,6 +402,9 @@
             <button class="btn btn-warning btn-sm" type="button" onclick={handlePause}>
               ⏸ Pausar
             </button>
+            <button class="btn btn-accent btn-sm" type="button" onclick={handleFastForward}>
+              ⏩ Saltar al fin de semana
+            </button>
             {#if matchPendingThisAdvance && onMatchChoice}
               <button
                 class="btn btn-primary btn-sm"
@@ -398,6 +417,9 @@
           {:else}
             <button class="btn btn-success btn-sm" type="button" onclick={handleResume}>
               ▶ Reanudar
+            </button>
+            <button class="btn btn-accent btn-sm" type="button" onclick={handleFastForward}>
+              ⏩ Saltar al fin de semana
             </button>
             <button class="btn btn-error btn-sm" type="button" onclick={handleCancel}>
               🛑 Cancelar y actuar

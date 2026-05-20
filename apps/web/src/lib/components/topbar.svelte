@@ -9,9 +9,10 @@
     user: { username: string } | null;
     week?: number;
     dateDisplay?: string | undefined;
+    inboxUnread?: number;
     onToggleSidebar?: () => void;
   }
-  let { user, week = 0, dateDisplay, onToggleSidebar }: Props = $props();
+  let { user, week = 0, dateDisplay, inboxUnread = 0, onToggleSidebar }: Props = $props();
 </script>
 
 <nav class="navbar bg-base-200 px-4 sticky top-0 z-10 border-b border-base-300">
@@ -41,6 +42,14 @@
       <span class="font-mono font-semibold">{week}</span>
     </div>
     {#if user}
+      <a href="/inbox" class="btn btn-ghost btn-sm indicator" aria-label="Bandeja de entrada">
+        {#if inboxUnread > 0}
+          <span class="indicator-item badge badge-error badge-sm animate-pulse">
+            {inboxUnread}
+          </span>
+        {/if}
+        <span class="text-xl">📨</span>
+      </a>
       <span class="text-sm opacity-70 hidden lg:inline">{user.username}</span>
       <form method="POST" action="/logout">
         <button class="btn btn-ghost btn-sm" type="submit">Salir</button>

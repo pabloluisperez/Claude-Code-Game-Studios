@@ -56,6 +56,16 @@ export const load: LayoutServerLoad = async ({ locals }) => {
       ),
     );
 
+  const [unreadTotal] = await db
+    .select({ count: sql<number>`COUNT(*)::int` })
+    .from(staffMessages)
+    .where(
+      and(
+        eq(staffMessages.playthroughId, active.id),
+        eq(staffMessages.isRead, false),
+      ),
+    );
+
   return {
     user: locals.user,
     activePlaythrough: {
@@ -65,6 +75,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
     badges: {
       pendingStops: Number(pendingStops?.count ?? 0),
       unreadUrgent: Number(unreadUrgent?.count ?? 0),
+      inboxUnread: Number(unreadTotal?.count ?? 0),
     },
   };
 };

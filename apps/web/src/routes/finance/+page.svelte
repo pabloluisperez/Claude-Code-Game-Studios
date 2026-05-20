@@ -7,11 +7,22 @@
 <script lang="ts">
   import type { PageData, ActionData } from './$types';
   import { enhance } from '$app/forms';
-  import RangeSlider from 'svelte-range-slider-pips';
-  import 'svelte-range-slider-pips/dist/range-slider-pips.css';
+  import { browser } from '$app/environment';
+  import { onMount } from 'svelte';
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
-  // Slider state mirrors the form input; submits on release via on:stop.
+  // RangeSlider is loaded client-only (the library touches window at
+  // module init which crashes SSR). On the server we render a fallback
+  // number input.
+  let RangeSlider = $state<typeof import('svelte-range-slider-pips').default | null>(null);
+  onMount(async () => {
+    if (browser) {
+      const mod = await import('svelte-range-slider-pips');
+      await import('svelte-range-slider-pips/dist/range-slider-pips.css');
+      RangeSlider = mod.default;
+    }
+  });
+
   let priceValues = $state<[number]>([data.club?.seasonTicketPriceEur ?? 35]);
   $effect(() => {
     priceValues = [data.club?.seasonTicketPriceEur ?? 35];
@@ -107,17 +118,28 @@
                 Fijar precio del abono: <strong>{priceValues[0]} €</strong>
               </div>
               <div class="ticket-slider mb-2 max-w-md">
-                <RangeSlider
-                  bind:values={priceValues}
-                  min={5}
-                  max={100}
-                  step={5}
-                  pips
-                  pipstep={3}
-                  all="label"
-                  float
-                  ariaLabels={['Precio del abono en euros']}
-                />
+                {#if RangeSlider}
+                  <RangeSlider
+                    bind:values={priceValues}
+                    min={5}
+                    max={100}
+                    step={5}
+                    pips
+                    pipstep={3}
+                    all="label"
+                    float
+                    ariaLabels={['Precio del abono en euros']}
+                  />
+                {:else}
+                  <input
+                    type="range"
+                    class="range range-primary"
+                    min="5"
+                    max="100"
+                    step="5"
+                    bind:value={priceValues[0]}
+                  />
+                {/if}
               </div>
               <input type="hidden" name="priceEur" value={priceValues[0]} />
               <button type="submit" class="btn btn-primary btn-sm">Fijar precio</button>

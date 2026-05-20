@@ -24,6 +24,7 @@ declare global {
       badges?: {
         pendingStops: number;
         unreadUrgent: number;
+        inboxUnread: number;
       } | null;
     }
   }

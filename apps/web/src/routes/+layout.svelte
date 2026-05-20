@@ -32,6 +32,7 @@
       user={data.user}
       week={data.activePlaythrough?.currentWeek ?? 0}
       dateDisplay={data.activePlaythrough?.date?.display}
+      inboxUnread={data.badges?.inboxUnread ?? 0}
       onToggleSidebar={toggleSidebar}
     />
     <div class="flex flex-1">
