@@ -24,6 +24,16 @@
     head_coach: '🎯',
   };
 
+  /** Tier → human label. Internal codes (1/2/3) remain in the DB. */
+  const EXPERIENCE_LABEL: Readonly<Record<number, string>> = {
+    1: 'Novato',
+    2: 'Experimentado',
+    3: 'Élite',
+  };
+  function experienceLabel(tier: number): string {
+    return EXPERIENCE_LABEL[tier] ?? `Tier ${tier}`;
+  }
+
   const ROLE_TOOLTIP: Readonly<Record<string, string>> = {
     groundskeeper:
       'Cuida el césped y las instalaciones del estadio. Un buen jardinero reduce las lesiones y mejora el control de balón.',
@@ -75,14 +85,16 @@
     {/if}
     {#if form?.ok && form.hired}
       <div class="alert alert-success">
-        <span>Contratado tier {form.hired.tier} para {form.hired.role}.</span>
+        <span>Contratado {experienceLabel(form.hired.tier).toLowerCase()} para {form.hired.role}.</span>
       </div>
     {/if}
 
     <section class="alert alert-info">
       <div>
         <div class="text-xs uppercase opacity-70">Tu reputación</div>
-        <div class="text-lg font-bold">Nivel {data.reputationLevel} · staff máximo tier {data.maxHirableTier}</div>
+        <div class="text-lg font-bold">
+          Nivel {data.reputationLevel} · staff máximo: {experienceLabel(data.maxHirableTier)}
+        </div>
         <div class="text-xs opacity-80">
           {#if data.maxHirableTier < 3}
             Sube tu reputación a 4+ para acceder a staff tier 3 (perciben ×3 las cascadas).
@@ -126,7 +138,9 @@
                 <div class="flex-1">
                   <div class="font-semibold">{current.name}</div>
                   <div class="text-xs opacity-70 mt-0.5">
-                    <span class="badge badge-primary badge-sm">Tier {current.qualityTier}</span>
+                    <span class="badge badge-primary badge-sm">
+                      Experiencia: {experienceLabel(current.qualityTier)}
+                    </span>
                     <span class="ml-1">{current.weeklyEurK} €K/sem</span>
                   </div>
                   <form
@@ -143,7 +157,7 @@
                 </div>
               </div>
               <div class="text-xs opacity-60 mt-3 mb-1 font-semibold uppercase tracking-wide">
-                ¿Subir de tier?
+                ¿Subir de nivel?
               </div>
             {:else}
               <div class="text-xs opacity-60 mt-3 mb-1 font-semibold uppercase tracking-wide">
@@ -167,7 +181,7 @@
                     type="submit"
                     disabled={tier > data.maxHirableTier || current?.qualityTier === tier}
                   >
-                    Tier {tier}
+                    {experienceLabel(tier)}
                     <span class="text-xs opacity-70 ml-1">
                       {data.wagesByTier[tier as 1 | 2 | 3]} €K
                     </span>

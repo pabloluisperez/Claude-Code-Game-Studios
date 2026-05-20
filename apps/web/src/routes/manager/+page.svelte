@@ -120,13 +120,13 @@
       <div>
         <div class="text-xs uppercase opacity-70">¿Qué afecta hoy mi reputación?</div>
         <div class="text-lg font-bold">
-          Nivel {reputationLevel} ⇒ staff máximo contratable: tier {maxStaffTier}
+          Nivel {reputationLevel} ⇒ staff máximo contratable: {maxStaffTier === 1 ? 'Novato' : maxStaffTier === 2 ? 'Experimentado' : 'Élite'}
         </div>
         <div class="text-xs opacity-80 mt-1">
           {#if reputationLevel < 3}
-            Sube a nivel 3 para fichar staff tier 2 (perciben cascadas con ×1.5).
+            Sube a nivel 3 para fichar staff Experimentado (perciben cambios con ×1.5).
           {:else if reputationLevel < 4}
-            Sube a nivel 4 para fichar staff tier 3 (los mejores — perciben con ×3.0).
+            Sube a nivel 4 para fichar staff Élite (los mejores — perciben cambios con ×3.0).
           {:else}
             Acceso completo al pool de staff. Tu reputación es de élite.
           {/if}

@@ -435,7 +435,7 @@
                 >
                   <div>
                     <div class="text-xs uppercase opacity-60">
-                      {m.role.replace('_', ' ')} · tier {m.tier} · {m.priority} · sem {m.week}
+                      {m.role.replace('_', ' ')} · {m.tier === 1 ? 'Novato' : m.tier === 2 ? 'Experimentado' : 'Élite'} · {m.priority} · sem {m.week}
                     </div>
                     <div class="text-sm">{m.content}</div>
                   </div>
