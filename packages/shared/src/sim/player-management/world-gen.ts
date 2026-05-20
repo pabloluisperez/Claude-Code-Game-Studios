@@ -44,6 +44,11 @@ export interface GeneratedPlayer {
   morale: number;
   form: number;
   stamina: number;
+  // Core attributes (0-98). skill = round(mean(of these 4)) capped at 95.
+  velocidad: number;
+  resistencia: number;
+  agresividad: number;
+  calidad: number;
   // Position-specific stats — only the relevant 2-3 are set per position
   reflexes?: number;
   handling?: number;
@@ -168,6 +173,58 @@ function computeSalary(rng: () => number, skill: number, age: number): number {
 }
 
 /**
+ * Per-position deltas added to a player's base level for each core attribute.
+ * Rows sum (approximately) to 0 so the per-position average stays balanced.
+ */
+const POSITION_BIAS: Readonly<Record<Position, {
+  velocidad: number;
+  resistencia: number;
+  agresividad: number;
+  calidad: number;
+}>> = Object.freeze({
+  GK:  { velocidad: -8,  resistencia: +3,  agresividad: -3,  calidad: +8 },
+  DEF: { velocidad: -3,  resistencia:  0,  agresividad: +8,  calidad: -5 },
+  MID: { velocidad:  0,  resistencia: +3,  agresividad:  0,  calidad: -3 },
+  FWD: { velocidad: +6,  resistencia: -3,  agresividad: -8,  calidad: +5 },
+});
+
+const ATTR_MIN = 10;
+const ATTR_MAX = 98;
+const OVERALL_MAX = 95;
+
+function clampAttr(v: number): number {
+  return Math.max(ATTR_MIN, Math.min(ATTR_MAX, Math.round(v)));
+}
+
+/**
+ * Generate the four core attributes for a player, biased per position around
+ * the club's base level and with small individual variance. Returns also the
+ * derived `skill` = mean of the four, clamped to OVERALL_MAX.
+ */
+function generateCoreAttrs(
+  rng: () => number,
+  position: Position,
+  clubBaseSkill: number,
+): {
+  velocidad: number;
+  resistencia: number;
+  agresividad: number;
+  calidad: number;
+  skill: number;
+} {
+  const bias = POSITION_BIAS[position];
+  const baseline = clubBaseSkill + clampedNormal(rng, 0, 6, -15, 15);
+  const noise = () => clampedNormal(rng, 0, 4, -10, 10);
+  const velocidad   = clampAttr(baseline + bias.velocidad   + noise());
+  const resistencia = clampAttr(baseline + bias.resistencia + noise());
+  const agresividad = clampAttr(baseline + bias.agresividad + noise());
+  const calidad     = clampAttr(baseline + bias.calidad     + noise());
+  const mean = (velocidad + resistencia + agresividad + calidad) / 4;
+  const skill = Math.min(OVERALL_MAX, Math.round(mean));
+  return { velocidad, resistencia, agresividad, calidad, skill };
+}
+
+/**
  * Pick contract end week — staggered so ~30% expire each season.
  * Uses a 3-way split: contractStartWeek + {52, 104, 156} weeks.
  */
@@ -205,7 +262,10 @@ export function generateRoster(args: GenerateRosterArgs): GeneratedPlayer[] {
   for (const position of positionList) {
     const { firstName, lastName } = pickName(rng);
     const positionStats = generatePositionStats(rng, position, args.clubBaseSkill);
-    const skill = computeSkill(position, positionStats);
+    // Core 4 attributes (velocidad / resistencia / agresividad / calidad).
+    // Mean is the player's overall skill, capped at 95.
+    const core = generateCoreAttrs(rng, position, args.clubBaseSkill);
+    const skill = core.skill;
 
     const age = pickAge(rng);
     const ageOffsetJitter = Math.floor(rng() * WEEKS_PER_SEASON);
@@ -237,6 +297,10 @@ export function generateRoster(args: GenerateRosterArgs): GeneratedPlayer[] {
       morale,
       form,
       stamina,
+      velocidad: core.velocidad,
+      resistencia: core.resistencia,
+      agresividad: core.agresividad,
+      calidad: core.calidad,
       ...positionStats,
       ...(potentialCeiling !== undefined && { potentialCeiling }),
       salaryEurK,

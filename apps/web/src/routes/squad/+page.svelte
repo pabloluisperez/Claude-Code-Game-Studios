@@ -177,6 +177,12 @@
 
       {#if selected}
         {@const traits = describeTraits((selected.traits as string[]) ?? [])}
+        {@const coreAttrs = [
+          { label: 'Velocidad', value: selected.velocidad, hint: 'Pace y contraataques' },
+          { label: 'Resistencia', value: selected.resistencia, hint: 'Aguanta el partido' },
+          { label: 'Agresividad', value: selected.agresividad, hint: 'Más entradas, más tarjetas' },
+          { label: 'Calidad', value: selected.calidad, hint: 'Pase, remate, regate' },
+        ]}
         <div class="modal modal-open">
           <div class="modal-box max-w-2xl">
             <div class="flex gap-4 items-center">
@@ -184,6 +190,9 @@
               <div class="flex-1">
                 <h3 class="font-bold text-lg">{selected.firstName} {selected.lastName}</h3>
                 <p class="opacity-60 text-sm">{selected.position} · {selected.nationality}</p>
+                <div class="mt-1">
+                  <span class="badge badge-primary badge-lg">Overall {selected.skill}</span>
+                </div>
               </div>
             </div>
 
@@ -205,22 +214,43 @@
               </div>
             {/if}
 
-            <div class="grid grid-cols-2 gap-4 mt-4">
-              <div>
-                <div class="text-xs opacity-60">Skill</div>
-                <div class="font-mono text-2xl">{selected.skill}</div>
+            <!-- 4 main attributes -->
+            <div class="mt-4">
+              <div class="text-xs uppercase opacity-60 mb-2">Atributos principales</div>
+              <div class="grid grid-cols-2 gap-3">
+                {#each coreAttrs as a}
+                  <div class="bg-base-200 rounded p-2">
+                    <div class="flex justify-between items-baseline">
+                      <div class="font-semibold text-sm">{a.label}</div>
+                      <div class="font-mono text-lg">{a.value}</div>
+                    </div>
+                    <progress
+                      class="progress {a.value >= 75 ? 'progress-success' : a.value >= 50 ? 'progress-primary' : a.value >= 30 ? 'progress-warning' : 'progress-error'}"
+                      value={a.value}
+                      max="100"
+                    ></progress>
+                    <div class="text-xs opacity-50 mt-1">{a.hint}</div>
+                  </div>
+                {/each}
               </div>
-              <div>
-                <div class="text-xs opacity-60">Forma</div>
-                <div class="font-mono text-2xl">{selected.form}</div>
-              </div>
-              <div>
-                <div class="text-xs opacity-60">Moral</div>
-                <div class="font-mono text-2xl">{selected.morale}</div>
-              </div>
-              <div>
-                <div class="text-xs opacity-60">Fitness</div>
-                <div class="font-mono text-2xl">{selected.fitness}</div>
+            </div>
+
+            <!-- Dynamic state -->
+            <div class="mt-4">
+              <div class="text-xs uppercase opacity-60 mb-2">Estado</div>
+              <div class="grid grid-cols-3 gap-3">
+                <div class="text-center">
+                  <div class="text-xs opacity-60">Forma</div>
+                  <div class="font-mono text-xl">{selected.form}</div>
+                </div>
+                <div class="text-center">
+                  <div class="text-xs opacity-60">Moral</div>
+                  <div class="font-mono text-xl">{selected.morale}</div>
+                </div>
+                <div class="text-center">
+                  <div class="text-xs opacity-60">Fitness</div>
+                  <div class="font-mono text-xl">{selected.fitness}</div>
+                </div>
               </div>
             </div>
 

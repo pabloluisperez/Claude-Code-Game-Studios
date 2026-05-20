@@ -40,12 +40,23 @@ export const players = pgTable(
     birthWeek: integer('birth_week').notNull(),
     position: text('position').notNull(), // 'GK' | 'DEF' | 'MID' | 'FWD'
 
-    // Universal stats
+    // Universal stats — `skill` is the OVERALL, derived as the mean of the
+    // four core attributes below, capped at 95.
     skill: integer('skill').notNull(),
     fitness: integer('fitness').notNull().default(90),
     morale: integer('morale').notNull().default(60),
     form: integer('form').notNull().default(60),
     stamina: integer('stamina').notNull().default(75),
+
+    // ── Core attributes (0-98). Drive the overall + simulator. ───────────
+    /** Pace, sprint, recovery on counter-attacks. */
+    velocidad: integer('velocidad').notNull().default(50),
+    /** Stamina, work_rate, late-game performance. */
+    resistencia: integer('resistencia').notNull().default(50),
+    /** Tackling, pressing, card propensity, injury propensity. */
+    agresividad: integer('agresividad').notNull().default(50),
+    /** Passing, finishing, dribbling, heading, vision. */
+    calidad: integer('calidad').notNull().default(50),
 
     // Position-specific stats (only the relevant 2-3 are set per position)
     reflexes: integer('reflexes'),

@@ -50,11 +50,25 @@ async function simulateFixture(
   args: { fixtureId: string; homeClubId: string; awayClubId: string; seed: string },
 ): Promise<QuickMatchResult> {
   const homeRoster = await tx
-    .select({ skill: players.skill, form: players.form })
+    .select({
+      skill: players.skill,
+      form: players.form,
+      velocidad: players.velocidad,
+      resistencia: players.resistencia,
+      agresividad: players.agresividad,
+      calidad: players.calidad,
+    })
     .from(players)
     .where(eq(players.clubId, args.homeClubId));
   const awayRoster = await tx
-    .select({ skill: players.skill, form: players.form })
+    .select({
+      skill: players.skill,
+      form: players.form,
+      velocidad: players.velocidad,
+      resistencia: players.resistencia,
+      agresividad: players.agresividad,
+      calidad: players.calidad,
+    })
     .from(players)
     .where(eq(players.clubId, args.awayClubId));
 
