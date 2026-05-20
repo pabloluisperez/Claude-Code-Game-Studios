@@ -1,10 +1,10 @@
 # ADR-019: TV Rights Implementation Contract
 
 ## Status
-Proposed
+Accepted
 
 ## Date
-2026-05-20
+2026-05-20 (Proposed) · 2026-05-21 (Accepted — epic shipped 11/11 stories, 951 tests incl. 17 live-DB integration)
 
 ## Engine Compatibility
 

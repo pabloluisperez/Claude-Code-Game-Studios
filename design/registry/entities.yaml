@@ -37,7 +37,7 @@
 #   Each entry: name, status, source, referenced_by[], attributes{}, added, revised
 
 version: 1
-last_updated: "2026-05-17"
+last_updated: "2026-05-21"
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
 # Named game-world objects: enemies, NPCs, characters, factions, bosses.
@@ -336,6 +336,13 @@ formulas:
     referenced_by:
       - design/gdd/manager-rpg.md
       - design/gdd/staff-system.md
+    variables:
+      - reputation_level
+    output_range: [1, 3]
+    expression: "reputation_level >= 4 → 3; reputation_level >= 3 → 2; else → 1"
+    notes: "Pure function — la resolución arquitectónica de Pilar 1↔Pilar 3. Gatea la calidad máxima de staff contratables. Reputation L1-2=tier1, L3=tier2, L4-5=tier3. Definida en ADR-010 como pure function usable en servidor y cliente."
+    added: "2026-05-17"
+    revised: ""
   - name: effectiveThreshold
     status: active
     source: design/gdd/staff-system.md
@@ -349,13 +356,6 @@ formulas:
     notes: "Umbral de percepción efectivo por tier a defaults (BASE=0.02). T1=0.06(6pts), T2=0.03(3pts), T3=0.02(2pts). Todos los umbrales usan comparación ≥. Revisado 2026-05-18: output_range corregido de [0.04,0.12]→[0.02,0.06] al corregir BASE_THRESHOLD_PCT."
     added: "2026-05-17"
     revised: "2026-05-18"
-    variables:
-      - reputation_level
-    output_range: [1, 3]
-    expression: "reputation_level >= 4 → 3; reputation_level >= 3 → 2; else → 1"
-    notes: "Pure function — la resolución arquitectónica de Pilar 1↔Pilar 3. Gatea la calidad máxima de staff contratables. Reputation L1-2=tier1, L3=tier2, L4-5=tier3. Definida en ADR-010 como pure function usable en servidor y cliente."
-    added: "2026-05-17"
-    revised: ""
 
 # Example:
 #
@@ -458,12 +458,10 @@ constants:
     source: design/gdd/match-simulation.md
     referenced_by:
       - design/gdd/match-simulation.md
+      - design/gdd/player-management.md
     value: 15
     unit: "fitness points"
     notes: "Pérdida máxima de fitness efectiva al final del partido (minuto 90) para un jugador con stamina=0. Jugadores con stamina=100 no pierden fitness durante el partido. Player-management usa este valor para modelar la fatiga post-partido junto con los minutos jugados."
-    referenced_by:
-      - design/gdd/match-simulation.md
-      - design/gdd/player-management.md
     added: "2026-05-17"
     revised: "2026-05-18"
   - name: injury_risk_per_injury
@@ -570,11 +568,10 @@ constants:
       - design/gdd/economy.md
       - design/gdd/hud-ui.md
     value: 7
-    revised: "2026-05-18"
     unit: "semanas de costes totales"
     notes: "El balance cae a estado 'En Riesgo' cuando queda menos de 7 semanas de costes totales en caja. hud-ui.md debe mostrar este estado al jugador."
     added: "2026-05-17"
-    revised: ""
+    revised: "2026-05-18"
   - name: critical_buffer_weeks
     status: active
     source: design/gdd/economy.md
