@@ -74,6 +74,37 @@ entities:
     added: "2026-05-17"
     revised: "2026-05-18"
 
+  - name: fan_loyalty
+    status: active
+    source: design/gdd/tv-rights.md
+    referenced_by:
+      - design/gdd/tv-rights.md
+      - design/gdd/economy.md
+    owner_system: tv-rights
+    storage: managers.fan_loyalty (integer column, NOT WorldState node)
+    range: [0, 50]
+    default: 0
+    behavior: "Acumulador de fidelidad de afición. Se incrementa en +10 al rechazar tv_auction o tv_midseason_offer (cap 50). Sin decay. Per F-TV4: fan_attendance_effective = min(1.0, fan_attendance × (1 + fan_loyalty × 0.005)). Aplicado en computeMatchDayRevenue (economy §F3). NO participa en el cascade graph — es atributo del manager, no nodo de WorldState."
+    cross_system_readers:
+      - economy (matchday revenue path — F-TV4)
+    added: "2026-05-20"
+    revised: ""
+
+  - name: corruption_exposure
+    status: active
+    source: design/gdd/cascade-engine.md
+    referenced_by:
+      - design/gdd/cascade-engine.md
+      - design/gdd/tv-rights.md
+      - design/gdd/event-system.md
+    range: [0, 100]
+    default: 0
+    behavior: "Acumulador de escrutinio mediático sobre el manager. Per F-TV3 (tv-rights): LOCAL −0.5/sem, REGIONAL +0.5/sem, NACIONAL +1.5/sem mientras el contrato está ACTIVE. Storage: numeric(5,2) en DB. Cruce al alza de TV_SCANDAL_THRESHOLD=60 cancela el contrato TV. Cruce al alza del threshold global 80 dispara escándalo público (event-system)."
+    blocking_threshold_above: 80
+    tv_cancel_threshold: 60
+    added: "2026-05-20"
+    revised: ""
+
 # Example (remove when first real entry is added):
 #
 # entities:
@@ -463,21 +494,74 @@ constants:
     referenced_by:
       - design/gdd/economy.md
       - design/gdd/league-system.md
+      - design/gdd/tv-rights.md
     value: 20
     unit: "€K/temporada"
-    notes: "Derechos de TV anuales para D2 (Segunda División — división de inicio del jugador). Divididos entre 38 semanas = ~0.53 €K/sem. Ratio D1/D2 = 13.4× (D1=270 €K). League-system debe referenciar estos valores al calcular impacto económico de ascenso/descenso."
+    notes: "Derechos de TV anuales para D2. Ahora corresponde al techo del canal LOCAL en D2 (tv-rights.md §F-TV1: TV_BASE[LOCAL]=0.53 €K/sem × 38 = 20.14 €K/año ≈ 20 €K). Referencia conservada para compatibilidad con ACs de economy.md."
     added: "2026-05-17"
-    revised: ""
+    revised: "2026-05-20"
   - name: tv_rights_annual_d1_eur_k
     status: active
     source: design/gdd/economy.md
     referenced_by:
       - design/gdd/economy.md
       - design/gdd/league-system.md
+      - design/gdd/tv-rights.md
     value: 270
     unit: "€K/temporada"
-    notes: "Derechos de TV anuales para División 1. Divididos entre 38 semanas = ~7.11 €K/sem. Ratio D1/D3 = 13.4×. El ascenso a D1 es económicamente transformador (intencional de diseño)."
+    notes: "Derechos de TV anuales para D1. Ahora corresponde al techo del canal NACIONAL en D1 (tv-rights.md §F-TV1: TV_BASE[NACIONAL]=5.30 €K/sem × 1.35 × 38 ≈ 272 €K/año ≈ 270 €K). Referencia conservada para compatibilidad con ACs de economy.md."
     added: "2026-05-17"
+    revised: "2026-05-20"
+  - name: tv_base_eur_k_local
+    status: active
+    source: design/gdd/tv-rights.md
+    referenced_by:
+      - design/gdd/tv-rights.md
+      - design/gdd/economy.md
+    value: 0.53
+    unit: "€K/sem"
+    notes: "Base semanal del canal LOCAL (F-TV1). D2: 0.53×1.0=0.53 €K/sem (~20 €K/año — alineado con tv_rights_annual_d2_eur_k). D1: 0.53×1.35=0.72 €K/sem."
+    added: "2026-05-20"
+    revised: ""
+  - name: tv_base_eur_k_regional
+    status: active
+    source: design/gdd/tv-rights.md
+    referenced_by:
+      - design/gdd/tv-rights.md
+    value: 1.75
+    unit: "€K/sem"
+    notes: "Base semanal del canal REGIONAL (F-TV1). D2: 1.75 €K/sem (~67 €K/año). D1: 2.36 €K/sem (~90 €K/año)."
+    added: "2026-05-20"
+    revised: ""
+  - name: tv_base_eur_k_nacional
+    status: active
+    source: design/gdd/tv-rights.md
+    referenced_by:
+      - design/gdd/tv-rights.md
+    value: 5.30
+    unit: "€K/sem"
+    notes: "Base semanal del canal NACIONAL (F-TV1). D2: 5.30 €K/sem (~201 €K/año). D1: 7.16 €K/sem (~272 €K/año — alineado con tv_rights_annual_d1_eur_k=270 €K). Ratio NACIONAL/LOCAL = 10×."
+    added: "2026-05-20"
+    revised: ""
+  - name: tv_division_multiplier_d1
+    status: active
+    source: design/gdd/tv-rights.md
+    referenced_by:
+      - design/gdd/tv-rights.md
+    value: 1.35
+    unit: "multiplicador"
+    notes: "Multiplicador de tarifa TV al firmar en D1 (vs D2=1.0). Un club D1 recibe ~35% más por el mismo tier de canal. Tuning knob rango seguro [1.10, 1.60]."
+    added: "2026-05-20"
+    revised: ""
+  - name: tv_midseason_penalty_factor
+    status: active
+    source: design/gdd/tv-rights.md
+    referenced_by:
+      - design/gdd/tv-rights.md
+    value: 0.70
+    unit: "factor"
+    notes: "Descuento aplicado a ofertas TV mid-season tras cancelación por escándalo (F-TV2). Canal negocia desde posición de fuerza. Rango seguro [0.50, 0.90]."
+    added: "2026-05-20"
     revised: ""
   - name: warning_buffer_weeks
     status: active

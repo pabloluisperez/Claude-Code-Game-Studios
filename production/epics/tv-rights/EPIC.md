@@ -104,17 +104,20 @@ es aritmética pura + comparaciones de precisión fija — sin APIs de engine nu
 | 008 | [Multi-Year Rollover + Season Lifecycle](story-008-season-lifecycle-rollover.md) | Integration | Code Complete | Integration tests pending live DB | ADR-019/ADR-005 |
 | 009 | [Cashflow Integration + Economy Breaking Change](story-009-cashflow-integration.md) | Integration | Code Complete (additive) | computeWeeklyRevenue updated; BREAKING CHANGE deletion deferred | ADR-014/ADR-019 |
 | 010 | [F-TV4 fan_loyalty → fan_attendance_effective](story-010-fan-loyalty-f-tv4.md) | Logic | ✅ Done | 16/16 ✅ | ADR-019 |
-| 011 | [/finance UI — TV Rights Panel + Event Display](story-011-finance-ui.md) | UI | **Blocked** (pending /ux-design tv-rights) | — | ADR-012/ADR-017 |
+| 011 | [/finance UI — TV Rights Panel + Event Display](story-011-finance-ui.md) | UI | ✅ Done | Manual verification via /finance/tv-rights | ADR-012/ADR-017 |
 
-**Implementation Summary (2026-05-20)**:
+**Implementation Summary (2026-05-20 — autonomous session)**:
 - 6 Logic stories ✅ Done with 116 unit tests passing (002, 003, 005, 006-pure, 007, 010)
 - 4 Integration stories code-complete (001 schema, 004 endpoints, 006 backend, 008 rollover, 009 cashflow)
-- 1 UI story Blocked pending UX spec
-- 914 total project tests passing (no regressions in shared package)
+- 1 UI story ✅ Done — UX spec authored (`design/ux/tv-rights.md`) + `/finance/tv-rights` route implemented with active contract panel, `tv_auction` modal with offers/duration/risk flags, `tv_midseason_offer` modal, rejection confirm dialog
+- **935 total project tests passing** (919 shared + 15 api + 1 web; no regressions)
 - Migration `0019_shallow_captain_marvel.sql` generated + partial UNIQUE index for idempotent event generation
-- Hono routes `/tv/*` registered in `apps/api/src/server.ts`
+- Hono routes `/tv/*` registered in `apps/api/src/server.ts` + smoke tests for the factory
 - Economy `computeWeeklyRevenue` accepts new `tvWeeklyEurKOverride` parameter
+- F-TV4 wired into `computeMatchDayRevenue` (OQ-TV-03 resolved — economy §F3 path with clamp at `stadiumCapacity`)
+- `fan_loyalty` + `corruption_exposure` registered in `design/registry/entities.yaml` as cross-system entities
 - Legacy `getTVRightsWeekly()` / `TV_RIGHTS_*` constants kept temporarily with `@deprecated` — full deletion deferred to follow-up commit when all callers migrate
+- Integration tests with live Postgres still pending (smoke-level coverage in place for routes + service exports)
 
 ## Next Step
 

@@ -65,14 +65,44 @@ export interface MatchDayRevenueArgs {
   readonly attendance: number;
   /** Effective ticket price in €. */
   readonly ticketPriceEur: number;
+  /**
+   * Per F-TV4 (tv-rights GDD): if provided, attendance is boosted by
+   * (1 + fan_loyalty × 0.005) and clamped at the stadium capacity.
+   * Callers without a fan_loyalty integration may omit this — the value is
+   * treated as 0 (no boost).
+   */
+  readonly fanLoyalty?: number;
+  /**
+   * Stadium capacity in seats (the upper bound for boosted attendance).
+   * Required when `fanLoyalty > 0` to enforce the F-TV4 clamp; otherwise
+   * the function uses `attendance` as-is and the clamp is moot.
+   */
+  readonly stadiumCapacity?: number;
 }
+
+/** F-TV4 attendance multiplier — 0.5% per loyalty point. */
+const F_TV4_FAN_LOYALTY_ATTENDANCE_FACTOR = 0.005;
 
 /**
  * Match-day ticket revenue in €K.
- * AC-ECO-13: revenue = round(attendance × ticketPrice / 1000) — euros to €K.
+ * AC-ECO-13: revenue = round(effectiveAttendance × ticketPrice / 1000) — euros to €K.
+ *
+ * Per OQ-TV-03 resolution: F-TV4 is applied here in the matchday revenue path
+ * (not in cascade-engine C8). When `fanLoyalty` is provided, the multiplier
+ * `(1 + fanLoyalty × 0.005)` is applied to attendance, clamped to
+ * `stadiumCapacity` so total tickets sold never exceeds physical capacity.
  */
 export function computeMatchDayRevenue(args: Readonly<MatchDayRevenueArgs>): number {
-  const grossEur = args.attendance * args.ticketPriceEur;
+  const loyalty = args.fanLoyalty ?? 0;
+  let effectiveAttendance = args.attendance;
+  if (loyalty > 0) {
+    const boosted = args.attendance * (1 + loyalty * F_TV4_FAN_LOYALTY_ATTENDANCE_FACTOR);
+    effectiveAttendance =
+      args.stadiumCapacity !== undefined
+        ? Math.min(args.stadiumCapacity, boosted)
+        : boosted;
+  }
+  const grossEur = effectiveAttendance * args.ticketPriceEur;
   return Math.round(grossEur / 1000);
 }
 

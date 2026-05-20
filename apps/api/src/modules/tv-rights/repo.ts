@@ -18,7 +18,14 @@ import {
 } from '@smt/db';
 import type { db as DBType } from '@smt/db';
 
-type Tx = Parameters<Parameters<typeof DBType.transaction>[0]>[0];
+/**
+ * Accepts either a top-level `db` handle or an open transaction `tx`. Drizzle's
+ * `PgTransaction` and `NodePgDatabase` share the relevant query methods we use
+ * here, so a permissive union prevents typecheck pain at the call sites.
+ */
+type Tx =
+  | typeof DBType
+  | Parameters<Parameters<typeof DBType.transaction>[0]>[0];
 
 /** Returns the playthrough's currently ACTIVE contract, or null. */
 export async function findActiveContract(

@@ -1,7 +1,7 @@
 # Story 011: /finance UI — TV Rights Panel + Event Display
 
 > **Epic**: Derechos de Televisión
-> **Status**: Blocked — pending `/ux-design tv-rights` (GDD UX flag active)
+> **Status**: ✅ Done — UX spec authored at `design/ux/tv-rights.md` (2026-05-20); UI implemented at `apps/web/src/routes/finance/tv-rights/`
 > **Layer**: Presentation
 > **Type**: UI
 > **Estimate**: M (3-4h — once UX spec exists)

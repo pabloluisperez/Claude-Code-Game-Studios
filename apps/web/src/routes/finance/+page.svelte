@@ -126,6 +126,13 @@
       >
         🎟 Abonos
       </button>
+      <a
+        role="tab"
+        class="tab"
+        href="/finance/tv-rights"
+      >
+        📺 Derechos TV
+      </a>
     </div>
 
     {#if form?.ok && form.priceEur}

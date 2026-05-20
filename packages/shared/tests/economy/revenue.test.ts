@@ -69,6 +69,61 @@ describe('computeMatchDayRevenue', () => {
   it('test_zero_attendance', () => {
     expect(computeMatchDayRevenue({ attendance: 0, ticketPriceEur: 50 })).toBe(0);
   });
+
+  // ── F-TV4 path (OQ-TV-03 resolution) ───────────────────────────────────────
+
+  it('test_ftv4_no_fan_loyalty_behaves_as_before', () => {
+    expect(
+      computeMatchDayRevenue({ attendance: 2500, ticketPriceEur: 10, fanLoyalty: 0 }),
+    ).toBe(25);
+  });
+
+  it('test_ftv4_loyalty_10_boosts_attendance_5pct', () => {
+    // 2500 × 1.05 = 2625; × 10 = 26250 → 26 €K
+    expect(
+      computeMatchDayRevenue({
+        attendance: 2500,
+        ticketPriceEur: 10,
+        fanLoyalty: 10,
+        stadiumCapacity: 6000,
+      }),
+    ).toBe(26);
+  });
+
+  it('test_ftv4_loyalty_50_boosts_attendance_25pct', () => {
+    // 2500 × 1.25 = 3125; × 10 = 31250 → 31 €K
+    expect(
+      computeMatchDayRevenue({
+        attendance: 2500,
+        ticketPriceEur: 10,
+        fanLoyalty: 50,
+        stadiumCapacity: 6000,
+      }),
+    ).toBe(31);
+  });
+
+  it('test_ftv4_attendance_clamps_at_stadium_capacity', () => {
+    // 5000 × 1.25 = 6250, clamped to 6000; × 10 = 60000 → 60 €K
+    expect(
+      computeMatchDayRevenue({
+        attendance: 5000,
+        ticketPriceEur: 10,
+        fanLoyalty: 50,
+        stadiumCapacity: 6000,
+      }),
+    ).toBe(60);
+  });
+
+  it('test_ftv4_without_stadium_capacity_does_not_clamp', () => {
+    // 5000 × 1.25 = 6250 (no clamp), × 10 = 62500 → 63 €K
+    expect(
+      computeMatchDayRevenue({
+        attendance: 5000,
+        ticketPriceEur: 10,
+        fanLoyalty: 50,
+      }),
+    ).toBe(63);
+  });
 });
 
 describe('computeSponsorIncome', () => {
