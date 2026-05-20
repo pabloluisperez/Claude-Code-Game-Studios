@@ -183,13 +183,20 @@ Todas las funciones económicas son **funciones puras** sin `Math.random()`. Cua
 
 ### F1: Ingresos de taquilla por partido (match_day_revenue)
 
-`match_day_revenue_eur_k = (fan_attendance / 100) × STADIUM_CAPACITY_BASE × ticket_price_eur / 1000 × is_home_match`
+> **⚠️ Actualizado 2026-05-20**: integrado el multiplicador F-TV4 de `tv-rights.md`. La asistencia base del cascade (`fan_attendance`) se amplifica por `fan_loyalty` antes del cálculo de taquilla.
+
+`fan_attendance_effective = min(1.0, fan_attendance × (1 + fan_loyalty × FAN_LOYALTY_ATTENDANCE_FACTOR))` *(donde `fan_attendance` se interpreta como fracción [0, 1] equivalente a `fan_attendance_pct / 100`)*
+
+`match_day_revenue_eur_k = fan_attendance_effective × STADIUM_CAPACITY_BASE × ticket_price_eur / 1000 × is_home_match`
 
 Donde `ticket_price_eur = TICKET_PRICE_BASE × (0.5 + ticket_price_index / 100)`
 
 | Variable | Símbolo | Tipo | Rango | Descripción |
 |----------|---------|------|-------|-------------|
 | % asistencia normalizado | `fan_attendance` | float | 0–100 | Calculado por cascade-engine (C8). Representa % del aforo que asiste |
+| Lealtad acumulada por rechazos TV | `fan_loyalty` | int | 0–50 | Columna `managers.fan_loyalty`. Owner: `tv-rights.md`. +10 por cada rechazo de oferta TV (cap 50). |
+| Factor de amplificación por loyalty | `FAN_LOYALTY_ATTENDANCE_FACTOR` | float | 0.005 (locked) | Per `tv-rights.md §F-TV4`: 0.5% adicional por punto de loyalty |
+| Asistencia efectiva tras F-TV4 | `fan_attendance_effective` | float | 0.0–1.0 | Resultado clampeado en 1.0 (no se puede superar el aforo) |
 | Aforo del estadio | `STADIUM_CAPACITY_BASE` | int | Tabla por div. | Espectadores máximos. Constante de división (ver tabla) |
 | Precio de entrada en € | `ticket_price_eur` | float | `TICKET_PRICE_BASE × 0.5` a `× 1.5` | Derivado de `ticket_price_index` del WorldState |
 | Partido en casa | `is_home_match` | int | {0, 1} | 1 = local (genera taquilla); 0 = visitante (0 ingresos) |
@@ -202,8 +209,10 @@ Donde `ticket_price_eur = TICKET_PRICE_BASE × (0.5 + ticket_price_index / 100)`
 | D1 (Primera) | 12 000 | 18 € |
 
 **Rango del output:** 0 (partido visitante o asistencia 0) a ~108 €K (D2, 100% asistencia, precio máximo) · D1: ~324 €K (100% asistencia, precio máximo)
-**Ejemplo D2 (Segunda), fan_attendance=40, ticket_price_index=50 (precio justo), en casa:**
-`ticket_price = 12 × 1.0 = 12 €` → `(40/100) × 6000 × 12 / 1000 × 1 = 28.8 €K`
+**Ejemplo D2, `fan_attendance=40`, `fan_loyalty=0`, precio justo, en casa:**
+`fan_attendance_effective = min(1.0, 0.40 × 1.0) = 0.40` → `0.40 × 6000 × 12 / 1000 × 1 = 28.8 €K`
+**Ejemplo D2, `fan_attendance=40`, `fan_loyalty=30` (tres rechazos), precio justo, en casa:**
+`fan_attendance_effective = min(1.0, 0.40 × 1.15) = 0.46` → `0.46 × 6000 × 12 / 1000 × 1 = 33.12 €K` (+4.32 €K vs. baseline, +15%)
 
 ---
 
@@ -487,8 +496,7 @@ GIVEN un club D2 (`STADIUM_CAPACITY_BASE=6000`, `TICKET_PRICE_BASE=12€`), `fan
 **AC-ECO-04** `[UNIT]`
 GIVEN cualquier club en cualquier división con `is_home_match=0`, WHEN se calcula `match_day_revenue_eur_k` independientemente de `fan_attendance` y `ticket_price_index`, THEN el resultado es exactamente **0.0 €K**.
 
-**AC-ECO-05** `[UNIT]`
-GIVEN `getTVRightsWeekly(divisionTier=2)` (Segunda División — `TV_RIGHTS_ANNUAL_EUR_K=20`) y `SEASON_LENGTH_WEEKS=38`, WHEN se calcula `weekly_tv_rights_eur_k`, THEN el resultado es **0.5263 €K/sem** (±0.001). GIVEN `getTVRightsWeekly(divisionTier=1)` (Primera División — `TV_RIGHTS_ANNUAL_EUR_K=270`), THEN el resultado es **7.105 €K/sem** (±0.001). Ratio D1/D2 = 13.5×. Nota: `divisionTier=3` no existe en MVP — la función debe devolver error si se pasa un tier fuera de {1,2}.
+**~~AC-ECO-05~~** `[UNIT]` ⚠️ **DEPRECATED 2026-05-20** — `getTVRightsWeekly()` fue eliminada del código en commit `bf37f61` (BREAKING CHANGE de `tv-rights.md`). La autoridad para el TV revenue semanal es ahora `tv_contract.weekly_rate_eur_k` del contrato firmado (per F-TV1). Los valores `0.5263 €K/sem` (D2) y `7.105 €K/sem` (D1) corresponden a LOCAL/D2 y NACIONAL/D1 respectivamente — ver los ACs de `tv-rights.md` (AC-TV-01..07) para los tests vivos. Conservado aquí como referencia histórica.
 
 **AC-ECO-06** `[UNIT]`
 GIVEN un contrato firmado en D2 (Segunda) primera temporada (proxy `final_position=10`), tier 1, slot camiseta:

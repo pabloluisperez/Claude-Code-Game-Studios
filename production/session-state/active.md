@@ -431,3 +431,24 @@ Pablo despierta, sesión nueva. Estado real (no reflejado en commits hasta ahora
 3. **Re-correr `/gate-check pre-production`** — el FAIL del 2026-05-18 puede estar obsoleto; mucha infra completada desde entonces (5 ADRs, cascade-engine epic, tv-rights epic, match-sim 14/18).
 
 `stage.txt` sigue en Concept — no avanzar hasta que `/gate-check` formalmente PASS.
+
+<!-- CONSISTENCY-CHECK: 2026-05-21 | GDDs checked: 4 (cascade-engine, economy, league-system, tv-rights) | Conflicts found: 3 | Conflicts resolved: 3 | Report: docs/consistency-failures.md (3 new entries) -->
+
+## 2026-05-21 — Consistency-check fix-up
+
+Encontrados 3 conflictos en el cierre de tv-rights (todos resueltos en este commit):
+1. `cascade-engine.md:587` typo −0.3/sem → −0.5/sem (regresión introducida ayer en la propagación).
+2. `economy.md §F1` integra ahora multiplicador F-TV4 (`fan_attendance_effective = fan_attendance × (1 + fan_loyalty × 0.005)`) — cerraba OQ-TV-03 pendiente "post-APPROVED retrofit".
+3. `economy.md` AC-ECO-05 marcado deprecated (mismo patrón que AC-LGS-18/19) — `getTVRightsWeekly()` eliminada en commit `bf37f61`.
+
+OQ-TV-02, OQ-TV-03, OQ-TV-04 cerrados en tv-rights.md como RESUELTOS.
+
+⚠️ **Drift menor detectado fuera de scope**: `ADR-019` aún tiene header `Status: Proposed` aunque el epic + código shipped. Pendiente bump a `Accepted` por separado (no bloquea nada — solo cosmético en el ADR).
+
+⚠️ **Bugs YAML en entities.yaml detectados fuera de scope**: `getMaxHirableStaffQuality/effectiveThreshold` (líneas 333-358 estructura colapsada), `fitness_decay_max` (referenced_by duplicado), `warning_buffer_weeks` (revised duplicado). Tracked para próximo `/consistency-check full`.
+
+### Next move (Pablo decide)
+Mismas 3 opciones que antes — el cierre limpio de tv-rights está completo:
+1. **Unblock sprint-06** — `/create-stories player-management` + `/create-stories league-system`.
+2. **Nuevo epic** — `/create-stories economy` o `/create-stories staff-system`.
+3. **Re-correr `/gate-check pre-production`**.
