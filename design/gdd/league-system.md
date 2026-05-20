@@ -194,12 +194,9 @@ Con valores MVP: `{ win: +5, draw: +1, loss: -8 }`.
 Aplicado como PlayerDecision en el cascade tick post-partido. Solo aplica si ambos clubs están en la misma división en esa temporada.
 **Output range:** {-8, +1, +5}. Asimetría intencional: perder en un derby duele más que ganar alegra. El empate (+1) reconoce que el evento ocurrió sin equiparar su peso a la victoria.
 
-### F6 — TV rights por división
+### ~~F6 — TV rights por división~~ ⚠️ DEPRECATED
 
-`tv_weekly_eur_k = { 1: 270 / 38, 2: 20 / 38 }[division_tier]`
-
-Output: Primera ≈ 7.11 €K/sem · Segunda ≈ 0.53 €K/sem.
-*(Valores `tv_rights_annual_d1_eur_k = 270` y `tv_rights_annual_d3_eur_k = 20` del registry — Segunda equivale a D3 en la nomenclatura del registro.)*
+> **BREAKING CHANGE** — Esta fórmula y la función `getTVRightsWeekly()` han sido reemplazadas por `design/gdd/tv-rights.md` (F-TV1). Al implementar `tv-rights.md`, eliminar `getTVRightsWeekly()` del league-system service y las constantes `TV_RIGHTS_SEGUNDA` / `TV_RIGHTS_PRIMERA` de `constants.ts`. Los ACs AC-LGS-18 y AC-LGS-19 quedan deprecated — usan la fórmula plana incompatible con el nuevo sistema. La autoridad sobre los ingresos TV es `tv-rights.md`.
 
 ## Edge Cases
 
@@ -231,7 +228,8 @@ Output: Primera ≈ 7.11 €K/sem · Segunda ≈ 0.53 €K/sem.
 | Sistema | GDD | Qué espera |
 |---|---|---|
 | Sistema de eventos | `event-system.md` | CalendarEvents `type='match'` (380/div × 2 = 760 total) + transfer_window events |
-| Economía del club | `economy.md` | División actual del club → multiplica derechos TV (`tv_weekly_eur_k` F6) |
+| Economía del club | `economy.md` | División actual del club (ya no via F6 deprecated — `economy.md` lee `contract.weekly_rate_eur_k` de `tv-rights.md`) |
+| Derechos TV | `tv-rights.md` | Lee `current_division` y `prev_season_final_position` para condiciones de desbloqueo en subasta |
 | HUD y UI principal | `hud-ui.md` | Tabla `standings` en tiempo real + `nextEventPreview` del partido siguiente |
 
 ### ADR dependencies
@@ -330,10 +328,9 @@ El league-system es infraestructura de datos y control de flujo. No tiene requis
 - **AC-LGS-16** GIVEN el mismo club IA (ej. `clubId=5`, `base_team_skill=60`) ejecutando F4 para las temporadas 1 a 50, WHEN se analizan los 50 resultados, THEN todos los valores están dentro de `[55, 65]` y la distribución cubre al menos el rango `[57, 63]` (confirma que no es función identidad).
 - **AC-LGS-17** GIVEN un club IA que desciende de D1 a D2 con `base_team_skill = 18`, WHEN inicia la nueva temporada, THEN `base_team_skill = max(15, 18 - 5) = 15` (clamp aplicado). Para un club con `base_team_skill = 70`, THEN `base_team_skill = 65`.
 
-### Bloque H — TV rights (F6)
+### ~~Bloque H — TV rights (F6)~~ ⚠️ DEPRECATED
 
-- **AC-LGS-18** GIVEN `getTVRightsWeekly(division_tier=1)` ejecuta (función del league-system service), WHEN devuelve el resultado, THEN el valor es `7_105` EUR (entero, resultado de `floor(270_000 / 38)`). (Pertenece a tests/unit/league/ — la formula TV es del league-service; economy lee este valor, no lo calcula.)
-- **AC-LGS-19** GIVEN `getTVRightsWeekly(division_tier=2)` ejecuta, THEN el valor es `526` EUR (entero, resultado de `floor(20_000 / 38)`).
+> **AC-LGS-18** y **AC-LGS-19** quedan **deprecated**. La función `getTVRightsWeekly()` y sus ACs son incompatibles con `tv-rights.md` (F-TV1) y deben eliminarse al implementar ese sistema. Ver BREAKING CHANGE en F6 arriba.
 
 ### Bloque I — Coverage gaps (añadidos post /design-review)
 

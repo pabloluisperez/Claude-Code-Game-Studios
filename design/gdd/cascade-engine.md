@@ -584,6 +584,7 @@ El valor de `corruption_exposure` se gestiona según la resolución del evento (
 | **`hud-ui.md`** | Blanda | Lee el WorldState para indicadores HUD. Solo lectura. |
 | **`league-system.md`** | Dura | Genera los fixture events del calendario que determinan cuándo se evalúan los ticks de partido. **También escribe `fan_momentum` como PlayerDecision post-partido via derby bonus/penalty** (F5 de league-system.md: +5 win / +1 draw / -8 loss). Contrato: estas PlayerDecisions se aplican en el Paso 3 del cascade tick del partido correspondiente, idénticas en mecanismo a las PlayerDecisions del event-system. |
 | **`player-management.md`** | Blanda | **Escribe** `squad_available_pct` (% jugadores disponibles) y `team_skill` (media skill del starting_11) como PlayerDecisions en el Paso 3, cada advance(). Estos nodos son la interfaz entre la gestión de plantilla y el motor de cascadas. No lee nodos del WorldState directamente — es writer, no reader. |
+| **`tv-rights.md`** | Dura | **Escribe** `corruption_exposure += CORRUPTION_DELTA_PER_WEEK[tier]` (clampeado en 0) como PlayerDecision en cada tick semanal con contrato ACTIVE. **Lee** `TV_SCANDAL_THRESHOLD = 60` como threshold node adicional (distinto del threshold global de escándalo = 80): cuando `corruption_exposure` cruza 60 al alza, cancela el contrato activo. El delta LOCAL es negativo (-0.3/sem) — único contribuyente negativo a `corruption_exposure` en el sistema MVP. |
 
 ### fan_momentum — Rutas de recuperación activa
 

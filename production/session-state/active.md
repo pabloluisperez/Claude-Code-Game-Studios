@@ -2,6 +2,14 @@
 
 ## Active workstream
 
+**TV-rights Epic — ✅ COMPLETE** (2026-05-20)
+- GDD R7 APPROVED · ADR-019 Accepted · 11/11 stories Done · 951 tests passing (incl. 17 live-DB integration)
+- Propagation commits: `929a5db` (sponsors inline) · `4fcab7b` (sponsors multi-slot) · `292aefd` (GDD R7 + ADR-019 + epic + stories + 116 unit tests) · `523cac2` (UX + /finance UI + F-TV4 + entities + smoke) · `bf37f61` (advance() wire + live-DB integration + BREAKING CHANGE deletion)
+- GDD propagation (this commit): economy.md §F2 → tv-rights.md authority · league-system.md §F6 + AC-LGS-18/19 deprecated · cascade-engine.md dependency matrix updated with tv-rights writer (corruption_exposure) + reader (TV_SCANDAL_THRESHOLD=60)
+- Outstanding: none for tv-rights itself. `/consistency-check` next to verify the 3 GDD edits don't introduce new drift.
+
+---
+
 **`/vertical-slice` — "Mes 1 en Real Pueblo CF"** (started 2026-05-18)
 
 Pre-Production gate before `/create-epics`. Validates whether the full game loop
@@ -403,3 +411,23 @@ sprint-plan + gate re-run).
 - Next: /code-review packages/shared/src/sim/sports/football/football-types.ts packages/shared/tests/match-sim/types.test.ts → /story-done
 - Blockers: None
 - Next: /code-review packages/shared/src/sim/cascade-graph.ts packages/shared/tests/cascade-engine/chains-c4-c10.test.ts → /story-done
+
+---
+
+## 2026-05-20 — TV-rights closure + GDD propagation
+
+Pablo despierta, sesión nueva. Estado real (no reflejado en commits hasta ahora):
+- TV-rights epic ✅ Complete (R7 + ADR-019 + 11/11 stories + 951 tests). Top of active.md actualizado.
+- GDD propagation commiteada en este commit: cascade-engine.md (dependency matrix +tv-rights writer/reader), economy.md (F2 → tv-rights.md authority + historical reference), league-system.md (F6 deprecated + AC-LGS-18/19 deprecated).
+- UI fixes commiteados aparte: calendar/+page.svelte (announcement-vs-decision split via eventNeedsAction), vite.config.ts (svelte-range-slider-pips compiled-bundle alias workaround).
+
+### Sprint-06 status snapshot
+- 1/5 Done (MATCH-SIM-014 FSM ✅, 18/18 tests).
+- 4/5 🚫 Blocked: MATCH-SIM-015→018 esperan tablas `playthroughs` (player-management) y `fixtures` (league-system). Ninguno de esos épicos tiene stories aún.
+
+### Recommended next moves (Pablo decide)
+1. **Unblock sprint-06** — `/create-stories player-management` + `/create-stories league-system` para liberar MATCH-SIM-015→018.
+2. **Nuevo epic** — `/create-stories economy` (ADR-014 maduro + F-TV4 retrofit listo) o `/create-stories staff-system` (paralelo independiente).
+3. **Re-correr `/gate-check pre-production`** — el FAIL del 2026-05-18 puede estar obsoleto; mucha infra completada desde entonces (5 ADRs, cascade-engine epic, tv-rights epic, match-sim 14/18).
+
+`stage.txt` sigue en Concept — no avanzar hasta que `/gate-check` formalmente PASS.

@@ -7,7 +7,7 @@
 
 ## Overview
 
-El sistema económico del club es el substrato financiero de todas las decisiones de gestión. Calcula ingresos — taquilla (asistencia × precio de entrada), derechos de televisión (fijos por división), patrocinio semanal (`sponsor_quality`) y traspasos — y gastos — nómina semanal de plantilla y staff, presupuestos operativos (campo, catering, scouting), inversiones en infraestructura del estadio y multas — produciendo un balance disponible que determina qué puede permitirse el manager semana a semana. El sistema recibe `fan_attendance`, `fan_momentum` y `sponsor_quality` del motor de cascadas; sus propios nodos económicos son independientes y se persisten entre sesiones vía ADR-005. Es la capa que convierte los resultados deportivos en capacidad o incapacidad de mejorar el club: ganar llena las gradas, las gradas pagan la nómina, la nómina retiene a los jugadores clave, los jugadores clave ganan más partidos. Cada división tiene un multiplicador fijo sobre los derechos de TV y el techo de patrocinio — ascender vale dinero real. Cuando el balance cae por debajo de un umbral crítico, la directiva convoca una reunión de emergencia con opciones de rescate; no hay game-over, hay una historia nueva de supervivencia.
+El sistema económico del club es el substrato financiero de todas las decisiones de gestión. Calcula ingresos — taquilla (asistencia × precio de entrada), derechos de televisión (contrato anual con canal — ver `tv-rights.md`), patrocinio semanal (`sponsor_quality`) y traspasos — y gastos — nómina semanal de plantilla y staff, presupuestos operativos (campo, catering, scouting), inversiones en infraestructura del estadio y multas — produciendo un balance disponible que determina qué puede permitirse el manager semana a semana. El sistema recibe `fan_attendance`, `fan_momentum` y `sponsor_quality` del motor de cascadas; sus propios nodos económicos son independientes y se persisten entre sesiones vía ADR-005. Es la capa que convierte los resultados deportivos en capacidad o incapacidad de mejorar el club: ganar llena las gradas, las gradas pagan la nómina, la nómina retiene a los jugadores clave, los jugadores clave ganan más partidos. Cada división tiene un multiplicador fijo sobre los derechos de TV y el techo de patrocinio — ascender vale dinero real. Cuando el balance cae por debajo de un umbral crítico, la directiva convoca una reunión de emergencia con opciones de rescate; no hay game-over, hay una historia nueva de supervivencia.
 
 ## Player Fantasy
 
@@ -30,7 +30,7 @@ La economía tiene su propio momento "ajá": *"ah, por eso la directiva me está
 3. **Ingresos semanales:**
    - **Taquilla** *(semana de partido únicamente)*: `fan_attendance × STADIUM_CAPACITY_BASE × ticket_price_eur × (1 + HOME_ADVANTAGE_BONUS si es partido local)`. Solo genera ingreso la semana que hay partido de liga o copa.
    - **Patrocinio**: suma del `revenue_weekly_eur_k` de los contratos activos en los 2 slots (camiseta + estadio). Valor fijo según el `SPONSOR_TIER` y el nivel del club en el momento de la firma.
-   - **Derechos de TV**: `TV_RIGHTS_BASE_EUR_K × DIVISION_TV_MULTIPLIER[division]` / 38 semanas. Se cobran cada semana de temporada.
+   - **Derechos de TV**: ingreso semanal fijo del contrato activo con un canal de televisión. Fuente de verdad: `tv-rights.md`. El valor es `tv_contract.weekly_rate_eur_k` (ó 0 si no hay contrato activo). Ver F2 para el cálculo histórico de referencia.
    - **Traspasos (entrada)**: delta extraordinario inmediato al `balance_eur_k` al completar la venta de un jugador.
 
 4. **Gastos semanales:**
@@ -209,21 +209,20 @@ Donde `ticket_price_eur = TICKET_PRICE_BASE × (0.5 + ticket_price_index / 100)`
 
 ### F2: Derechos de TV semanales (weekly_tv_rights)
 
+> **⚠️ Actualizado 2026-05-20**: La fórmula plana original queda como referencia histórica. La fuente de verdad para el cálculo es ahora `tv-rights.md §F-TV1`. El valor real en runtime es `tv_contract.weekly_rate_eur_k` del contrato activo (0 si sin contrato).
+
+**Fórmula de referencia (histórica — pre tv-rights.md):**
+
 `weekly_tv_rights_eur_k = TV_RIGHTS_ANNUAL_EUR_K[division] / SEASON_LENGTH_WEEKS`
 
-| Variable | Símbolo | Tipo | Rango | Descripción |
-|----------|---------|------|-------|-------------|
-| División actual | `division` | int | {1, 2} | División en la que compite el club (1=Primera, 2=Segunda) |
-| Derechos anuales por división | `TV_RIGHTS_ANNUAL_EUR_K` | tabla | 20–270 €K | Ver tabla |
-| Semanas de temporada | `SEASON_LENGTH_WEEKS` | int | 38 | Locked MVP |
+| División | `TV_RIGHTS_ANNUAL_EUR_K` | Revenue semanal de referencia |
+|----------|--------------------------|-------------------------------|
+| D2 (Segunda) | 20 €K | ~0.53 €K/sem |
+| D1 (Primera) | 270 €K | ~7.11 €K/sem |
 
-| División | `TV_RIGHTS_ANNUAL_EUR_K` | Revenue semanal | Ratio vs D2 |
-|----------|--------------------------|-----------------|-------------|
-| D2 (Segunda) | 20 €K | ~0.53 €K/sem | 1.0× |
-| D1 (Primera) | 270 €K | ~7.11 €K/sem | ~13.5× |
+Los valores 20 €K (D2) y 270 €K (D1) corresponden al canal LOCAL en D2 y al canal NACIONAL en D1 respectivamente — los techos conservados en `tv-rights.md §F-TV1`. Los ACs que citan estos valores siguen siendo válidos para el escenario de contrato LOCAL/D2 o NACIONAL/D1.
 
-**Rango del output:** 0.53 €K/sem (D2) a 7.11 €K/sem (D1). Constante durante la temporada.
-**Ejemplo D2 (Segunda):** `20 / 38 = 0.526 €K/sem`
+**Nota código**: `TV_RIGHTS_SEGUNDA = 3 €K/sem` y `TV_RIGHTS_PRIMERA = 8 €K/sem` en `constants.ts` son incorrectos respecto a este GDD (equivalen a 114/304 €K/año vs. 20/270 del registry). Deben corregirse al implementar `tv-rights` (ver `OQ-TV-02`).
 
 ---
 
