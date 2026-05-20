@@ -5,8 +5,9 @@
   Control Manifest: 2026-05-19
 -->
 <script lang="ts">
-  import type { PageData } from './$types';
-  let { data }: { data: PageData } = $props();
+  import type { PageData, ActionData } from './$types';
+  import { enhance } from '$app/forms';
+  let { data, form }: { data: PageData; form: ActionData } = $props();
 
   const latest = $derived(data.hasPlaythrough ? data.snapshots[0] : undefined);
   const balance = $derived(Math.round(latest?.state.financial_balance ?? 0));
@@ -44,6 +45,62 @@
       <span>Esperando primer tick del simulador para calcular el balance.</span>
     </div>
   {:else}
+    {#if form?.ok && form.priceEur}
+      <div class="alert alert-success">
+        <span>Nuevo precio de abono: {form.priceEur}€ · {form.holders} abonados.</span>
+      </div>
+    {/if}
+
+    <!-- Season tickets card -->
+    {#if data.club}
+      <section class="card bg-base-100 shadow border-2 border-info/30">
+        <div class="card-body">
+          <h2 class="card-title">Abonos de temporada</h2>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
+            <div>
+              <div class="text-xs opacity-60 uppercase">Abonados</div>
+              <div class="font-mono text-2xl">{data.club.seasonTicketHolders}</div>
+              <div class="text-xs opacity-60">de {data.club.fanBase} aficionados</div>
+            </div>
+            <div>
+              <div class="text-xs opacity-60 uppercase">Precio actual</div>
+              <div class="font-mono text-2xl">{data.club.seasonTicketPriceEur} €</div>
+            </div>
+            <div>
+              <div class="text-xs opacity-60 uppercase">Ingreso anual estimado</div>
+              <div class="font-mono text-2xl text-success">
+                {Math.round((data.club.seasonTicketHolders * data.club.seasonTicketPriceEur) / 1000)} k€
+              </div>
+              <div class="text-xs opacity-60">se cobra al inicio de cada temporada</div>
+            </div>
+          </div>
+
+          <form method="POST" action="?/setTicketPrice" use:enhance class="mt-3">
+            <label class="form-control w-full max-w-xs">
+              <span class="label-text text-xs">Cambiar precio del abono (5-200 €)</span>
+              <div class="join">
+                <input
+                  class="join-item input input-bordered"
+                  type="number"
+                  name="priceEur"
+                  min="5"
+                  max="200"
+                  step="5"
+                  value={data.club.seasonTicketPriceEur}
+                />
+                <button type="submit" class="join-item btn btn-primary">Guardar</button>
+              </div>
+            </label>
+          </form>
+          <p class="text-xs opacity-60 mt-2">
+            ≤ 25 € → más abonados, peor margen.
+            ≥ 50 € → menos abonados pero más caro por persona.
+            El cambio aplica para próxima temporada.
+          </p>
+        </div>
+      </section>
+    {/if}
+
     <div class="alert {statusClass[financialStatus] ?? 'alert-info'}">
       <div>
         <div class="text-xs uppercase opacity-70">Estado financiero</div>

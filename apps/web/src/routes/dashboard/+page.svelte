@@ -217,27 +217,52 @@
 
     <!-- Week summary (post-advance) -->
     {#if data.justAdvanced}
-      <section class="alert alert-success shadow-lg">
-        <div class="flex-1">
-          <h3 class="font-bold">Semana avanzada al {data.weekDate.display}</h3>
-          {#if data.lastResult && data.lastResult.week === data.week}
-            <p class="text-sm">
-              <span class="badge {outcomeBadge(data.lastResult.outcome)} mr-2">
-                {outcomeLabel(data.lastResult.outcome)}
-              </span>
-              <span class="font-semibold">{data.lastResult.opponentName}</span>
-              <span class="font-mono ml-2">
-                {data.lastResult.isHome ? `${data.lastResult.myScore}-${data.lastResult.oppScore}` : `${data.lastResult.oppScore}-${data.lastResult.myScore}`}
-              </span>
-              ({data.lastResult.isHome ? 'casa' : 'fuera'})
-            </p>
-          {:else}
+      {#if data.lastResult && data.lastResult.week === data.week}
+        <!-- Match-day card: live replay or skip-to-end -->
+        <section class="card bg-base-200 shadow-lg border-2 border-primary/40">
+          <div class="card-body">
+            <div class="flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <div class="text-xs uppercase opacity-70 tracking-wider">
+                  Partido jugado hoy
+                </div>
+                <h3 class="font-bold text-xl mt-1">
+                  vs {data.lastResult.opponentName}
+                  <span class="opacity-50 text-sm font-normal ml-2">
+                    ({data.lastResult.isHome ? 'casa' : 'fuera'})
+                  </span>
+                </h3>
+                <div class="text-sm opacity-80 mt-1">
+                  Tu equipo acaba de salir del vestuario. ¿Cómo quieres verlo?
+                </div>
+              </div>
+              <div class="flex gap-2 flex-wrap">
+                <a
+                  href="/match/{data.lastResult.id}?autoplay=1&return=dashboard"
+                  class="btn btn-primary"
+                >
+                  ▶ Ir a partido
+                </a>
+                <a
+                  href="/match/{data.lastResult.id}?skipToEnd=1&return=dashboard"
+                  class="btn btn-outline"
+                >
+                  ⏭ Solo resultado
+                </a>
+              </div>
+            </div>
+          </div>
+        </section>
+      {:else}
+        <section class="alert alert-success shadow-lg">
+          <div class="flex-1">
+            <h3 class="font-bold">Semana avanzada al {data.weekDate.display}</h3>
             <p class="text-sm opacity-80">
               Sin partido esta semana — entrenamientos y operaciones de oficina.
             </p>
-          {/if}
-        </div>
-      </section>
+          </div>
+        </section>
+      {/if}
     {/if}
 
     <!-- Newspaper card — auto-generated headlines from this week's state -->

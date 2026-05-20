@@ -19,6 +19,12 @@ export const clubs = pgTable('clubs', {
   kitPrimaryColor: text('kit_primary_color').notNull().default('#1e3a8a'),
   /** Secondary / away kit colour (HEX). */
   kitSecondaryColor: text('kit_secondary_color').notNull().default('#f8fafc'),
+  /** Price of a full-season ticket in euros — set by the manager. */
+  seasonTicketPriceEur: integer('season_ticket_price_eur').notNull().default(35),
+  /** Current season-ticket holder count — recomputed at each season-start. */
+  seasonTicketHolders: integer('season_ticket_holders').notNull().default(100),
+  /** Highest season number whose season-ticket lump-sum was already paid. */
+  lastSeasonTicketPaidSeason: integer('last_season_ticket_paid_season').notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 });

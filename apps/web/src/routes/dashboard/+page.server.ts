@@ -38,6 +38,7 @@ import { applyEconomyTick } from '$lib/server/economy-tick';
 import { checkAndRolloverSeason } from '$lib/server/season-rollover';
 import { detectAndPersistMilestones } from '$lib/server/milestones';
 import { grantWeeklyManagerXp } from '$lib/server/manager-xp';
+import { maybePaySeasonTickets } from '$lib/server/season-tickets';
 
 export const load: PageServerLoad = async ({ parent, url }) => {
   const { user, activePlaythrough } = await parent();
@@ -271,11 +272,27 @@ export const actions: Actions = {
       prevBuffer,
     );
 
-    // 2. Economy tick on top of cascade output
+    // 1b. Season-ticket lump-sum, if we just entered a new season. Bumps
+    // the balance directly (one-off injection, not weekly recurring).
+    const ticketPayment = await maybePaySeasonTickets({
+      playthroughId: active.id,
+      clubId: active.clubId,
+      currentWeek: nextWeek,
+    });
+    const stateAfterTickets = ticketPayment.paid
+      ? ({
+          ...(result.nextState as Record<string, number>),
+          financial_balance:
+            ((result.nextState as Record<string, number>)['financial_balance'] ?? 0) +
+            (ticketPayment.totalEurK ?? 0),
+        } as typeof result.nextState)
+      : result.nextState;
+
+    // 2. Economy tick on top of cascade output (+ ticket bump)
     const eco = await applyEconomyTick({
       playthroughId: active.id,
       clubId: active.clubId,
-      baseState: result.nextState,
+      baseState: stateAfterTickets,
     });
 
     const { remaining } = popEffectsDueAt(prevBuffer, nextWeek);
@@ -399,17 +416,9 @@ export const actions: Actions = {
       throw redirect(303, `/season-end?from=${rollover.fromSeason}`);
     }
 
-    // If the user played a match this week, redirect to the match page with
-    // autoplay so they can watch the minute-by-minute replay. Otherwise back
-    // to dashboard with the weekly summary banner.
-    const userFixtureId = matchDay.results.find(
-      (r) => r.homeClubId === active.clubId || r.awayClubId === active.clubId,
-    )?.fixtureId;
-
-    if (userFixtureId) {
-      throw redirect(303, `/match/${userFixtureId}?autoplay=1&return=dashboard`);
-    }
-
+    // Land back on the dashboard with the weekly summary. If the user
+    // played, the dashboard's `lastResult` card surfaces two CTAs:
+    // "Ir a partido" (autoplay replay) and "Solo resultado" (skip-to-end).
     throw redirect(303, '/dashboard?advanced=1');
   },
 };

@@ -19,6 +19,7 @@
   let { data }: { data: PageData } = $props();
 
   const autoplay = $derived($page.url.searchParams.get('autoplay') === '1');
+  const skipToEnd = $derived($page.url.searchParams.get('skipToEnd') === '1');
   const returnTo = $derived($page.url.searchParams.get('return'));
   let finalWhistle = $state(false);
 
@@ -124,6 +125,12 @@
   }
 
   onMount(() => {
+    if (skipToEnd) {
+      // Treat as if the match already finished — show score + recap + all
+      // events upfront, no replay.
+      finalWhistle = true;
+      return;
+    }
     if (autoplay && persistedEvents.length > 0) {
       startReplay();
     }
