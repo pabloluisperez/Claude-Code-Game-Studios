@@ -117,6 +117,29 @@
           />
         </label>
 
+        <div class="grid grid-cols-2 gap-3">
+          <label class="form-control">
+            <span class="label-text">Color principal (camiseta)</span>
+            <input
+              class="input input-bordered h-12 p-1"
+              type="color"
+              name="kitPrimaryColor"
+              value="#1e3a8a"
+              disabled={submitting}
+            />
+          </label>
+          <label class="form-control">
+            <span class="label-text">Color secundario (visitante)</span>
+            <input
+              class="input input-bordered h-12 p-1"
+              type="color"
+              name="kitSecondaryColor"
+              value="#f8fafc"
+              disabled={submitting}
+            />
+          </label>
+        </div>
+
         <button class="btn btn-primary btn-block" type="submit" disabled={submitting}>
           {#if submitting}
             <span class="loading loading-spinner loading-sm"></span>

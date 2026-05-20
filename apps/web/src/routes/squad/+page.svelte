@@ -8,6 +8,7 @@
   import type { PageData, ActionData } from './$types';
   import { enhance } from '$app/forms';
   import { describeTraits } from '@smt/shared';
+  import Avatar from '$lib/components/avatar.svelte';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -157,7 +158,12 @@
           <tbody>
             {#each sorted as p}
               <tr class="hover cursor-pointer" onclick={() => (selected = p)}>
-                <td class="font-semibold">{p.firstName} {p.lastName}</td>
+                <td class="font-semibold">
+                  <div class="flex items-center gap-2">
+                    <Avatar seed={`player:${p.id}:${p.firstName}${p.lastName}`} size={32} />
+                    <span>{p.firstName} {p.lastName}</span>
+                  </div>
+                </td>
                 <td><span class="badge badge-outline">{p.position}</span></td>
                 <td class="text-right font-mono">{p.skill}</td>
                 <td class="text-right font-mono">{p.form}</td>
@@ -173,8 +179,13 @@
         {@const traits = describeTraits((selected.traits as string[]) ?? [])}
         <div class="modal modal-open">
           <div class="modal-box max-w-2xl">
-            <h3 class="font-bold text-lg">{selected.firstName} {selected.lastName}</h3>
-            <p class="opacity-60 text-sm">{selected.position} · {selected.nationality}</p>
+            <div class="flex gap-4 items-center">
+              <Avatar seed={`player:${selected.id}:${selected.firstName}${selected.lastName}`} size={88} framed />
+              <div class="flex-1">
+                <h3 class="font-bold text-lg">{selected.firstName} {selected.lastName}</h3>
+                <p class="opacity-60 text-sm">{selected.position} · {selected.nationality}</p>
+              </div>
+            </div>
 
             {#if traits.length > 0}
               <div class="flex flex-wrap gap-2 mt-3">

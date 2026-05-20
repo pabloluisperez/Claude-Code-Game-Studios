@@ -88,6 +88,11 @@ export const actions: Actions = {
     const clubName = String(form.get('clubName') ?? '').trim();
     const city = String(form.get('city') ?? '').trim();
     const managerName = String(form.get('managerName') ?? '').trim();
+    const kitPrimaryRaw = String(form.get('kitPrimaryColor') ?? '#1e3a8a').trim();
+    const kitSecondaryRaw = String(form.get('kitSecondaryColor') ?? '#f8fafc').trim();
+    const HEX = /^#[0-9a-fA-F]{6}$/;
+    const kitPrimaryColor = HEX.test(kitPrimaryRaw) ? kitPrimaryRaw : '#1e3a8a';
+    const kitSecondaryColor = HEX.test(kitSecondaryRaw) ? kitSecondaryRaw : '#f8fafc';
 
     if (clubName.length < 2 || clubName.length > 50) {
       return fail(400, { error: 'El nombre del club debe tener entre 2 y 50 caracteres.' });
@@ -115,6 +120,8 @@ export const actions: Actions = {
           fanBase: 500,
           cityTier: 1,
           currentSeason: 1,
+          kitPrimaryColor,
+          kitSecondaryColor,
         })
         .returning({ id: clubs.id });
 

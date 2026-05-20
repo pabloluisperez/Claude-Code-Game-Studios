@@ -30,6 +30,7 @@ import type { WorldState } from '@smt/shared';
 export interface EconomyTickResult {
   readonly patchedState: WorldState;
   readonly sponsorRevenue: number;
+  readonly merchRevenue: number;
   readonly staffCost: number;
   readonly playerWages: number;
   readonly cashflow: number;
@@ -89,8 +90,21 @@ export async function applyEconomyTick(args: {
     readEconomyTotals(tx, playthroughId, clubId),
   );
 
+  // Merch revenue stub — auto-calculated from fan_momentum, fanBase, and
+  // squad availability. Range: ~0.5..6 €K/week for a D5 club.
+  //   base = fanBase/100 (so 500 fans → 5 base units)
+  //   momentum_multiplier = fan_momentum / 50 (50 = neutral = 1×)
+  //   availability_multiplier = squad_available_pct / 100
+  // No UI to influence this in MVP — it's a derived background income.
+  const fanMomentum = (baseState as Record<string, number>)['fan_momentum'] ?? 50;
+  const squadAvail = (baseState as Record<string, number>)['squad_available_pct'] ?? 80;
+  const merchRevenue = Math.round(
+    (5) * (fanMomentum / 50) * (squadAvail / 100) * 10,
+  ) / 10;
+
   const balanceBefore = baseState['financial_balance' as keyof WorldState] ?? 0;
-  const cashflow = totals.sponsorRevenue - totals.staffCost - totals.playerWages;
+  const cashflow =
+    totals.sponsorRevenue + merchRevenue - totals.staffCost - totals.playerWages;
   const balanceAfter = balanceBefore + cashflow;
 
   const patchedState = {
@@ -98,6 +112,7 @@ export async function applyEconomyTick(args: {
     financial_balance: balanceAfter,
     weekly_cashflow: cashflow,
     sponsor_revenue_weekly: totals.sponsorRevenue,
+    merch_revenue_weekly: merchRevenue,
     staff_cost_weekly: totals.staffCost,
     player_wages_weekly: totals.playerWages,
   } as unknown as WorldState;
@@ -105,6 +120,7 @@ export async function applyEconomyTick(args: {
   return {
     patchedState,
     sponsorRevenue: totals.sponsorRevenue,
+    merchRevenue,
     staffCost: totals.staffCost,
     playerWages: totals.playerWages,
     cashflow,

@@ -11,6 +11,7 @@
 <script lang="ts">
   import type { PageData, ActionData } from './$types';
   import { enhance } from '$app/forms';
+  import Avatar from '$lib/components/avatar.svelte';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -90,22 +91,25 @@
             </div>
 
             {#if current}
-              <div class="mt-3 p-2 bg-base-200 rounded">
-                <div class="font-semibold">{current.name}</div>
-                <div class="text-xs opacity-70">
-                  Tier {current.qualityTier} · {current.weeklyEurK} €K/sem
+              <div class="mt-3 p-2 bg-base-200 rounded flex gap-3 items-center">
+                <Avatar seed={`staff:${current.id}:${current.name}`} size={56} framed />
+                <div class="flex-1">
+                  <div class="font-semibold">{current.name}</div>
+                  <div class="text-xs opacity-70">
+                    Tier {current.qualityTier} · {current.weeklyEurK} €K/sem
+                  </div>
+                  <form
+                    method="POST"
+                    action="?/dismiss"
+                    use:enhance
+                    class="mt-1"
+                  >
+                    <input type="hidden" name="staffId" value={current.id} />
+                    <button class="btn btn-ghost btn-xs" type="submit">
+                      Despedir
+                    </button>
+                  </form>
                 </div>
-                <form
-                  method="POST"
-                  action="?/dismiss"
-                  use:enhance
-                  class="mt-2"
-                >
-                  <input type="hidden" name="staffId" value={current.id} />
-                  <button class="btn btn-ghost btn-xs" type="submit">
-                    Despedir
-                  </button>
-                </form>
               </div>
               <div class="text-xs opacity-60 mt-2">¿Subir de tier?</div>
             {/if}

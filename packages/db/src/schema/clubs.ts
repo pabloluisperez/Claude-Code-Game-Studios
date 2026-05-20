@@ -15,6 +15,10 @@ export const clubs = pgTable('clubs', {
   fanBase: integer('fan_base').notNull().default(500),
   cityTier: integer('city_tier').notNull().default(1),
   currentSeason: integer('current_season').notNull().default(1),
+  /** Primary kit colour (HEX). */
+  kitPrimaryColor: text('kit_primary_color').notNull().default('#1e3a8a'),
+  /** Secondary / away kit colour (HEX). */
+  kitSecondaryColor: text('kit_secondary_color').notNull().default('#f8fafc'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 });
