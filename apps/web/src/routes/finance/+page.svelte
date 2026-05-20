@@ -9,7 +9,11 @@
   import { enhance } from '$app/forms';
   import { browser } from '$app/environment';
   import { onMount } from 'svelte';
+  import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
   let { data, form }: { data: PageData; form: ActionData } = $props();
+
+  let priceConfirmOpen = $state(false);
+  let priceFormEl: HTMLFormElement | undefined = $state();
 
   // RangeSlider is loaded client-only (the library touches window at
   // module init which crashes SSR). On the server we render a fallback
@@ -47,6 +51,9 @@
 
   const statusName = ['Sano', 'En Riesgo', 'Crisis', 'Quiebra'];
   const statusClass = ['alert-success', 'alert-warning', 'alert-error', 'alert-error'];
+
+  type FinanceTab = 'resumen' | 'patrocinadores' | 'abonos';
+  let activeTab = $state<FinanceTab>('resumen');
 </script>
 
 <div class="space-y-6">
@@ -64,6 +71,35 @@
       <span>Esperando primer tick del simulador para calcular el balance.</span>
     </div>
   {:else}
+    <div role="tablist" class="tabs tabs-boxed w-fit">
+      <button
+        role="tab"
+        class="tab {activeTab === 'resumen' ? 'tab-active' : ''}"
+        onclick={() => (activeTab = 'resumen')}
+      >
+        📊 Resumen
+      </button>
+      <button
+        role="tab"
+        class="tab {activeTab === 'patrocinadores' ? 'tab-active' : ''}"
+        onclick={() => (activeTab = 'patrocinadores')}
+      >
+        🤝 Patrocinadores
+        {#if data.pendingSponsorOffers && data.pendingSponsorOffers.length > 0}
+          <span class="badge badge-warning badge-sm ml-1">
+            {data.pendingSponsorOffers.length}
+          </span>
+        {/if}
+      </button>
+      <button
+        role="tab"
+        class="tab {activeTab === 'abonos' ? 'tab-active' : ''}"
+        onclick={() => (activeTab = 'abonos')}
+      >
+        🎟 Abonos
+      </button>
+    </div>
+
     {#if form?.ok && form.priceEur}
       <div class="alert alert-success">
         <span>Nuevo precio de abono: {form.priceEur}€ · {form.holders} abonados.</span>
@@ -71,7 +107,7 @@
     {/if}
 
     <!-- Season tickets card -->
-    {#if data.club}
+    {#if activeTab === 'abonos' && data.club}
       <section class="card bg-base-100 shadow border-2 border-info/30">
         <div class="card-body">
           <h2 class="card-title">Abonos de temporada</h2>
@@ -113,7 +149,13 @@
                 <strong class="block mt-1">Solo podrás fijarlo una vez por temporada.</strong>
               </span>
             </div>
-            <form method="POST" action="?/setTicketPrice" use:enhance class="mt-2">
+            <form
+              method="POST"
+              action="?/setTicketPrice"
+              use:enhance
+              class="mt-2"
+              bind:this={priceFormEl}
+            >
               <div class="text-xs label-text mb-2">
                 Fijar precio del abono: <strong>{priceValues[0]} €</strong>
               </div>
@@ -142,7 +184,13 @@
                 {/if}
               </div>
               <input type="hidden" name="priceEur" value={priceValues[0]} />
-              <button type="submit" class="btn btn-primary btn-sm">Fijar precio</button>
+              <button
+                type="button"
+                class="btn btn-primary btn-sm"
+                onclick={() => (priceConfirmOpen = true)}
+              >
+                Fijar precio
+              </button>
             </form>
             <p class="text-xs opacity-60 mt-2">
               ≤ 25 € → más abonados, peor margen.
@@ -162,6 +210,7 @@
       </section>
     {/if}
 
+    {#if activeTab === 'resumen'}
     <div class="alert {statusClass[financialStatus] ?? 'alert-info'}">
       <div>
         <div class="text-xs uppercase opacity-70">Estado financiero</div>
@@ -255,7 +304,9 @@
       </section>
 
     {/if}
+    {/if}
 
+    {#if activeTab === 'patrocinadores'}
     <section class="card bg-base-100 shadow">
       <div class="card-body">
         <h2 class="card-title">Patrocinadores</h2>
@@ -291,5 +342,48 @@
         {/if}
       </div>
     </section>
+
+    <!-- Pending sponsor offers -->
+    {#if data.pendingSponsorOffers && data.pendingSponsorOffers.length > 0}
+      <section class="card bg-base-100 shadow border-2 border-warning/40">
+        <div class="card-body">
+          <h2 class="card-title">📬 Ofertas de patrocinio</h2>
+          <p class="text-xs opacity-70">
+            Decide en el <a href="/calendar" class="link">calendario</a> antes de que expiren.
+          </p>
+          <div class="space-y-2 mt-2">
+            {#each data.pendingSponsorOffers as offer}
+              {@const meta = offer.metadata as { brand?: string; weeklyAmountEurK?: number; contractWeeks?: number; description?: string; qualityDelta?: number } | null}
+              <a
+                href="/calendar"
+                class="block p-3 bg-base-200 rounded hover:bg-base-300"
+              >
+                <div class="flex items-baseline justify-between">
+                  <div class="font-semibold">{meta?.brand ?? 'Patrocinador'}</div>
+                  <div class="text-sm opacity-70">Semana {offer.week}</div>
+                </div>
+                <div class="text-sm opacity-80 mt-1">
+                  {#if meta?.weeklyAmountEurK}{meta.weeklyAmountEurK} €K/sem · {/if}
+                  {#if meta?.contractWeeks}{meta.contractWeeks} semanas{/if}
+                </div>
+                {#if meta?.description}
+                  <div class="text-xs opacity-60 mt-1">{meta.description}</div>
+                {/if}
+              </a>
+            {/each}
+          </div>
+        </div>
+      </section>
+    {/if}
+    {/if}
   {/if}
 </div>
+
+<ConfirmDialog
+  bind:open={priceConfirmOpen}
+  title="Fijar precio del abono"
+  message={`Vas a fijar el precio del abono en ${priceValues[0]} €. Una vez fijado no podrás cambiarlo hasta la próxima pretemporada y comenzará la campaña de abonados durante las próximas semanas.`}
+  confirmLabel="Fijar precio"
+  dangerous={false}
+  onConfirm={() => priceFormEl?.requestSubmit()}
+/>

@@ -15,9 +15,11 @@ import {
   playthroughs,
   seasons,
   leagues,
+  calendarEvents,
   eq,
   and,
   desc,
+  asc,
 } from '@smt/db';
 import { LEAGUE_KICKOFF_WEEK } from '@smt/shared';
 
@@ -73,6 +75,19 @@ export const load: PageServerLoad = async ({ parent }) => {
     .where(eq(sponsors.playthroughId, activePlaythrough.id))
     .orderBy(desc(sponsors.tier));
 
+  // Pending sponsor offers from calendar_events (not yet decided).
+  const pendingSponsorOffers = await db
+    .select()
+    .from(calendarEvents)
+    .where(
+      and(
+        eq(calendarEvents.playthroughId, activePlaythrough.id),
+        eq(calendarEvents.type, 'sponsor_offer'),
+        eq(calendarEvents.status, 'pending'),
+      ),
+    )
+    .orderBy(asc(calendarEvents.week));
+
   const [club] = await db
     .select()
     .from(clubs)
@@ -123,6 +138,7 @@ export const load: PageServerLoad = async ({ parent }) => {
       state: s.worldState as Record<string, number>,
     })),
     sponsors: sponsorRows,
+    pendingSponsorOffers,
     club: club
       ? {
           seasonTicketPriceEur: club.seasonTicketPriceEur,

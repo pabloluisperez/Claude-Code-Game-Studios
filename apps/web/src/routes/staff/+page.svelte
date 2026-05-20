@@ -12,8 +12,41 @@
   import type { PageData, ActionData } from './$types';
   import { enhance } from '$app/forms';
   import Avatar from '$lib/components/avatar.svelte';
+  import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
+
+  // Confirmation state. We hold a "pending action" — a closure that
+  // performs the actual submit when the user confirms.
+  let confirmOpen = $state(false);
+  let confirmTitle = $state('');
+  let confirmMessage = $state('');
+  let confirmLabel = $state('Confirmar');
+  let confirmDangerous = $state(false);
+  let pendingAction: (() => void) | null = $state(null);
+
+  function askConfirm(
+    title: string,
+    message: string,
+    label: string,
+    dangerous: boolean,
+    action: () => void,
+  ) {
+    confirmTitle = title;
+    confirmMessage = message;
+    confirmLabel = label;
+    confirmDangerous = dangerous;
+    pendingAction = action;
+    confirmOpen = true;
+  }
+  function runPending() {
+    pendingAction?.();
+    pendingAction = null;
+  }
+
+  // Form refs so the confirm-on-confirm callback can submit them.
+  let dismissForms: Record<string, HTMLFormElement | undefined> = $state({});
+  let hireForms: Record<string, HTMLFormElement | undefined> = $state({});
 
   const ROLE_ICON: Readonly<Record<string, string>> = {
     groundskeeper: '🌱',
@@ -141,9 +174,26 @@
                     {experienceLabel(current.qualityTier)} · {current.weeklyEurK} €K/sem
                   </div>
                 </div>
-                <form method="POST" action="?/dismiss" use:enhance>
+                <form
+                  method="POST"
+                  action="?/dismiss"
+                  use:enhance
+                  bind:this={dismissForms[r.role]}
+                >
                   <input type="hidden" name="staffId" value={current.id} />
-                  <button class="btn btn-ghost btn-xs" type="submit" title="Despedir">
+                  <button
+                    type="button"
+                    class="btn btn-ghost btn-xs"
+                    title="Despedir"
+                    onclick={() =>
+                      askConfirm(
+                        `Despedir a ${current.name}`,
+                        `Su contrato se cancelará esta semana. La plaza quedará vacante hasta que contrates un sustituto.`,
+                        'Despedir',
+                        true,
+                        () => dismissForms[r.role]?.requestSubmit(),
+                      )}
+                  >
                     ✕
                   </button>
                 </form>
@@ -158,14 +208,27 @@
                   action="?/hire"
                   use:enhance
                   class="flex-1"
+                  bind:this={hireForms[`${r.role}:${tier}`]}
                 >
                   <input type="hidden" name="role" value={r.role} />
                   <input type="hidden" name="tier" value={tier} />
                   <button
                     class="btn btn-block btn-xs {tierBadgeClass(tier, data.maxHirableTier)}
                            {current?.qualityTier === tier ? 'btn-disabled' : ''}"
-                    type="submit"
+                    type="button"
                     disabled={tier > data.maxHirableTier || current?.qualityTier === tier}
+                    onclick={() =>
+                      askConfirm(
+                        current
+                          ? `Cambiar a ${experienceLabel(tier)}`
+                          : `Contratar ${experienceLabel(tier)} de ${r.label.toLowerCase()}`,
+                        current
+                          ? `Reemplazarás a ${current.name} por un nuevo ${experienceLabel(tier).toLowerCase()}. El salario semanal será ${data.wagesByTier[tier as 1 | 2 | 3]} €K.`
+                          : `Fichas un nuevo ${experienceLabel(tier).toLowerCase()} de ${r.label.toLowerCase()}. Salario semanal: ${data.wagesByTier[tier as 1 | 2 | 3]} €K.`,
+                        current ? 'Cambiar' : 'Contratar',
+                        false,
+                        () => hireForms[`${r.role}:${tier}`]?.requestSubmit(),
+                      )}
                   >
                     {experienceLabel(tier).slice(0, 4)} · {data.wagesByTier[tier as 1 | 2 | 3]}€
                   </button>
@@ -179,7 +242,16 @@
 
     <p class="text-xs opacity-60">
       Los mensajes que envía el staff aparecen en el dashboard cada vez que avanzas
-      una semana. Staff de tier 3 detecta cambios más sutiles que tier 1.
+      una semana. Staff Élite detecta cambios más sutiles que un Novato.
     </p>
   {/if}
 </div>
+
+<ConfirmDialog
+  bind:open={confirmOpen}
+  title={confirmTitle}
+  message={confirmMessage}
+  confirmLabel={confirmLabel}
+  dangerous={confirmDangerous}
+  onConfirm={runPending}
+/>
