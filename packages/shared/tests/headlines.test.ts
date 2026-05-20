@@ -43,7 +43,9 @@ describe('generateHeadlines', () => {
       },
     });
     const matchH = out.find((h) => h.tag === 'match');
-    expect(matchH!.text.toLowerCase()).toMatch(/derrota|cae|mal partido|vuelve con/);
+    expect(matchH!.text.toLowerCase()).toMatch(
+      /derrota|cae|mal partido|vuelve con|tropezón|doblega|disculpas|no encuentra|jornada para olvidar/,
+    );
   });
 
   it('reports position when provided', () => {

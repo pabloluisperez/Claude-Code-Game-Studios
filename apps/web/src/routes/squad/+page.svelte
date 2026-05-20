@@ -18,6 +18,17 @@
   let filterPos = $state<'all' | 'GK' | 'DEF' | 'MID' | 'FWD'>('all');
   let selected = $state<(typeof data.players)[number] | null>(null);
 
+  // Position labels in Spanish (display only — DB keeps internal codes).
+  const POS_LABEL: Readonly<Record<string, string>> = {
+    GK: 'POR',
+    DEF: 'DEF',
+    MID: 'MED',
+    FWD: 'DEL',
+  };
+  function posLabel(p: string): string {
+    return POS_LABEL[p] ?? p;
+  }
+
   type IntensityBucket = 'descanso' | 'suave' | 'normal' | 'fuerte' | 'brutal';
   interface BucketDef {
     id: IntensityBucket;
@@ -136,10 +147,10 @@
       <div class="flex flex-wrap gap-2">
         <select class="select select-bordered select-sm" bind:value={filterPos}>
           <option value="all">Todas posiciones</option>
-          <option value="GK">Porteros</option>
-          <option value="DEF">Defensas</option>
-          <option value="MID">Mediocentros</option>
-          <option value="FWD">Delanteros</option>
+          <option value="GK">Porteros (POR)</option>
+          <option value="DEF">Defensas (DEF)</option>
+          <option value="MID">Mediocentros (MED)</option>
+          <option value="FWD">Delanteros (DEL)</option>
         </select>
       </div>
 
@@ -164,7 +175,7 @@
                     <span>{p.firstName} {p.lastName}</span>
                   </div>
                 </td>
-                <td><span class="badge badge-outline">{p.position}</span></td>
+                <td><span class="badge badge-outline">{posLabel(p.position)}</span></td>
                 <td class="text-right font-mono">{p.skill}</td>
                 <td class="text-right font-mono">{p.form}</td>
                 <td class="text-right font-mono">{p.morale}</td>
@@ -189,7 +200,7 @@
               <Avatar seed={`player:${selected.id}:${selected.firstName}${selected.lastName}`} size={88} framed />
               <div class="flex-1">
                 <h3 class="font-bold text-lg">{selected.firstName} {selected.lastName}</h3>
-                <p class="opacity-60 text-sm">{selected.position} · {selected.nationality}</p>
+                <p class="opacity-60 text-sm">{posLabel(selected.position)} · {selected.nationality}</p>
                 <div class="mt-1">
                   <span class="badge badge-primary badge-lg">Overall {selected.skill}</span>
                 </div>

@@ -49,6 +49,8 @@
       totalClubs: data.standingsCount > 0 ? data.standingsCount : undefined,
       weeklyCashflow: data.worldState?.weekly_cashflow,
       financialBalance: data.worldState?.financial_balance,
+      trainingIntensity: data.worldState?.training_intensity,
+      fanMomentum: data.worldState?.fan_momentum,
     });
   });
 
@@ -157,7 +159,7 @@
   open={showTransition}
   fromWeek={data.hasPlaythrough ? data.week : 0}
   headlines={transitionHeadlines}
-  msPerDay={1500}
+  msPerDay={5000}
   onComplete={onTransitionComplete}
   onCancel={onTransitionCancel}
 />

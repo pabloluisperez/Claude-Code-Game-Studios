@@ -40,7 +40,7 @@
     open,
     fromWeek,
     headlines,
-    msPerDay = 3000,
+    msPerDay = 5000,
     onComplete,
     onCancel,
   }: Props = $props();
@@ -74,6 +74,17 @@
   const celestialProgress = $derived(sunVisible ? sunProgress : moonProgress);
   const celestialX = $derived(celestialProgress * 100);
   const celestialY = $derived(50 - 35 * Math.sin(Math.PI * celestialProgress));
+
+  // Time-of-day label so the user sees in-day progression even between day ticks.
+  const timeOfDay = $derived.by(() => {
+    const p = hourPhase;
+    if (p < 0.15) return 'Amanecer';
+    if (p < 0.4)  return 'Mañana';
+    if (p < 0.5)  return 'Mediodía';
+    if (p < 0.6)  return 'Atardecer';
+    if (p < 0.85) return 'Noche';
+    return 'Madrugada';
+  });
 
   // Sky: dawn (warm) → noon (clear blue) → dusk (orange) → night (indigo).
   const skyTop = $derived.by(() => {
@@ -218,13 +229,17 @@
 
       <svg viewBox="0 0 100 60" preserveAspectRatio="none" class="celestial">
         {#if sunVisible}
-          <circle cx={celestialX} cy={celestialY} r="5" fill="#fde047">
-            <animate attributeName="r" values="5;5.5;5" dur="2s" repeatCount="indefinite" />
-          </circle>
-        {/if}
-        {#if moonVisible}
+          <circle cx={celestialX} cy={celestialY} r="5" fill="#fde047" />
+          <circle cx={celestialX} cy={celestialY} r="6" fill="#fde047" opacity="0.25" />
+        {:else if moonVisible}
           <circle cx={celestialX} cy={celestialY} r="5" fill="#f5f5dc" opacity="0.95" />
-          <circle cx={celestialX + 1.5} cy={celestialY - 0.5} r="4" fill={skyTop} opacity="0.9" />
+          <circle
+            cx={celestialX + 1.6}
+            cy={celestialY - 0.4}
+            r="4.2"
+            fill={skyTop}
+            opacity="1"
+          />
         {/if}
       </svg>
 
@@ -239,13 +254,13 @@
           {:else if paused && autoPausedOnce && worryingHeadline}
             ⚠ Pausa automática — hay una noticia importante
           {:else if paused}
-            En pausa — el tiempo se detiene
+            ⏸ Pausado en
           {:else}
-            Avanzando una semana
+            Avanzando · {timeOfDay}
           {/if}
         </div>
         <div class="text-2xl md:text-4xl font-bold text-base-100 drop-shadow-lg mt-1">
-          {currentDate.display}
+          {#if paused}📍 {/if}{currentDate.display}
         </div>
         <div class="text-base-100/70 text-sm mt-1">
           Día {dayIndex + 1} / 7 · destino {targetDate.display}
