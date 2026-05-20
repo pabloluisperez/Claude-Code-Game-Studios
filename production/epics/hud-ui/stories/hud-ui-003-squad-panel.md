@@ -1,10 +1,10 @@
 ---
 Story: HUD-UI-003
-Status: Ready
+Status: Complete
 Type: UI
 Governing ADR: ADR-017
 Control Manifest: 2026-05-19
-Test Evidence: production/qa/evidence/hud-ui-003-squad-evidence.md
+Test Evidence: production/qa/evidence/hud-ui-audit-2026-05-21.md
 ---
 
 # Story 003: Squad Panel + Player Detail

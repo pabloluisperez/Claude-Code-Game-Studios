@@ -3,8 +3,8 @@
 > **Layer**: Presentation
 > **GDD**: `design/gdd/hud-ui.md`
 > **Architecture Module**: `apps/web/`
-> **Status**: ✅ **Ready** (ADR-017 + ADR-018 Accepted 2026-05-19). Still recommended: 5 UX specs + art-bible MVP addendum before sprint, but story authoring can begin.
-> **Stories**: Not yet created — run `/create-stories hud-ui`
+> **Status**: ✅ **Complete** (2026-05-21) — 8/8 stories Complete. Audit: `production/qa/evidence/hud-ui-audit-2026-05-21.md`. All 8 routes shipped from slice + tv-rights + sponsor waves; balance-in-topbar fix landed 2026-05-21. Deviations documented: Socket.IO realtime outside `/match` → v1.1+ per scope-mvp.md, PixiJS pitch viz → v1.1+ per ADR-006, TanStack Table → manual sortable plain `<table>`. HUD-UI-008 ACs realigned with ADR-010 (XP-driven, not clickable allocation).
+> **Stories**: 8 stories at `production/epics/hud-ui/stories/`
 > **Control Manifest**: 2026-05-19
 
 ## Overview

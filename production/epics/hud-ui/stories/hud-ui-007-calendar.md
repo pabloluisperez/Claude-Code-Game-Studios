@@ -1,10 +1,10 @@
 ---
 Story: HUD-UI-007
-Status: Ready
+Status: Complete
 Type: UI
 Governing ADR: ADR-017, ADR-008 (calendar event UX)
 Control Manifest: 2026-05-19
-Test Evidence: production/qa/evidence/hud-ui-007-calendar-evidence.md
+Test Evidence: production/qa/evidence/hud-ui-audit-2026-05-21.md
 ---
 
 # Story 007: Calendar Panel + Event Decisions

@@ -1,10 +1,10 @@
 ---
 Story: HUD-UI-004
-Status: Ready
+Status: Complete
 Type: UI
 Governing ADR: ADR-017, ADR-014 (server-authoritative replaces slice's client proxy)
 Control Manifest: 2026-05-19
-Test Evidence: production/qa/evidence/hud-ui-004-finance-evidence.md
+Test Evidence: production/qa/evidence/hud-ui-audit-2026-05-21.md
 ---
 
 # Story 004: Finance Panel

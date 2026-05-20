@@ -1,10 +1,10 @@
 ---
 Story: HUD-UI-006
-Status: Ready
+Status: Complete
 Type: UI
 Governing ADR: ADR-017, ADR-018 (Socket.IO match:event)
 Control Manifest: 2026-05-19
-Test Evidence: production/qa/evidence/hud-ui-006-match-live-evidence.md
+Test Evidence: production/qa/evidence/hud-ui-audit-2026-05-21.md
 ---
 
 # Story 006: Match-Live View

@@ -1,10 +1,10 @@
 ---
 Story: HUD-UI-001
-Status: Ready
+Status: Complete
 Type: UI
 Governing ADR: ADR-017 (UI shell), ADR-018 (Socket.IO client)
 Control Manifest: 2026-05-19
-Test Evidence: production/qa/evidence/hud-ui-001-shell-evidence.md
+Test Evidence: production/qa/evidence/hud-ui-audit-2026-05-21.md
 ---
 
 # Story 001: SvelteKit Layout Shell

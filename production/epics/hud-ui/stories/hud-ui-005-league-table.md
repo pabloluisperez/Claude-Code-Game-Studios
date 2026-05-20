@@ -1,10 +1,10 @@
 ---
 Story: HUD-UI-005
-Status: Ready
+Status: Complete
 Type: UI
 Governing ADR: ADR-017
 Control Manifest: 2026-05-19
-Test Evidence: production/qa/evidence/hud-ui-005-league-evidence.md
+Test Evidence: production/qa/evidence/hud-ui-audit-2026-05-21.md
 ---
 
 # Story 005: League Table + Fixture List
