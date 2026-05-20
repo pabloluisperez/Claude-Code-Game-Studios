@@ -58,32 +58,67 @@
   });
 
   interface NodeReading {
-    label: string;
-    value: number;
     nodeId: string;
+    label: string;
+    /** Big formatted text shown as the headline value. */
+    display: string;
+    /** Optional secondary line (e.g. mood label for fan momentum). */
+    subtitle?: string;
+    /** 0..100 for the progress bar. */
+    progressValue: number;
+    /** Whether the value is "negative" for accent colour. */
+    isNegative?: boolean;
   }
 
-  const HEADLINE_NODE_IDS = [
-    'financial_balance',
-    'fan_momentum',
-    'team_fitness',
-    'squad_available_pct',
-  ] as const;
+  const ROSTER_SIZE = 25;
 
-  const NODE_LABELS: Readonly<Record<string, string>> = {
-    financial_balance: 'Balance (€K)',
-    fan_momentum: 'Fan momentum',
-    team_fitness: 'Fitness equipo',
-    squad_available_pct: 'Plantilla disp.',
-  };
+  function fanMomentumLabel(v: number): string {
+    if (v < 20) return 'Decepcionada';
+    if (v < 40) return 'Tibia';
+    if (v < 60) return 'Neutral';
+    if (v < 80) return 'Buena ola';
+    return 'Eufórica';
+  }
 
   const nodes = $derived.by<NodeReading[]>(() => {
     if (!data.hasPlaythrough || !data.worldState) return [];
-    return HEADLINE_NODE_IDS.map((id) => ({
-      nodeId: id,
-      label: NODE_LABELS[id] ?? id,
-      value: Math.round(data.worldState?.[id] ?? 0),
-    }));
+    const state = data.worldState;
+
+    const balance = Math.round(state['financial_balance'] ?? 0);
+    const momentum = Math.round(state['fan_momentum'] ?? 0);
+    const fitness = Math.round(state['team_fitness'] ?? 0);
+    const availPct = Math.round(state['squad_available_pct'] ?? 0);
+    const availPlayers = Math.round((availPct / 100) * ROSTER_SIZE);
+
+    return [
+      {
+        nodeId: 'financial_balance',
+        label: 'Balance',
+        display: balance < 0 ? `-${Math.abs(balance)} k€` : `${balance} k€`,
+        progressValue: Math.max(0, Math.min(100, balance / 10)),
+        isNegative: balance < 0,
+      },
+      {
+        nodeId: 'fan_momentum',
+        label: 'Afición',
+        display: `${momentum}`,
+        subtitle: fanMomentumLabel(momentum),
+        progressValue: momentum,
+      },
+      {
+        nodeId: 'team_fitness',
+        label: 'Fitness equipo',
+        display: `${fitness}%`,
+        progressValue: fitness,
+      },
+      {
+        nodeId: 'squad_available_pct',
+        label: 'Plantilla disp.',
+        display: `${availPlayers} / ${ROSTER_SIZE}`,
+        subtitle: `${availPct}% disponibles`,
+        progressValue: availPct,
+      },
+    ];
   });
 
   const messages = $derived(data.hasPlaythrough ? data.messages : []);
@@ -236,8 +271,19 @@
           <div class="card bg-base-100 shadow">
             <div class="card-body">
               <div class="text-xs uppercase opacity-50 tracking-wide">{n.label}</div>
-              <div class="text-3xl font-mono font-semibold">{n.value}</div>
-              <progress class="progress {colorFor(n.value)}" value={n.value} max="100"></progress>
+              <div
+                class="text-2xl md:text-3xl font-mono font-semibold {n.isNegative ? 'text-error' : ''}"
+              >
+                {n.display}
+              </div>
+              {#if n.subtitle}
+                <div class="text-xs opacity-70">{n.subtitle}</div>
+              {/if}
+              <progress
+                class="progress {colorFor(n.progressValue)}"
+                value={n.progressValue}
+                max="100"
+              ></progress>
             </div>
           </div>
         {/each}

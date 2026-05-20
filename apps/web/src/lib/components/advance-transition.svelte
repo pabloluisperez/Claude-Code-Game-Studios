@@ -40,7 +40,7 @@
     open,
     fromWeek,
     headlines,
-    msPerDay = 1500,
+    msPerDay = 3000,
     onComplete,
     onCancel,
   }: Props = $props();
@@ -59,10 +59,21 @@
   let headlineTimer: ReturnType<typeof setInterval> | null = null;
 
   // ── Derived visuals ──────────────────────────────────────────────────────
-  // Sun (day) and moon (night) traverse left → right across each day.
+  // The day is split into 4 segments:
+  //   0.00..0.45  → sun rises and traverses
+  //   0.45..0.55  → twilight (no body visible)
+  //   0.55..0.95  → moon rises and traverses
+  //   0.95..1.00  → predawn (no body visible)
+  // celestialOpacity hides the sun/moon during the transitions so we never
+  // see both at once.
   const isNight = $derived(hourPhase >= 0.5);
-  const celestialX = $derived(((hourPhase % 0.5) / 0.5) * 100);
-  const celestialY = $derived(50 - 35 * Math.sin(Math.PI * ((hourPhase % 0.5) / 0.5)));
+  const sunVisible = $derived(hourPhase >= 0 && hourPhase < 0.45);
+  const moonVisible = $derived(hourPhase >= 0.55 && hourPhase < 0.95);
+  const sunProgress = $derived(sunVisible ? hourPhase / 0.45 : 0);
+  const moonProgress = $derived(moonVisible ? (hourPhase - 0.55) / 0.4 : 0);
+  const celestialProgress = $derived(sunVisible ? sunProgress : moonProgress);
+  const celestialX = $derived(celestialProgress * 100);
+  const celestialY = $derived(50 - 35 * Math.sin(Math.PI * celestialProgress));
 
   // Sky: dawn (warm) → noon (clear blue) → dusk (orange) → night (indigo).
   const skyTop = $derived.by(() => {
@@ -91,6 +102,16 @@
     currentHeadline &&
       (currentHeadline.tag === 'medical' || currentHeadline.tag === 'finance'),
   );
+
+  // Auto-pause once when the first critical headline surfaces so the user
+  // can react. We only auto-pause once per cycle to avoid being annoying.
+  let autoPausedOnce = $state(false);
+  $effect(() => {
+    if (open && !paused && !completed && worryingHeadline && !autoPausedOnce) {
+      autoPausedOnce = true;
+      paused = true;
+    }
+  });
 
   // ── Animation loop ───────────────────────────────────────────────────────
   function tick(ts: number) {
@@ -122,6 +143,7 @@
     tickerIndex = 0;
     paused = false;
     completed = false;
+    autoPausedOnce = false;
     lastTs = 0;
     if (raf) cancelAnimationFrame(raf);
     raf = requestAnimationFrame(tick);
@@ -195,19 +217,14 @@
       {/if}
 
       <svg viewBox="0 0 100 60" preserveAspectRatio="none" class="celestial">
-        <circle
-          cx={celestialX}
-          cy={celestialY}
-          r="5"
-          fill={isNight ? '#f5f5dc' : '#fde047'}
-          opacity={isNight ? 0.95 : 1}
-        >
-          {#if !isNight}
+        {#if sunVisible}
+          <circle cx={celestialX} cy={celestialY} r="5" fill="#fde047">
             <animate attributeName="r" values="5;5.5;5" dur="2s" repeatCount="indefinite" />
-          {/if}
-        </circle>
-        {#if isNight}
-          <circle cx={celestialX + 1.5} cy={celestialY - 0.5} r="4" fill={skyTop} opacity="0.85" />
+          </circle>
+        {/if}
+        {#if moonVisible}
+          <circle cx={celestialX} cy={celestialY} r="5" fill="#f5f5dc" opacity="0.95" />
+          <circle cx={celestialX + 1.5} cy={celestialY - 0.5} r="4" fill={skyTop} opacity="0.9" />
         {/if}
       </svg>
 
@@ -217,7 +234,15 @@
     <div class="advance-content">
       <div class="text-center mb-4">
         <div class="text-xs uppercase opacity-70 tracking-widest text-base-100">
-          {#if paused}En pausa — el tiempo se detiene{:else if completed}Final de la semana{:else}Avanzando una semana{/if}
+          {#if completed}
+            Final de la semana
+          {:else if paused && autoPausedOnce && worryingHeadline}
+            ⚠ Pausa automática — hay una noticia importante
+          {:else if paused}
+            En pausa — el tiempo se detiene
+          {:else}
+            Avanzando una semana
+          {/if}
         </div>
         <div class="text-2xl md:text-4xl font-bold text-base-100 drop-shadow-lg mt-1">
           {currentDate.display}
