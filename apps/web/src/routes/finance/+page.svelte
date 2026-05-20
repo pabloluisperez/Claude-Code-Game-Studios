@@ -15,6 +15,34 @@
   let priceConfirmOpen = $state(false);
   let priceFormEl: HTMLFormElement | undefined = $state();
 
+  // Sponsor decision confirmation state.
+  let sponsorConfirmOpen = $state(false);
+  let sponsorConfirmTitle = $state('');
+  let sponsorConfirmMessage = $state('');
+  let sponsorConfirmLabel = $state('Confirmar');
+  let sponsorConfirmDangerous = $state(false);
+  let pendingSponsorAction: (() => void) | null = $state(null);
+  let sponsorForms: Record<string, HTMLFormElement | undefined> = $state({});
+
+  function askSponsorConfirm(
+    title: string,
+    message: string,
+    label: string,
+    dangerous: boolean,
+    action: () => void,
+  ) {
+    sponsorConfirmTitle = title;
+    sponsorConfirmMessage = message;
+    sponsorConfirmLabel = label;
+    sponsorConfirmDangerous = dangerous;
+    pendingSponsorAction = action;
+    sponsorConfirmOpen = true;
+  }
+  function runPendingSponsor() {
+    pendingSponsorAction?.();
+    pendingSponsorAction = null;
+  }
+
   // RangeSlider is loaded client-only (the library touches window at
   // module init which crashes SSR). On the server we render a fallback
   // number input.
@@ -343,33 +371,79 @@
       </div>
     </section>
 
-    <!-- Pending sponsor offers -->
+    <!-- Pending sponsor offers — accept / reject inline -->
     {#if data.pendingSponsorOffers && data.pendingSponsorOffers.length > 0}
       <section class="card bg-base-100 shadow border-2 border-warning/40">
         <div class="card-body">
           <h2 class="card-title">📬 Ofertas de patrocinio</h2>
           <p class="text-xs opacity-70">
-            Decide en el <a href="/calendar" class="link">calendario</a> antes de que expiren.
+            Aceptar una expira automáticamente las otras ofertas de la misma semana.
           </p>
-          <div class="space-y-2 mt-2">
+          <div class="space-y-3 mt-2">
             {#each data.pendingSponsorOffers as offer}
               {@const meta = offer.metadata as { brand?: string; weeklyAmountEurK?: number; contractWeeks?: number; description?: string; qualityDelta?: number } | null}
-              <a
-                href="/calendar"
-                class="block p-3 bg-base-200 rounded hover:bg-base-300"
-              >
-                <div class="flex items-baseline justify-between">
-                  <div class="font-semibold">{meta?.brand ?? 'Patrocinador'}</div>
+              <div class="p-3 bg-base-200 rounded">
+                <div class="flex items-baseline justify-between flex-wrap gap-2">
+                  <div class="font-semibold text-lg">{meta?.brand ?? 'Patrocinador'}</div>
                   <div class="text-sm opacity-70">Semana {offer.week}</div>
                 </div>
                 <div class="text-sm opacity-80 mt-1">
-                  {#if meta?.weeklyAmountEurK}{meta.weeklyAmountEurK} €K/sem · {/if}
-                  {#if meta?.contractWeeks}{meta.contractWeeks} semanas{/if}
+                  {#if meta?.weeklyAmountEurK}<strong>{meta.weeklyAmountEurK} €K/sem</strong>{/if}
+                  {#if meta?.contractWeeks} · {meta.contractWeeks} semanas{/if}
+                  {#if meta?.weeklyAmountEurK && meta?.contractWeeks}
+                    <span class="text-xs opacity-60 ml-1">
+                      (≈ {Math.round(meta.weeklyAmountEurK * meta.contractWeeks)} k€ totales)
+                    </span>
+                  {/if}
                 </div>
                 {#if meta?.description}
-                  <div class="text-xs opacity-60 mt-1">{meta.description}</div>
+                  <div class="text-xs opacity-70 mt-1">{meta.description}</div>
                 {/if}
-              </a>
+                {#if meta?.qualityDelta !== undefined && meta.qualityDelta < 0}
+                  <div class="text-xs text-warning mt-1">
+                    ⚠ Impacto en la afición: {meta.qualityDelta}
+                  </div>
+                {/if}
+
+                <div class="flex gap-2 mt-3">
+                  <form method="POST" action="?/decideSponsor" use:enhance bind:this={sponsorForms[`${offer.id}:accept`]}>
+                    <input type="hidden" name="eventId" value={offer.id} />
+                    <input type="hidden" name="choice" value="accept" />
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-primary"
+                      onclick={() =>
+                        askSponsorConfirm(
+                          `Aceptar ${meta?.brand ?? 'patrocinador'}`,
+                          `Firmas con ${meta?.brand ?? 'el patrocinador'} por ${meta?.weeklyAmountEurK ?? 0} €K/sem durante ${meta?.contractWeeks ?? 0} semanas. Las otras ofertas de esta semana se descartarán.`,
+                          'Aceptar',
+                          false,
+                          () => sponsorForms[`${offer.id}:accept`]?.requestSubmit(),
+                        )}
+                    >
+                      Aceptar
+                    </button>
+                  </form>
+                  <form method="POST" action="?/decideSponsor" use:enhance bind:this={sponsorForms[`${offer.id}:reject`]}>
+                    <input type="hidden" name="eventId" value={offer.id} />
+                    <input type="hidden" name="choice" value="reject" />
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-ghost"
+                      onclick={() =>
+                        askSponsorConfirm(
+                          `Rechazar ${meta?.brand ?? 'oferta'}`,
+                          `La oferta de ${meta?.brand ?? 'este patrocinador'} desaparecerá. Las otras ofertas de esta semana siguen disponibles.`,
+                          'Rechazar',
+                          true,
+                          () => sponsorForms[`${offer.id}:reject`]?.requestSubmit(),
+                        )}
+                    >
+                      Rechazar
+                    </button>
+                  </form>
+                </div>
+              </div>
             {/each}
           </div>
         </div>
@@ -386,4 +460,13 @@
   confirmLabel="Fijar precio"
   dangerous={false}
   onConfirm={() => priceFormEl?.requestSubmit()}
+/>
+
+<ConfirmDialog
+  bind:open={sponsorConfirmOpen}
+  title={sponsorConfirmTitle}
+  message={sponsorConfirmMessage}
+  confirmLabel={sponsorConfirmLabel}
+  dangerous={sponsorConfirmDangerous}
+  onConfirm={runPendingSponsor}
 />

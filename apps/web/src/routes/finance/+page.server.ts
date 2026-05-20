@@ -234,4 +234,97 @@ export const actions: Actions = {
 
     return { ok: true, priceEur: Math.round(raw), holders };
   },
+
+  /**
+   * Inline sponsor decision — mirrors /calendar ?/decide but only handles
+   * sponsor_offer events. Accept creates a `sponsors` row and auto-expires
+   * competing offers for the same week.
+   */
+  decideSponsor: async ({ request, locals }) => {
+    if (!locals.user) throw redirect(303, '/login');
+
+    const form = await request.formData();
+    const eventId = String(form.get('eventId') ?? '');
+    const choice = String(form.get('choice') ?? '');
+    if (!eventId || !choice) {
+      return fail(400, { error: 'Faltan eventId o choice.' });
+    }
+
+    const [active] = await db
+      .select()
+      .from(playthroughs)
+      .where(eq(playthroughs.userId, locals.user.id))
+      .orderBy(desc(playthroughs.updatedAt))
+      .limit(1);
+    if (!active) return fail(400, { error: 'No hay carrera activa.' });
+
+    const [evt] = await db
+      .select()
+      .from(calendarEvents)
+      .where(
+        and(
+          eq(calendarEvents.id, eventId),
+          eq(calendarEvents.playthroughId, active.id),
+          eq(calendarEvents.type, 'sponsor_offer'),
+        ),
+      )
+      .limit(1);
+    if (!evt) return fail(404, { error: 'Oferta no encontrada.' });
+    if (evt.status !== 'pending') {
+      return fail(400, { error: 'Oferta ya resuelta o expirada.' });
+    }
+
+    const metadata = evt.metadata as {
+      kind: string;
+      brand?: string;
+      weeklyAmountEurK?: number;
+      contractWeeks?: number;
+      qualityDelta?: number;
+    };
+
+    await db.transaction(async (tx) => {
+      await tx
+        .update(calendarEvents)
+        .set({
+          status: 'resolved',
+          metadata: { ...metadata, resolvedChoice: choice, resolvedAt: new Date().toISOString() },
+          consumed: true,
+        })
+        .where(eq(calendarEvents.id, eventId));
+
+      if (
+        choice === 'accept' &&
+        metadata.brand &&
+        metadata.weeklyAmountEurK &&
+        metadata.contractWeeks
+      ) {
+        await tx.insert(sponsors).values({
+          playthroughId: active.id,
+          clubId: active.clubId,
+          name: metadata.brand,
+          tier: 1,
+          weeklyEurK: metadata.weeklyAmountEurK,
+          qualityContribution: metadata.qualityDelta ?? 0,
+          status: 'active',
+          startedWeek: active.currentWeek,
+          endsWeek: active.currentWeek + metadata.contractWeeks,
+        });
+
+        // Auto-expire competing offers for the same week.
+        await tx
+          .update(calendarEvents)
+          .set({ status: 'expired', consumed: true })
+          .where(
+            and(
+              eq(calendarEvents.playthroughId, active.id),
+              eq(calendarEvents.type, 'sponsor_offer'),
+              eq(calendarEvents.week, evt.week),
+              eq(calendarEvents.status, 'pending'),
+            ),
+          );
+      }
+    });
+
+    return { ok: true, decided: choice, brand: metadata.brand ?? null };
+  },
 };
