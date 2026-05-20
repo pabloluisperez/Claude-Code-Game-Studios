@@ -10,6 +10,7 @@ import {
   calendarEvents,
   clubs,
   seasons,
+  leagues,
   standings,
   eq,
   and,
@@ -36,6 +37,7 @@ import { runMatchDay } from '$lib/server/match-day-runner';
 import { applyEconomyTick } from '$lib/server/economy-tick';
 import { checkAndRolloverSeason } from '$lib/server/season-rollover';
 import { detectAndPersistMilestones } from '$lib/server/milestones';
+import { grantWeeklyManagerXp } from '$lib/server/manager-xp';
 
 export const load: PageServerLoad = async ({ parent, url }) => {
   const { user, activePlaythrough } = await parent();
@@ -111,21 +113,30 @@ export const load: PageServerLoad = async ({ parent, url }) => {
     .orderBy(asc(calendarEvents.week))
     .limit(3);
 
-  // Player's standings entry (current position).
-  const [myStanding] = await db
-    .select()
-    .from(standings)
-    .where(eq(standings.clubId, activePlaythrough.clubId))
-    .orderBy(desc(standings.updatedAt))
+  // Player's standings entry — find via the active season for this playthrough
+  // (don't rely on standings.updatedAt, which only gets touched on match play).
+  const [activeSeasonForPlaythrough] = await db
+    .select({ seasonId: seasons.id })
+    .from(seasons)
+    .innerJoin(leagues, eq(leagues.id, seasons.leagueId))
+    .where(
+      and(
+        eq(leagues.playthroughId, activePlaythrough.id),
+        eq(seasons.status, 'active'),
+      ),
+    )
+    .orderBy(desc(seasons.seasonNumber))
     .limit(1);
 
   let position: number | null = null;
-  if (myStanding) {
+  let standingsCount = 0;
+  if (activeSeasonForPlaythrough) {
     const sameDivision = await db
       .select({ clubId: standings.clubId, points: standings.points, goalsFor: standings.goalsFor })
       .from(standings)
-      .where(eq(standings.seasonId, myStanding.seasonId))
+      .where(eq(standings.seasonId, activeSeasonForPlaythrough.seasonId))
       .orderBy(desc(standings.points), desc(standings.goalsFor));
+    standingsCount = sameDivision.length;
     const idx = sameDivision.findIndex((s) => s.clubId === activePlaythrough.clubId);
     if (idx >= 0) position = idx + 1;
   }
@@ -173,9 +184,7 @@ export const load: PageServerLoad = async ({ parent, url }) => {
     })),
     pendingEvents: pendingEvents.map((e) => ({ ...e, date: weekToDate(e.week) })),
     position,
-    standingsCount: myStanding
-      ? (await db.select({ id: standings.id }).from(standings).where(eq(standings.seasonId, myStanding.seasonId))).length
-      : 0,
+    standingsCount,
     lastResult: lastResult[0]
       ? (() => {
           const f = lastResult[0]!;
@@ -366,7 +375,14 @@ export const actions: Actions = {
       }
     }
 
-    // 6. Career milestones — append-only "firsts" log.
+    // 6. Manager XP grants from this week's outcome.
+    await grantWeeklyManagerXp({
+      playthroughId: active.id,
+      clubId: active.clubId,
+      week: nextWeek,
+    });
+
+    // 7. Career milestones — append-only "firsts" log.
     await detectAndPersistMilestones({
       playthroughId: active.id,
       clubId: active.clubId,

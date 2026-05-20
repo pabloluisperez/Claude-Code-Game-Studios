@@ -14,6 +14,19 @@
   let { data }: { data: PageData } = $props();
 
   let showTransition = $state(false);
+  let advanceFormEl: HTMLFormElement | undefined = $state();
+
+  function handleAdvanceClick(e: Event) {
+    e.preventDefault();
+    showTransition = true;
+  }
+  function onTransitionComplete() {
+    // Submit the actual form once the 7-day animation finishes.
+    advanceFormEl?.requestSubmit();
+  }
+  function onTransitionCancel() {
+    showTransition = false;
+  }
 
   // Headlines for the transition modal — generated from the current week's
   // data so the user sees a recap of what just happened.
@@ -107,10 +120,11 @@
 
 <AdvanceTransition
   open={showTransition}
-  fromDateDisplay={data.hasPlaythrough ? data.weekDate.display : ''}
-  toDateDisplay={nextWeekDateDisplay}
+  fromWeek={data.hasPlaythrough ? data.week : 0}
   headlines={transitionHeadlines}
-  minDurationMs={2500}
+  msPerDay={1500}
+  onComplete={onTransitionComplete}
+  onCancel={onTransitionCancel}
 />
 
 <div class="space-y-6">
@@ -118,7 +132,7 @@
     <div class="hero bg-base-200 rounded-lg">
       <div class="hero-content text-center">
         <div class="max-w-md">
-          <h1 class="text-3xl font-bold">¡Bienvenido a Cascada FC!</h1>
+          <h1 class="text-3xl font-bold">¡Bienvenido a Total Soccer Manager!</h1>
           <p class="py-4 opacity-70">
             Todavía no has comenzado una partida. Crea tu primera carrera para
             tomar las riendas de un club modesto y construir tu legado.
@@ -142,27 +156,26 @@
               {/if}
             </p>
           </div>
+          <!--
+            The visible button doesn't submit directly — it shows the
+            7-day transition modal. The modal calls `onComplete` at day 7,
+            which programmatically submits this real form. This lets the
+            user pause / cancel mid-transition before the server commits.
+          -->
           <form
+            bind:this={advanceFormEl}
             method="POST"
             action="/dashboard?/advance"
-            use:enhance={() => {
-              showTransition = true;
-              return async ({ update }) => {
-                // Hold the modal at least until the server redirect lands;
-                // the modal itself enforces a minimum visual duration via its
-                // internal timer.
-                await new Promise((r) => setTimeout(r, 2500));
-                await update();
-                // The redirect navigation will unmount this page; the
-                // transition modal disappears with it. Reset just in case.
-                showTransition = false;
-              };
-            }}
+            class="contents"
+            use:enhance
+          ></form>
+          <button
+            type="button"
+            class="btn btn-primary btn-lg"
+            onclick={handleAdvanceClick}
           >
-            <button class="btn btn-primary btn-lg" type="submit">
-              ▶ Avanzar semana
-            </button>
-          </form>
+            ▶ Avanzar semana
+          </button>
         </div>
       </div>
     </section>
@@ -196,7 +209,7 @@
     <section class="card bg-base-100 shadow border-2 border-base-300">
       <div class="card-body py-4">
         <div class="flex items-baseline justify-between border-b border-base-300 pb-2 mb-3">
-          <h2 class="font-serif text-2xl font-bold tracking-tight">El Diario de Cascada</h2>
+          <h2 class="font-serif text-2xl font-bold tracking-tight">El Diario TSM</h2>
           <span class="text-xs opacity-50 font-mono">{data.weekDate.display}</span>
         </div>
         <div class="space-y-2">

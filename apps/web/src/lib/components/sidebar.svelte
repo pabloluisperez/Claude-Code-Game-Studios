@@ -38,7 +38,7 @@
          md:relative absolute"
 >
   <div class="p-4 border-b border-base-300">
-    <div class="text-xs uppercase opacity-50 tracking-wide">Cascada FC</div>
+    <div class="text-xs uppercase opacity-50 tracking-wide">Total Soccer Manager</div>
     <div class="text-sm font-semibold">Manager dashboard</div>
   </div>
   <ul class="menu p-2 gap-1">

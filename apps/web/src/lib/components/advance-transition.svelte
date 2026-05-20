@@ -1,103 +1,171 @@
 <!--
-  AdvanceTransition — full-screen modal shown while /dashboard ?/advance runs.
+  AdvanceTransition — full-screen modal driving 7 full day/night cycles
+  (one per in-game day). Interruptible: user can pause/cancel before the
+  week actually commits to the server.
 
-  Visual layers (bottom to top):
-   1. Sky gradient that shifts from dawn → noon → dusk → night → dawn as the
-      day counter cycles.
-   2. SVG horizon with a sun and a moon that traverse left → right in sync
-      with the day counter (sun in the upper half day-time, moon at night).
-   3. A large date display that updates day-by-day for 7 in-game days.
-   4. A bottom ticker of newspaper-style headlines that fade in/out.
-   5. A small "avanzando..." caption.
+  Lifecycle (client-driven):
+   - Parent calls `open = true` → modal mounts, internal 7-day animation begins.
+   - At day 7, parent's `onComplete` callback fires → parent submits the form.
+   - User can click "Pausar" anytime → animation freezes; "Reanudar" or
+     "Cancelar y actuar" become available.
+   - "Cancelar y actuar" calls parent's `onCancel` → modal closes, no submit.
 
-  Lifecycle:
-   - Parent mounts the component with `open=true` when the form submits.
-   - Internal timer drives the animation for `minDurationMs` (default 2500ms).
-   - When the SvelteKit redirect completes the page changes; parent simply
-     unmounts the component on the new route.
+  Visual layers:
+   1. Sky gradient that shifts dawn → noon → dusk → night, repeating per day.
+   2. Sun trajectory (day) → Moon trajectory (night) on a horizon SVG.
+   3. Stars fade in at night.
+   4. Date pill increments day-by-day.
+   5. Headlines ticker fades through generated items.
+   6. Worrying headline (medical/finance) pops a "Cancelar y actuar" CTA.
 
-  Pure presentation — no network calls.
-
-  Story: Alma Pass — advance transition
+  Story: Alma Pass v2 — 7 day cycles + interruptible
   Control Manifest: 2026-05-20
 -->
 <script lang="ts">
-  import { onDestroy, onMount } from 'svelte';
+  import { onDestroy } from 'svelte';
   import type { Headline } from '@smt/shared';
+  import { weekToDate } from '@smt/shared';
 
   interface Props {
-    /** Visible-only when true. */
     open: boolean;
-    /** ISO start date label, e.g. "Sáb 22 ago 2026". */
-    fromDateDisplay: string;
-    /** ISO target date label (7 days later). */
-    toDateDisplay: string;
-    /** Pre-generated headlines that will scroll in the ticker. */
+    fromWeek: number;
     headlines: readonly Headline[];
-    /** Min wall-clock duration in ms. */
-    minDurationMs?: number;
+    /** Wall-clock duration of one in-game day (default 1.5s). */
+    msPerDay?: number;
+    onComplete: () => void;
+    onCancel?: () => void;
   }
 
-  let { open, fromDateDisplay, toDateDisplay, headlines, minDurationMs = 2500 }: Props = $props();
+  let {
+    open,
+    fromWeek,
+    headlines,
+    msPerDay = 1500,
+    onComplete,
+    onCancel,
+  }: Props = $props();
 
-  // ── Day counter (0..7) ────────────────────────────────────────────────────
-  let dayIndex = $state(0);
+  // ── Animation state ──────────────────────────────────────────────────────
+  let dayIndex = $state(0);          // 0..6
+  let hourPhase = $state(0);         // 0..1 within a single day
   let tickerIndex = $state(0);
+  let paused = $state(false);
+  let completed = $state(false);
 
-  const ticks = 7;
-  const tickIntervalMs = $derived(Math.floor(minDurationMs / ticks));
-  let tickTimer: ReturnType<typeof setInterval> | null = null;
+  let lastTs = $state(0);
+  let raf: number | null = null;
+
+  // ── Headlines pacing ─────────────────────────────────────────────────────
   let headlineTimer: ReturnType<typeof setInterval> | null = null;
 
-  // Sun/moon X position progresses with dayIndex.
-  const celestialX = $derived(((dayIndex + 0.5) / ticks) * 100);
-  // Y arc: sun rises and sets, moon mirrors. Use sine.
-  const celestialY = $derived(50 - 35 * Math.sin(Math.PI * ((dayIndex + 0.5) / ticks)));
-  // Sky hue: day=blue → dusk=orange → night=indigo
-  const phase = $derived((dayIndex % ticks) / ticks);
-  const skyTop = $derived(
-    phase < 0.5
-      ? `hsl(${200 - phase * 120}, 70%, ${60 - phase * 20}%)` // day
-      : `hsl(${260 + (phase - 0.5) * 40}, 60%, ${20 + (1 - phase) * 25}%)`, // night
+  // ── Derived visuals ──────────────────────────────────────────────────────
+  // Sun (day) and moon (night) traverse left → right across each day.
+  const isNight = $derived(hourPhase >= 0.5);
+  const celestialX = $derived(((hourPhase % 0.5) / 0.5) * 100);
+  const celestialY = $derived(50 - 35 * Math.sin(Math.PI * ((hourPhase % 0.5) / 0.5)));
+
+  // Sky: dawn (warm) → noon (clear blue) → dusk (orange) → night (indigo).
+  const skyTop = $derived.by(() => {
+    const p = hourPhase;
+    if (p < 0.15) return `hsl(${20 + p * 200}, 70%, ${40 + p * 100}%)`;          // dawn
+    if (p < 0.5)  return `hsl(${200 - (p - 0.15) * 50}, 70%, 60%)`;             // day
+    if (p < 0.65) return `hsl(${30 + (p - 0.5) * 100}, 70%, ${50 - p * 30}%)`;  // dusk
+    return `hsl(${260 + (p - 0.65) * 30}, 60%, ${15 + (1 - p) * 15}%)`;         // night
+  });
+  const skyBottom = $derived.by(() => {
+    const p = hourPhase;
+    if (p < 0.15) return `hsl(${30 + p * 100}, 60%, 70%)`;
+    if (p < 0.5)  return `hsl(${180 + (p - 0.15) * 30}, 60%, 75%)`;
+    if (p < 0.65) return `hsl(${20 + (p - 0.5) * 80}, 70%, 60%)`;
+    return `hsl(${260 + (p - 0.65) * 20}, 50%, 25%)`;
+  });
+
+  const currentDate = $derived(weekToDate(fromWeek + dayIndex / 7));
+  const targetDate = $derived(weekToDate(fromWeek + 1));
+
+  const currentHeadline = $derived(
+    headlines.length > 0 ? headlines[tickerIndex % headlines.length] ?? null : null,
   );
-  const skyBottom = $derived(
-    phase < 0.5
-      ? `hsl(${180 + phase * 40}, 60%, 70%)`
-      : `hsl(${20 + (phase - 0.5) * 60}, 70%, 50%)`,
+  /** Headlines that imply a manager intervention is worth doing. */
+  const worryingHeadline = $derived(
+    currentHeadline &&
+      (currentHeadline.tag === 'medical' || currentHeadline.tag === 'finance'),
   );
 
-  const isNight = $derived(phase >= 0.5);
-
-  $effect(() => {
-    if (!open) {
-      if (tickTimer) clearInterval(tickTimer);
-      if (headlineTimer) clearInterval(headlineTimer);
-      dayIndex = 0;
-      tickerIndex = 0;
+  // ── Animation loop ───────────────────────────────────────────────────────
+  function tick(ts: number) {
+    if (!open || paused || completed) {
+      raf = requestAnimationFrame(tick);
       return;
     }
+    if (lastTs === 0) lastTs = ts;
+    const dt = ts - lastTs;
+    lastTs = ts;
+
+    hourPhase += dt / msPerDay;
+    if (hourPhase >= 1) {
+      hourPhase = 0;
+      dayIndex += 1;
+      if (dayIndex >= 7) {
+        completed = true;
+        // Schedule the server submit on the next tick so the final frame
+        // (day 7 at dawn) is visible to the user briefly before navigation.
+        setTimeout(() => onComplete(), 300);
+      }
+    }
+    raf = requestAnimationFrame(tick);
+  }
+
+  function startCycle(): void {
     dayIndex = 0;
+    hourPhase = 0;
     tickerIndex = 0;
-    tickTimer = setInterval(() => {
-      dayIndex = Math.min(ticks - 1, dayIndex + 1);
-    }, tickIntervalMs);
-    // Headlines cycle faster than days so user sees ~3-4 of them.
-    const headlineMs = Math.max(800, Math.floor(minDurationMs / Math.max(headlines.length, 1)));
-    headlineTimer = setInterval(() => {
-      tickerIndex = (tickerIndex + 1) % Math.max(headlines.length, 1);
-    }, headlineMs);
-  });
+    paused = false;
+    completed = false;
+    lastTs = 0;
+    if (raf) cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(tick);
 
-  onDestroy(() => {
-    if (tickTimer) clearInterval(tickTimer);
     if (headlineTimer) clearInterval(headlineTimer);
+    headlineTimer = setInterval(() => {
+      if (!paused && headlines.length > 0) {
+        tickerIndex = (tickerIndex + 1) % headlines.length;
+      }
+    }, 1800);
+  }
+
+  function stopCycle(): void {
+    if (raf) {
+      cancelAnimationFrame(raf);
+      raf = null;
+    }
+    if (headlineTimer) {
+      clearInterval(headlineTimer);
+      headlineTimer = null;
+    }
+  }
+
+  $effect(() => {
+    if (open) {
+      startCycle();
+    } else {
+      stopCycle();
+    }
   });
 
-  // ── Current display values ────────────────────────────────────────────────
-  const dayCounter = $derived(`Día ${dayIndex + 1} / 7`);
-  const currentHeadline = $derived(
-    headlines.length > 0 ? headlines[tickerIndex % headlines.length] : null,
-  );
+  onDestroy(() => stopCycle());
+
+  function handlePause() {
+    paused = true;
+  }
+  function handleResume() {
+    paused = false;
+    lastTs = 0; // avoid huge delta on resume
+  }
+  function handleCancel() {
+    paused = true;
+    onCancel?.();
+  }
 
   function headlineColor(tag: Headline['tag'] | undefined): string {
     if (tag === 'match') return 'border-l-primary';
@@ -115,7 +183,6 @@
       class="advance-sky"
       style="background: linear-gradient(180deg, {skyTop} 0%, {skyBottom} 100%);"
     >
-      <!-- Stars on night -->
       {#if isNight}
         <div class="stars">
           {#each Array.from({ length: 40 }) as _, i}
@@ -127,7 +194,6 @@
         </div>
       {/if}
 
-      <!-- Celestial body (sun or moon) -->
       <svg viewBox="0 0 100 60" preserveAspectRatio="none" class="celestial">
         <circle
           cx={celestialX}
@@ -141,27 +207,28 @@
           {/if}
         </circle>
         {#if isNight}
-          <!-- Crescent shadow -->
           <circle cx={celestialX + 1.5} cy={celestialY - 0.5} r="4" fill={skyTop} opacity="0.85" />
         {/if}
       </svg>
 
-      <!-- Horizon -->
       <div class="horizon"></div>
     </div>
 
-    <!-- Center: date counter -->
     <div class="advance-content">
-      <div class="text-xs uppercase opacity-70 tracking-widest text-center">Avanzando</div>
-      <div class="text-3xl md:text-5xl font-bold text-center mt-1 text-base-100 drop-shadow-lg">
-        {fromDateDisplay}
-        <span class="opacity-60 mx-2">→</span>
-        {toDateDisplay}
+      <div class="text-center mb-4">
+        <div class="text-xs uppercase opacity-70 tracking-widest text-base-100">
+          {#if paused}En pausa — el tiempo se detiene{:else if completed}Final de la semana{:else}Avanzando una semana{/if}
+        </div>
+        <div class="text-2xl md:text-4xl font-bold text-base-100 drop-shadow-lg mt-1">
+          {currentDate.display}
+        </div>
+        <div class="text-base-100/70 text-sm mt-1">
+          Día {dayIndex + 1} / 7 · destino {targetDate.display}
+        </div>
       </div>
-      <div class="text-base-100/80 font-mono text-center mt-2">{dayCounter}</div>
 
       <!-- Ticker -->
-      <div class="ticker mt-8">
+      <div class="ticker">
         {#if currentHeadline}
           {#key currentHeadline.text}
             <div class="ticker-card border-l-4 {headlineColor(currentHeadline.tag)}">
@@ -175,81 +242,83 @@
           {/key}
         {/if}
       </div>
+
+      <!-- Controls -->
+      <div class="flex flex-wrap justify-center gap-2 mt-6">
+        {#if !completed}
+          {#if !paused}
+            <button class="btn btn-warning btn-sm" type="button" onclick={handlePause}>
+              ⏸ Pausar
+            </button>
+          {:else}
+            <button class="btn btn-success btn-sm" type="button" onclick={handleResume}>
+              ▶ Reanudar
+            </button>
+            <button class="btn btn-error btn-sm" type="button" onclick={handleCancel}>
+              🛑 Cancelar y actuar
+            </button>
+          {/if}
+        {/if}
+      </div>
+
+      <!-- Actionable headline call-to-action -->
+      {#if paused && worryingHeadline && onCancel}
+        <div class="action-panel mt-6">
+          <div class="text-xs uppercase opacity-70 mb-1">¿Te preocupa esta noticia?</div>
+          <p class="text-sm mb-2">Cancela el avance y toma medidas antes de que la semana avance.</p>
+          <div class="flex gap-2 flex-wrap">
+            {#if currentHeadline?.tag === 'finance'}
+              <a href="/finance" class="btn btn-sm btn-outline" onclick={handleCancel}>Ver finanzas</a>
+              <a href="/staff" class="btn btn-sm btn-outline" onclick={handleCancel}>Revisar staff</a>
+            {:else if currentHeadline?.tag === 'medical'}
+              <a href="/squad" class="btn btn-sm btn-outline" onclick={handleCancel}>Ver plantilla</a>
+              <a href="/staff" class="btn btn-sm btn-outline" onclick={handleCancel}>Contratar médico</a>
+            {/if}
+          </div>
+        </div>
+      {/if}
     </div>
   </div>
 {/if}
 
 <style>
   .advance-modal {
-    position: fixed;
-    inset: 0;
-    z-index: 100;
-    overflow: hidden;
+    position: fixed; inset: 0; z-index: 100; overflow: hidden;
     animation: fade-in 0.25s ease-out;
   }
-  @keyframes fade-in {
-    from { opacity: 0; }
-    to   { opacity: 1; }
-  }
-  .advance-sky {
-    position: absolute;
-    inset: 0;
-    transition: background 1.2s linear;
-  }
-  .celestial {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-  }
-  .celestial circle {
-    transition: cx 1.2s linear, cy 1.2s linear, fill 1.2s linear;
-  }
+  @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+  .advance-sky { position: absolute; inset: 0; transition: background 0.4s linear; }
+  .celestial { position: absolute; inset: 0; width: 100%; height: 100%; }
   .horizon {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 35%;
+    position: absolute; bottom: 0; left: 0; right: 0; height: 35%;
     background: linear-gradient(180deg, rgba(0,0,0,0.0) 0%, rgba(0,0,0,0.45) 100%);
   }
   .stars { position: absolute; inset: 0; pointer-events: none; }
   .star {
-    position: absolute;
-    width: 2px; height: 2px;
-    background: #fff;
-    border-radius: 50%;
-    opacity: 0;
+    position: absolute; width: 2px; height: 2px;
+    background: #fff; border-radius: 50%; opacity: 0;
     animation: twinkle 1.6s ease-in-out infinite;
   }
-  @keyframes twinkle {
-    0%, 100% { opacity: 0; }
-    50% { opacity: 0.9; }
-  }
+  @keyframes twinkle { 0%, 100% { opacity: 0; } 50% { opacity: 0.9; } }
   .advance-content {
-    position: relative;
-    z-index: 2;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: 1rem 2rem;
-    max-width: 60rem;
-    margin: 0 auto;
+    position: relative; z-index: 2; height: 100%;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 1rem 2rem; max-width: 60rem; margin: 0 auto;
   }
-  .ticker {
-    min-height: 4.5rem;
-  }
+  .ticker { min-height: 4.5rem; }
   .ticker-card {
-    background: rgba(255, 255, 255, 0.92);
-    color: rgb(20 20 30);
-    padding: 0.75rem 1rem;
-    border-radius: 0.5rem;
+    background: rgba(255, 255, 255, 0.92); color: rgb(20 20 30);
+    padding: 0.75rem 1rem; border-radius: 0.5rem;
     box-shadow: 0 8px 32px rgba(0,0,0,0.3);
     animation: ticker-in 0.4s ease-out;
   }
   @keyframes ticker-in {
     from { transform: translateY(8px); opacity: 0; }
     to   { transform: translateY(0);    opacity: 1; }
+  }
+  .action-panel {
+    background: rgba(255, 255, 255, 0.95); color: rgb(20 20 30);
+    border-radius: 0.5rem; padding: 1rem;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.35);
   }
 </style>

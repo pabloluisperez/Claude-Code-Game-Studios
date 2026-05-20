@@ -14,7 +14,7 @@
 </script>
 
 <svelte:head>
-  <title>Mis carreras — Cascada FC</title>
+  <title>Mis carreras — Total Soccer Manager</title>
 </svelte:head>
 
 <div class="space-y-6 max-w-3xl mx-auto">

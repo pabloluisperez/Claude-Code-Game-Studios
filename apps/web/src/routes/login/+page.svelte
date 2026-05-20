@@ -7,7 +7,7 @@
 </script>
 
 <svelte:head>
-  <title>Sign In — Cascada FC</title>
+  <title>Sign In — Total Soccer Manager</title>
 </svelte:head>
 
 <div class="flex min-h-[60vh] items-center justify-center">

@@ -206,7 +206,7 @@ export const actions: Actions = {
       // ── 4. League + division + season ─────────────────────────────────
       const [league] = await tx
         .insert(leagues)
-        .values({ playthroughId: newPlaythrough.id, name: 'Liga Cascada', country: 'ES' })
+        .values({ playthroughId: newPlaythrough.id, name: 'Liga TSM', country: 'ES' })
         .returning({ id: leagues.id });
 
       const [division] = await tx

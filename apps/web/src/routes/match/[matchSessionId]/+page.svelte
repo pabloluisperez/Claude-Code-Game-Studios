@@ -207,7 +207,7 @@
       <div class="card-body py-4">
         <div class="flex items-baseline justify-between border-b border-base-300 pb-2 mb-2">
           <h3 class="font-serif text-xl font-bold">Crónica</h3>
-          <span class="text-xs opacity-50">El Diario de Cascada</span>
+          <span class="text-xs opacity-50">El Diario TSM</span>
         </div>
         <p class="font-serif text-base leading-relaxed">{recap}</p>
       </div>

@@ -44,7 +44,7 @@
 {:else}
   <nav class="navbar bg-base-200 px-4">
     <div class="flex-1">
-      <a href="/" class="btn btn-ghost text-xl font-bold">Cascada FC</a>
+      <a href="/" class="btn btn-ghost text-xl font-bold">Total Soccer Manager</a>
     </div>
     <div class="flex-none gap-2">
       {#if data.user}

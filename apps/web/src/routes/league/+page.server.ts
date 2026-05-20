@@ -5,6 +5,8 @@ import {
   standings,
   fixtures,
   clubs,
+  leagues,
+  seasons,
   eq,
   and,
   desc,
@@ -20,15 +22,33 @@ export const load: PageServerLoad = async ({ parent }) => {
     return { hasPlaythrough: false as const };
   }
 
-  // Find the user's standing → determines current season + division.
-  const [myStanding] = await db
+  // Find the league + active season for THIS playthrough (no reliance on
+  // standings.updatedAt which doesn't get touched until a match is played).
+  const [league] = await db
     .select()
-    .from(standings)
-    .where(eq(standings.clubId, activePlaythrough.clubId))
-    .orderBy(desc(standings.updatedAt))
+    .from(leagues)
+    .where(eq(leagues.playthroughId, activePlaythrough.id))
     .limit(1);
 
-  if (!myStanding) {
+  if (!league) {
+    return {
+      hasPlaythrough: true as const,
+      standings: [],
+      pastFixtures: [],
+      upcomingFixtures: [],
+      currentWeek: activePlaythrough.currentWeek,
+      myClubId: activePlaythrough.clubId,
+    };
+  }
+
+  const [activeSeason] = await db
+    .select()
+    .from(seasons)
+    .where(and(eq(seasons.leagueId, league.id), eq(seasons.status, 'active')))
+    .orderBy(desc(seasons.seasonNumber))
+    .limit(1);
+
+  if (!activeSeason) {
     return {
       hasPlaythrough: true as const,
       standings: [],
@@ -57,17 +77,13 @@ export const load: PageServerLoad = async ({ parent }) => {
     .innerJoin(clubs, eq(clubs.id, standings.clubId))
     .where(
       and(
-        eq(standings.seasonId, myStanding.seasonId),
-        eq(standings.divisionId, myStanding.divisionId),
+        eq(standings.seasonId, activeSeason.id),
+        eq(standings.divisionId, activeSeason.divisionId),
       ),
     )
-    .orderBy(
-      desc(standings.points),
-      desc(standings.goalsFor),
-    );
+    .orderBy(desc(standings.points), desc(standings.goalsFor));
 
-  // Fixtures JOIN home + away clubs (aliased so the same `clubs` table can be
-  // joined twice).
+  // Fixtures JOIN home + away clubs.
   const homeClubs = alias(clubs, 'home_clubs');
   const awayClubs = alias(clubs, 'away_clubs');
 
@@ -87,7 +103,7 @@ export const load: PageServerLoad = async ({ parent }) => {
     .from(fixtures)
     .innerJoin(homeClubs, eq(homeClubs.id, fixtures.homeClubId))
     .innerJoin(awayClubs, eq(awayClubs.id, fixtures.awayClubId))
-    .where(eq(fixtures.seasonId, myStanding.seasonId))
+    .where(eq(fixtures.seasonId, activeSeason.id))
     .orderBy(asc(fixtures.week), asc(fixtures.matchday));
 
   const pastFixtures = allFixtures.filter((f) => f.status === 'played');

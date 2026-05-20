@@ -26,7 +26,7 @@
   </div>
 
   <div class="flex-1">
-    <a href="/dashboard" class="btn btn-ghost text-xl font-bold">Cascada FC</a>
+    <a href="/dashboard" class="btn btn-ghost text-xl font-bold">Total Soccer Manager</a>
   </div>
 
   <div class="flex-none gap-4 items-center">

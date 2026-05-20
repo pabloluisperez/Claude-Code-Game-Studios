@@ -16,44 +16,24 @@
 
   let openEventId = $state<string | null>(null);
 
-  // Build a list of "weeks to display": from currentWeek - 4 to currentWeek + 8.
-  // Each entry is a Saturday with its events + fixture (if any).
-  interface CalendarCell {
-    week: number;
-    isoDate: string;
-    displayDate: string;
-    isToday: boolean;
-    isPast: boolean;
-    events: EventRow[];
-    fixture: FixtureRow | null;
-  }
-
-  const cells = $derived.by<CalendarCell[]>(() => {
+  const weeksWindow = $derived.by<number[]>(() => {
     if (!data.hasPlaythrough) return [];
     const today = data.currentWeek;
-    const out: CalendarCell[] = [];
+    const out: number[] = [];
     for (let w = today - 4; w <= today + 8; w++) {
-      if (w < 0) continue;
-      const week = w;
-      const evs = data.events.filter((e) => e.week === week);
-      const fx = data.fixtures.find((f) => f.week === week) ?? null;
-      const date = evs[0]?.date ?? fx?.date;
-      if (!date && evs.length === 0 && !fx) {
-        // Synthesize a placeholder if no event/fixture — still show the date.
-      }
-      // Always synth a date even if no events.
-      out.push({
-        week,
-        isoDate: '',
-        displayDate: '',
-        isToday: w === today,
-        isPast: w < today,
-        events: evs,
-        fixture: fx,
-      });
+      if (w >= 0) out.push(w);
     }
     return out;
   });
+
+  function eventsForWeek(week: number): EventRow[] {
+    if (!data.hasPlaythrough) return [];
+    return data.events.filter((e) => e.week === week);
+  }
+  function fixtureForWeek(week: number): FixtureRow | null {
+    if (!data.hasPlaythrough) return null;
+    return data.fixtures.find((f) => f.week === week) ?? null;
+  }
 
   const openEvent = $derived(
     openEventId && data.hasPlaythrough
@@ -98,10 +78,9 @@
       <div class="card-body">
         <h2 class="card-title">Semanas — pasado, hoy, futuro</h2>
         <div class="space-y-2 mt-2">
-          {#each data.events as _, _i (data.currentWeek)}{/each}
-          {#each Array.from({ length: 13 }, (_, i) => data.currentWeek - 4 + i).filter((w) => w >= 0) as week}
-            {@const dayEvents = data.events.filter((e) => e.week === week)}
-            {@const fixture = data.fixtures.find((f) => f.week === week) ?? null}
+          {#each weeksWindow as week (week)}
+            {@const dayEvents = eventsForWeek(week)}
+            {@const fixture = fixtureForWeek(week)}
             {@const date = dayEvents[0]?.date ?? fixture?.date ?? null}
             {@const isToday = week === data.currentWeek}
             {@const isPast = week < data.currentWeek}

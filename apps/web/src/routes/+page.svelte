@@ -5,13 +5,13 @@
 </script>
 
 <svelte:head>
-  <title>Cascada FC — Football Manager</title>
+  <title>Total Soccer Manager — Football Manager</title>
 </svelte:head>
 
 <div class="hero min-h-[60vh]">
   <div class="hero-content text-center">
     <div class="max-w-xl">
-      <h1 class="text-5xl font-bold">Cascada FC</h1>
+      <h1 class="text-5xl font-bold">Total Soccer Manager</h1>
       <p class="py-6 text-lg opacity-80">
         Take a club from dirt pitch to Champions. Every decision ripples through the world.
       </p>
