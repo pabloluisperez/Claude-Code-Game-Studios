@@ -49,32 +49,36 @@ async function simulateFixture(
   tx: Tx,
   args: { fixtureId: string; homeClubId: string; awayClubId: string; seed: string },
 ): Promise<QuickMatchResult> {
+  const playerCols = {
+    id: players.id,
+    firstName: players.firstName,
+    lastName: players.lastName,
+    position: players.position,
+    skill: players.skill,
+    form: players.form,
+    velocidad: players.velocidad,
+    resistencia: players.resistencia,
+    agresividad: players.agresividad,
+    calidad: players.calidad,
+  } as const;
   const homeRoster = await tx
-    .select({
-      skill: players.skill,
-      form: players.form,
-      velocidad: players.velocidad,
-      resistencia: players.resistencia,
-      agresividad: players.agresividad,
-      calidad: players.calidad,
-    })
+    .select(playerCols)
     .from(players)
     .where(eq(players.clubId, args.homeClubId));
   const awayRoster = await tx
-    .select({
-      skill: players.skill,
-      form: players.form,
-      velocidad: players.velocidad,
-      resistencia: players.resistencia,
-      agresividad: players.agresividad,
-      calidad: players.calidad,
-    })
+    .select(playerCols)
     .from(players)
     .where(eq(players.clubId, args.awayClubId));
 
   return quickSimulateMatch({
-    homeRoster,
-    awayRoster,
+    homeRoster: homeRoster.map((p) => ({
+      ...p,
+      position: p.position as 'GK' | 'DEF' | 'MID' | 'FWD',
+    })),
+    awayRoster: awayRoster.map((p) => ({
+      ...p,
+      position: p.position as 'GK' | 'DEF' | 'MID' | 'FWD',
+    })),
     rng: createSeededRng(args.seed),
   });
 }

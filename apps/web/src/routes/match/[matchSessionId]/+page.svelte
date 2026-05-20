@@ -27,11 +27,52 @@
     minute: number;
     type: string;
     team: 'home' | 'away';
+    playerName?: string;
+    playerId?: string;
   }
 
   const persistedEvents = $derived.by<FeedEvent[]>(() => {
     const outcome = data.fixture.matchOutcomeData as { events?: FeedEvent[] } | null;
     return outcome?.events ?? [];
+  });
+
+  // ── Other fixtures: parallel live tick ───────────────────────────────────
+  interface OtherFixtureLive {
+    id: string;
+    homeName: string;
+    awayName: string;
+    homeClubId: string;
+    awayClubId: string;
+    finalHomeScore: number | null;
+    finalAwayScore: number | null;
+    events: FeedEvent[];
+    /** Score visible right now (advances as liveMinute advances). */
+    liveHome: number;
+    liveAway: number;
+    /** Latest event emitted this tick (for the ticker). */
+    lastEvent: FeedEvent | null;
+  }
+
+  let otherFixturesLive = $state<OtherFixtureLive[]>([]);
+
+  $effect(() => {
+    // Initialise once from page data.
+    otherFixturesLive = data.otherFixtures.map((f) => {
+      const outcome = f.matchOutcomeData as { events?: FeedEvent[] } | null;
+      return {
+        id: f.id,
+        homeName: f.homeName,
+        awayName: f.awayName,
+        homeClubId: f.homeClubId,
+        awayClubId: f.awayClubId,
+        finalHomeScore: f.homeScore,
+        finalAwayScore: f.awayScore,
+        events: (outcome?.events ?? []).slice().sort((a, b) => a.minute - b.minute),
+        liveHome: 0,
+        liveAway: 0,
+        lastEvent: null,
+      };
+    });
   });
 
   const recap = $derived.by(() => {
@@ -79,6 +120,81 @@
     }
   }
 
+  // Live standings — recompute from the base standings + score deltas of the
+  // matches that have advanced so far. Sort by points then GF, animate row
+  // reorder via animate:flip in the markup.
+  interface LiveStandingRow {
+    clubId: string;
+    clubName: string;
+    played: number;
+    points: number;
+    goalsFor: number;
+    goalsAgainst: number;
+  }
+
+  const liveStandings = $derived.by<LiveStandingRow[]>(() => {
+    const rows: LiveStandingRow[] = data.liveStandings.map((s) => ({
+      clubId: s.clubId,
+      clubName: s.clubName,
+      played: s.played,
+      points: s.points,
+      goalsFor: s.goalsFor,
+      goalsAgainst: s.goalsAgainst,
+    }));
+    // Apply user's match in-progress deltas
+    if (isReplaying) {
+      const userHomeId = data.fixture.homeClubId;
+      const userAwayId = data.fixture.awayClubId;
+      const home = rows.find((r) => r.clubId === userHomeId);
+      const away = rows.find((r) => r.clubId === userAwayId);
+      if (home && away) {
+        // The persisted standings already include the played user match —
+        // so to show the *live* state we must SUBTRACT the final and ADD
+        // the current live. But we don't easily know the final from this
+        // component without the fixture record. Simpler: don't double-count
+        // user-match deltas here; the persisted standings ARE the post-week
+        // final. So the live mode only animates the OTHER matches.
+      }
+      // For each other fixture, swap the post-match impact (already in
+      // persisted standings) with the LIVE impact (running score).
+      for (const f of otherFixturesLive) {
+        const finalH = f.finalHomeScore ?? 0;
+        const finalA = f.finalAwayScore ?? 0;
+        const liveH = f.liveHome;
+        const liveA = f.liveAway;
+        const homeR = rows.find((r) => r.clubId === f.homeClubId);
+        const awayR = rows.find((r) => r.clubId === f.awayClubId);
+        if (!homeR || !awayR) continue;
+        // Subtract final, add live.
+        // Points
+        const finalWinner: 'home' | 'away' | 'draw' =
+          finalH > finalA ? 'home' : finalH < finalA ? 'away' : 'draw';
+        const liveWinner: 'home' | 'away' | 'draw' =
+          liveH > liveA ? 'home' : liveH < liveA ? 'away' : 'draw';
+        // Remove final's contribution (this fixture already counts as PJ+1 in
+        // persisted; we want to show it as in-progress, so PJ -1 too).
+        homeR.played -= 1;
+        awayR.played -= 1;
+        homeR.points -= finalWinner === 'home' ? 3 : finalWinner === 'draw' ? 1 : 0;
+        awayR.points -= finalWinner === 'away' ? 3 : finalWinner === 'draw' ? 1 : 0;
+        homeR.goalsFor -= finalH;
+        homeR.goalsAgainst -= finalA;
+        awayR.goalsFor -= finalA;
+        awayR.goalsAgainst -= finalH;
+        // Add live's contribution (PJ in-progress; we don't bump PJ since
+        // match isn't over — but we add live goals).
+        homeR.points += liveWinner === 'home' ? 3 : liveWinner === 'draw' ? 1 : 0;
+        awayR.points += liveWinner === 'away' ? 3 : liveWinner === 'draw' ? 1 : 0;
+        homeR.goalsFor += liveH;
+        homeR.goalsAgainst += liveA;
+        awayR.goalsFor += liveA;
+        awayR.goalsAgainst += liveH;
+      }
+    }
+    rows.sort((a, b) => b.points - a.points || b.goalsFor - a.goalsFor);
+    return rows;
+  });
+
   function startReplay() {
     if (isReplaying || persistedEvents.length === 0) return;
     isReplaying = true;
@@ -95,6 +211,9 @@
 
     const queue = [...persistedEvents].sort((a, b) => a.minute - b.minute);
     let idx = 0;
+    // Per-other-fixture index into its event queue.
+    const otherIdx = new Map<string, number>();
+    otherFixturesLive.forEach((f) => otherIdx.set(f.id, 0));
 
     // Compress 90 in-game minutes to ~30 seconds wall-clock for demo pacing.
     const tickIntervalMs = 333;
@@ -109,6 +228,26 @@
         }
         idx += 1;
       }
+
+      // Advance every other fixture's clock in parallel.
+      otherFixturesLive = otherFixturesLive.map((f) => {
+        let cursor = otherIdx.get(f.id) ?? 0;
+        let h = f.liveHome;
+        let a = f.liveAway;
+        let lastEv: FeedEvent | null = f.lastEvent;
+        while (cursor < f.events.length && f.events[cursor]!.minute <= liveMinute) {
+          const ev = f.events[cursor]!;
+          if (ev.type === 'goal') {
+            if (ev.team === 'home') h += 1;
+            else a += 1;
+          }
+          lastEv = ev;
+          cursor += 1;
+        }
+        otherIdx.set(f.id, cursor);
+        return { ...f, liveHome: h, liveAway: a, lastEvent: lastEv };
+      });
+
       if (liveMinute >= 90) {
         finalWhistle = true;
         stopReplay();
@@ -229,13 +368,16 @@
       {#if persistedEvents.length === 0}
         <p class="opacity-60 text-sm">Sin eventos registrados.</p>
       {:else}
-        <div class="space-y-2">
+        <div class="space-y-1">
           {#each (isReplaying ? liveEvents : persistedEvents) as e}
             <div class="flex items-center gap-3 p-2 bg-base-200 rounded">
               <div class="font-mono text-sm opacity-70 w-12">{e.minute}'</div>
               <span class="badge {eventBadge(e.type)}">{eventLabel(e.type)}</span>
               <div class="flex-1 text-sm">
-                <span class="opacity-60 text-xs uppercase">{e.team}</span>
+                <span class="opacity-60 text-xs uppercase">{e.team === 'home' ? data.fixture.homeName : data.fixture.awayName}</span>
+                {#if e.playerName}
+                  <span class="font-semibold ml-2">{e.playerName}</span>
+                {/if}
               </div>
             </div>
           {/each}
@@ -245,35 +387,34 @@
   </section>
 </div>
 
-<!-- Right column: other matchday results + live standings -->
+<!-- Right sidebar: other matchday + live standings -->
 <aside class="space-y-4">
   <section class="card bg-base-100 shadow">
     <div class="card-body p-4">
       <h3 class="font-semibold text-sm">Resto de la jornada</h3>
-      {#if data.otherFixtures.length === 0}
+      {#if otherFixturesLive.length === 0}
         <p class="text-xs opacity-60">Sin otros partidos esta jornada.</p>
       {:else}
         <div class="space-y-1 mt-2">
-          {#each data.otherFixtures as f}
-            {@const outcome = f.matchOutcomeData as { events?: { minute: number; type: string; team: 'home' | 'away' }[] } | null}
-            {@const goals = (outcome?.events ?? []).filter((e) => e.type === 'goal')}
+          {#each otherFixturesLive as f (f.id)}
             <div class="bg-base-200 rounded p-2">
               <div class="flex items-center justify-between gap-2 text-xs">
                 <span class="font-semibold truncate flex-1">{f.homeName}</span>
                 <span class="font-mono">
-                  {#if f.status === 'played' && f.homeScore !== null && f.awayScore !== null}
-                    {f.homeScore}-{f.awayScore}
+                  {#if isReplaying}
+                    {f.liveHome}-{f.liveAway}
+                  {:else if f.finalHomeScore !== null && f.finalAwayScore !== null}
+                    {f.finalHomeScore}-{f.finalAwayScore}
                   {:else}
                     —
                   {/if}
                 </span>
                 <span class="font-semibold truncate flex-1 text-right">{f.awayName}</span>
               </div>
-              {#if goals.length > 0}
+              {#if isReplaying && f.lastEvent}
                 <div class="text-[10px] opacity-70 mt-1 leading-tight">
-                  {#each goals as g}
-                    <span class="inline-block mr-2">⚽ {g.minute}' ({g.team === 'home' ? 'L' : 'V'})</span>
-                  {/each}
+                  {#if f.lastEvent.type === 'goal'}⚽{:else if f.lastEvent.type === 'red_card'}🟥{:else if f.lastEvent.type === 'yellow_card'}🟨{:else}🩹{/if}
+                  {f.lastEvent.minute}' {f.lastEvent.playerName ?? ''}
                 </div>
               {/if}
             </div>
@@ -285,15 +426,19 @@
 
   <section class="card bg-base-100 shadow">
     <div class="card-body p-4">
-      <h3 class="font-semibold text-sm">Clasificación en vivo</h3>
-      {#if data.liveStandings.length === 0}
+      <h3 class="font-semibold text-sm">
+        Clasificación {#if isReplaying}<span class="badge badge-error badge-xs ml-1">EN VIVO</span>{/if}
+      </h3>
+      {#if liveStandings.length === 0}
         <p class="text-xs opacity-60">Sin clasificación aún.</p>
       {:else}
         <table class="table table-xs mt-2">
           <tbody>
-            {#each data.liveStandings.slice(0, 12) as r, i}
+            {#each liveStandings.slice(0, 12) as r, i (r.clubId)}
               {@const isMine = r.clubId === data.fixture.homeClubId || r.clubId === data.fixture.awayClubId}
-              <tr class="{isMine ? 'font-bold bg-primary/10' : ''}">
+              <tr
+                class="standings-row {isMine ? 'font-bold bg-primary/10' : ''}"
+              >
                 <td class="font-mono opacity-60 w-6">{i + 1}</td>
                 <td class="truncate max-w-[8rem]">{r.clubName}</td>
                 <td class="text-right font-mono opacity-70 text-xs">{r.played}</td>
@@ -306,4 +451,9 @@
     </div>
   </section>
 </aside>
+
 </div>
+
+<style>
+  .standings-row { transition: background 0.3s ease; }
+</style>

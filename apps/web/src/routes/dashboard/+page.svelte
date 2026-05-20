@@ -16,6 +16,7 @@
   let showTransition = $state(false);
   let advanceFormEl: HTMLFormElement | undefined = $state();
   let redirectModeInput: HTMLInputElement | undefined = $state();
+  let advanceSubmitting = $state(false);
 
   // The next user fixture (if it's this advance) — drives the match-arrival CTA.
   const userMatchNextAdvance = $derived.by(() => {
@@ -26,19 +27,33 @@
 
   function handleAdvanceClick(e: Event) {
     e.preventDefault();
+    if (advanceSubmitting) return;
     showTransition = true;
   }
   function onTransitionComplete() {
-    // Submit the actual form once the 7-day animation finishes.
+    if (advanceSubmitting) return;
+    advanceSubmitting = true;
     advanceFormEl?.requestSubmit();
+    showTransition = false;
   }
   function onTransitionMatchChoice(mode: 'autoplay' | 'skip' | 'dashboard') {
+    if (advanceSubmitting) return;
+    advanceSubmitting = true;
     if (redirectModeInput) redirectModeInput.value = mode;
     advanceFormEl?.requestSubmit();
+    showTransition = false;
   }
   function onTransitionCancel() {
     showTransition = false;
   }
+
+  // Reset submitting flag once new data lands (post-advance refresh).
+  $effect(() => {
+    if (data.justAdvanced) {
+      advanceSubmitting = false;
+      showTransition = false;
+    }
+  });
 
   // Headlines for the transition modal — generated from the current week's
   // data so the user sees a recap of what just happened.

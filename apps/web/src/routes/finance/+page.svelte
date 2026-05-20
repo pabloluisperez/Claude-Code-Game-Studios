@@ -199,23 +199,61 @@
     </div>
 
     {#if cashflowSeries.length > 0}
+      {@const minVal = Math.min(...cashflowSeries, 0)}
+      {@const maxVal = Math.max(...cashflowSeries, 0)}
+      {@const range = Math.max(1, maxVal - minVal)}
+      {@const pad = range * 0.15}
+      {@const yMin = minVal - pad}
+      {@const yMax = maxVal + pad}
+      {@const w = 600}
+      {@const h = 160}
+      {@const ptsX = (i: number) => (cashflowSeries.length === 1 ? w / 2 : (i / (cashflowSeries.length - 1)) * (w - 40) + 20)}
+      {@const ptsY = (v: number) => h - 20 - ((v - yMin) / (yMax - yMin)) * (h - 40)}
+      {@const zeroY = ptsY(0)}
+      {@const points = cashflowSeries.map((v, i) => [ptsX(i), ptsY(v)] as const)}
+      {@const linePath = points.length > 1
+        ? points.reduce((acc, [x, y], idx) => {
+            if (idx === 0) return `M ${x} ${y}`;
+            const [px, py] = points[idx - 1]!;
+            const cx = (px + x) / 2;
+            return `${acc} C ${cx} ${py}, ${cx} ${y}, ${x} ${y}`;
+          }, '')
+        : ''}
+      {@const areaPath = points.length > 1
+        ? `${linePath} L ${points[points.length - 1]![0]} ${zeroY} L ${points[0]![0]} ${zeroY} Z`
+        : ''}
       <section class="card bg-base-100 shadow">
         <div class="card-body">
-          <h2 class="card-title">Cashflow últimas {cashflowSeries.length} semanas</h2>
-          <div class="flex items-end gap-2 h-32 pt-4">
-            {#each cashflowSeries as cf, i}
-              <div class="flex-1 flex flex-col items-center gap-1">
-                <div class="text-xs font-mono">{cf > 0 ? '+' : ''}{cf}</div>
-                <div
-                  class="w-full rounded-t {cf >= 0 ? 'bg-success' : 'bg-error'}"
-                  style="height: {(Math.abs(cf) / cashflowMax) * 100}%"
-                ></div>
-                <div class="text-xs opacity-60">S-{cashflowSeries.length - 1 - i}</div>
-              </div>
+          <h2 class="card-title">Cashflow histórico</h2>
+          <svg viewBox="0 0 {w} {h}" class="w-full" preserveAspectRatio="none">
+            <!-- Grid horizontal -->
+            <line x1="20" x2={w - 20} y1={zeroY} y2={zeroY} stroke="currentColor" stroke-opacity="0.3" stroke-dasharray="3 3" />
+            <!-- Filled area -->
+            <path d={areaPath} fill="currentColor" fill-opacity="0.12" />
+            <!-- Smooth curve -->
+            <path d={linePath} stroke="currentColor" stroke-width="2" fill="none" />
+            <!-- Points + values -->
+            {#each points as [x, y], i}
+              {@const v = cashflowSeries[i]!}
+              <circle cx={x} cy={y} r="3" fill={v >= 0 ? '#10b981' : '#ef4444'} />
+              <text x={x} y={y - 8} text-anchor="middle" font-size="10" fill="currentColor" fill-opacity="0.7">
+                {v > 0 ? '+' : ''}{v}
+              </text>
             {/each}
-          </div>
+            <!-- X-axis labels -->
+            {#each cashflowSeries as _, i}
+              <text x={ptsX(i)} y={h - 4} text-anchor="middle" font-size="9" fill="currentColor" fill-opacity="0.5">
+                S{(latest?.week ?? 0) - (cashflowSeries.length - 1 - i)}
+              </text>
+            {/each}
+            <!-- Y-axis labels -->
+            <text x="2" y={ptsY(yMax)} font-size="9" fill="currentColor" fill-opacity="0.5">{Math.round(yMax)} €K</text>
+            <text x="2" y={zeroY + 4} font-size="9" fill="currentColor" fill-opacity="0.5">0</text>
+            <text x="2" y={ptsY(yMin) + 4} font-size="9" fill="currentColor" fill-opacity="0.5">{Math.round(yMin)} €K</text>
+          </svg>
         </div>
       </section>
+
     {/if}
 
     <section class="card bg-base-100 shadow">

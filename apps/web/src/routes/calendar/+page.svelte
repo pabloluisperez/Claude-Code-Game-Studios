@@ -8,6 +8,7 @@
 <script lang="ts">
   import type { PageData } from './$types';
   import { enhance } from '$app/forms';
+  import { eventDisplay } from '$lib/event-labels';
 
   let { data }: { data: PageData } = $props();
 
@@ -42,12 +43,13 @@
   );
 
   function eventIcon(type: string): string {
-    if (type.startsWith('season_'))    return '🗓';
-    if (type.startsWith('transfer_'))  return '💼';
-    if (type.startsWith('sponsor_'))   return '🤝';
-    if (type.startsWith('board_'))     return '🏛';
-    if (type.startsWith('scandal'))    return '⚠️';
-    return '•';
+    return eventDisplay(type).icon;
+  }
+  function eventLabel(type: string): string {
+    return eventDisplay(type).label;
+  }
+  function eventDescription(type: string): string {
+    return eventDisplay(type).description;
   }
 
   function priorityColor(p: string): string {
@@ -132,7 +134,7 @@
                     type="button"
                   >
                     <div>
-                      <div class="text-xs opacity-60">{eventIcon(e.type)} {e.type}</div>
+                      <div class="text-xs opacity-60">{eventIcon(e.type)} {eventLabel(e.type)}</div>
                       <div class="text-sm">
                         {e.status === 'pending' ? 'Pendiente' : e.status === 'resolved' ? 'Resuelto' : e.status}
                       </div>
@@ -153,25 +155,63 @@
 
     <!-- Decision modal -->
     {#if openEvent}
+      {@const statusLabel = openEvent.status === 'pending'
+        ? 'pendiente'
+        : openEvent.status === 'resolved'
+        ? 'resuelto'
+        : openEvent.status === 'expired'
+        ? 'expirado'
+        : openEvent.status}
+      {@const meta = openEvent.metadata as { options?: Record<string, { label: string; description: string }>; brand?: string; weeklyAmountEurK?: number; contractWeeks?: number; description?: string } | null}
+      {@const optEntries = (meta?.options
+        ? Object.entries(meta.options)
+        : [
+            ['accept', { label: 'Aceptar', description: 'Aceptar la propuesta tal cual.' }],
+            ['reject', { label: 'Rechazar', description: 'Rechazar la propuesta.' }],
+          ]) as ReadonlyArray<[string, { label: string; description: string }]>}
       <div class="modal modal-open">
-        <div class="modal-box">
-          <h3 class="font-bold text-lg">{eventIcon(openEvent.type)} {openEvent.type}</h3>
+        <div class="modal-box max-w-lg">
+          <h3 class="font-bold text-lg">{eventIcon(openEvent.type)} {eventLabel(openEvent.type)}</h3>
           <p class="text-sm opacity-70 mt-2">
-            {openEvent.date.display} · Estado: <span class="font-mono">{openEvent.status}</span>
+            {openEvent.date.display} · Estado: <span class="font-mono">{statusLabel}</span>
           </p>
+          <p class="text-sm mt-3 leading-relaxed">{eventDescription(openEvent.type)}</p>
+
+          <!-- Variant-specific context (sponsor amounts, etc.) -->
+          {#if meta?.brand}
+            <div class="alert alert-info py-2 mt-3 text-sm">
+              <div>
+                <div class="font-semibold">{meta.brand}</div>
+                {#if meta.weeklyAmountEurK}
+                  <div class="text-xs">
+                    {meta.weeklyAmountEurK} €K/sem
+                    {#if meta.contractWeeks}· {meta.contractWeeks} semanas{/if}
+                  </div>
+                {/if}
+                {#if meta.description}
+                  <div class="text-xs opacity-80 mt-1">{meta.description}</div>
+                {/if}
+              </div>
+            </div>
+          {/if}
 
           {#if openEvent.status === 'pending'}
             <div class="flex flex-col gap-2 mt-4">
-              <form method="POST" action="?/decide" use:enhance>
-                <input type="hidden" name="eventId" value={openEvent.id} />
-                <input type="hidden" name="choice" value="accept" />
-                <button class="btn btn-primary btn-block" type="submit">Aceptar</button>
-              </form>
-              <form method="POST" action="?/decide" use:enhance>
-                <input type="hidden" name="eventId" value={openEvent.id} />
-                <input type="hidden" name="choice" value="reject" />
-                <button class="btn btn-outline btn-block" type="submit">Rechazar</button>
-              </form>
+              {#each optEntries as [optKey, opt]}
+                <form method="POST" action="?/decide" use:enhance>
+                  <input type="hidden" name="eventId" value={openEvent.id} />
+                  <input type="hidden" name="choice" value={optKey} />
+                  <button
+                    class="btn btn-block justify-start text-left {optKey === 'accept' ? 'btn-primary' : 'btn-outline'}"
+                    type="submit"
+                  >
+                    <div class="flex-1">
+                      <div class="font-semibold">{opt.label}</div>
+                      <div class="text-xs opacity-70 font-normal">{opt.description}</div>
+                    </div>
+                  </button>
+                </form>
+              {/each}
             </div>
             <p class="text-xs opacity-60 mt-3">
               La opción por defecto se aplicará pasados 24h si no decides.

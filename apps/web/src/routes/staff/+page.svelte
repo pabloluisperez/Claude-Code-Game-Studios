@@ -24,6 +24,21 @@
     head_coach: '🎯',
   };
 
+  const ROLE_TOOLTIP: Readonly<Record<string, string>> = {
+    groundskeeper:
+      'Cuida el césped y las instalaciones del estadio. Un buen jardinero reduce las lesiones y mejora el control de balón.',
+    fitness_coach:
+      'Gestiona la preparación física y la recuperación. Detecta cansancio acumulado y avisa de riesgo de lesión antes de que ocurra.',
+    commercial_director:
+      'Negocia patrocinios, gestiona la imagen del club ante marcas, mide el momentum de la afición.',
+    scouting_director:
+      'Lidera la red de ojeadores. Cuanto mejor el director, más nombres llegan al radar y más fiables los informes.',
+    finance_director:
+      'Vigila la salud financiera del club. Avisa de problemas de tesorería y recuerda decisiones clave (precio del abono).',
+    head_coach:
+      'Trabaja con la plantilla en la pizarra y en el vestuario. Detecta tensiones internas y propone ajustes tácticos.',
+  };
+
   type RoleInfo = Extract<PageData, { hasPlaythrough: true }>['roles'][number];
   type StaffRow = Extract<PageData, { hasPlaythrough: true }>['activeStaff'][number];
 
@@ -89,9 +104,13 @@
             <div class="flex justify-between items-center">
               <div class="flex items-center gap-2">
                 <span class="text-3xl">{ROLE_ICON[r.role] ?? '🧑'}</span>
-                <div>
-                  <h3 class="font-bold text-lg leading-tight">{r.label}</h3>
-                  <div class="text-xs opacity-60 font-mono">{r.role}</div>
+                <div
+                  class="tooltip tooltip-right cursor-help"
+                  data-tip={ROLE_TOOLTIP[r.role] ?? ''}
+                >
+                  <h3 class="font-bold text-lg leading-tight underline decoration-dotted">
+                    {r.label}
+                  </h3>
                 </div>
               </div>
               {#if current}
@@ -99,10 +118,6 @@
               {:else}
                 <span class="badge badge-ghost">Vacante</span>
               {/if}
-            </div>
-
-            <div class="text-xs opacity-70 mt-1 border-t border-base-300 pt-2">
-              Domina: <span class="font-mono">{r.domain.join(', ')}</span>
             </div>
 
             {#if current}

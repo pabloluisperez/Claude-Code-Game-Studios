@@ -2,30 +2,29 @@
  * Quick (batch) match simulator.
  *
  * Produces a deterministic score + minute-by-minute events for one match
- * given just rosters + a seeded PRNG. Used to advance the league on
- * "Avanzar semana" without running the full live FSM.
+ * given rosters + a seeded PRNG. Each event is attributed to a specific
+ * player (scorer / booked / injured) picked weighted by the relevant
+ * attribute.
  *
- * Model:
- *   - Team strength = weighted sum of the four core attributes for the
- *     top-11 by skill:
- *       calidad      40%
- *       velocidad    30%
- *       agresividad  15%
- *       resistencia  15%
- *     scaled by team form (0.5..1.0).
- *   - Expected goals = base 1.2 + 0.04 × (strength − 50) for each side,
- *     plus a 0.25 home advantage bonus.
- *   - Final goals drawn from a clamped Poisson sampler.
- *   - Card propensity scales with team agresividad: at avg 50 ≈ 1
- *     card/match, at 80 ≈ 3 cards. Red cards are 10% of cards.
- *   - Injury propensity scales with combined agresividad of the two
- *     teams: high-aggression matches see more injuries.
+ * Strength model:
+ *   strength = 0.4·calidad + 0.3·velocidad + 0.15·agresividad + 0.15·resistencia
+ *   form scales 0.5..1.0 of strength.
  *
- * Story: Quick sim — Velocidad/Resistencia/Agresividad/Calidad model
+ * Event model:
+ *   goals      — picked from FWD/MID weighted by calidad
+ *   cards      — picked from all players weighted by agresividad
+ *   injuries   — picked from all players weighted by (100 − resistencia)
+ *
+ * Story: Player-attributed events
  * Control Manifest: 2026-05-20
  */
 
 export interface QuickPlayerInput {
+  /** Stable id used to attribute events (player_id in match outcome). */
+  readonly id?: string;
+  readonly firstName?: string;
+  readonly lastName?: string;
+  readonly position?: 'GK' | 'DEF' | 'MID' | 'FWD';
   readonly skill: number;
   readonly form: number;
   readonly velocidad?: number;
@@ -38,6 +37,8 @@ export interface QuickMatchEvent {
   readonly minute: number;
   readonly type: 'goal' | 'yellow_card' | 'red_card' | 'injury';
   readonly team: 'home' | 'away';
+  readonly playerId?: string;
+  readonly playerName?: string;
 }
 
 export interface QuickMatchResult {
@@ -57,40 +58,27 @@ const MAX_GOALS = 8;
 
 interface TeamAggregates {
   strength: number;
-  /** Average team agresividad (0-100). */
   aggMean: number;
-  /** Average team form (0-100). */
   formMean: number;
+}
+
+function pickTopN(roster: readonly QuickPlayerInput[]): QuickPlayerInput[] {
+  return [...roster].sort((a, b) => b.skill - a.skill).slice(0, TOP_N);
 }
 
 function aggregates(roster: readonly QuickPlayerInput[]): TeamAggregates {
   if (roster.length === 0) {
     return { strength: 0, aggMean: 50, formMean: 60 };
   }
-  const top = [...roster]
-    .sort((a, b) => b.skill - a.skill)
-    .slice(0, TOP_N);
-
+  const top = pickTopN(roster);
   const meanVel = top.reduce((s, p) => s + (p.velocidad ?? p.skill), 0) / top.length;
   const meanRes = top.reduce((s, p) => s + (p.resistencia ?? p.skill), 0) / top.length;
   const meanAgg = top.reduce((s, p) => s + (p.agresividad ?? p.skill), 0) / top.length;
   const meanCal = top.reduce((s, p) => s + (p.calidad ?? p.skill), 0) / top.length;
   const meanForm = top.reduce((s, p) => s + p.form, 0) / top.length;
-
-  const raw =
-    0.4 * meanCal +
-    0.3 * meanVel +
-    0.15 * meanAgg +
-    0.15 * meanRes;
-
-  // Form scales strength 50%-100%: form 30 → 0.5, form 80 → 1.0.
+  const raw = 0.4 * meanCal + 0.3 * meanVel + 0.15 * meanAgg + 0.15 * meanRes;
   const formFactor = 0.5 + 0.5 * Math.min(1, Math.max(0, (meanForm - 30) / 50));
-
-  return {
-    strength: raw * formFactor,
-    aggMean: meanAgg,
-    formMean: meanForm,
-  };
+  return { strength: raw * formFactor, aggMean: meanAgg, formMean: meanForm };
 }
 
 function poissonDraw(lambda: number, rng: () => number): number {
@@ -116,6 +104,33 @@ function pickMinute(rng: () => number, used: Set<number>, max = 90): number {
   return 1 + Math.floor(rng() * max);
 }
 
+/**
+ * Pick a player from a roster, weighted by `weightFn(player)`.
+ * Returns null if no eligible players. Always deterministic given rng.
+ */
+function pickWeighted(
+  roster: readonly QuickPlayerInput[],
+  weightFn: (p: QuickPlayerInput) => number,
+  rng: () => number,
+): QuickPlayerInput | null {
+  if (roster.length === 0) return null;
+  const weights = roster.map(weightFn);
+  const total = weights.reduce((a, b) => a + b, 0);
+  if (total <= 0) return roster[Math.floor(rng() * roster.length)] ?? null;
+  let acc = rng() * total;
+  for (let i = 0; i < roster.length; i++) {
+    acc -= weights[i]!;
+    if (acc <= 0) return roster[i] ?? null;
+  }
+  return roster[roster.length - 1] ?? null;
+}
+
+function playerLabel(p: QuickPlayerInput): string {
+  if (p.lastName) return p.lastName;
+  if (p.firstName) return p.firstName;
+  return '—';
+}
+
 export function quickSimulateMatch(args: {
   readonly homeRoster: readonly QuickPlayerInput[];
   readonly awayRoster: readonly QuickPlayerInput[];
@@ -133,54 +148,86 @@ export function quickSimulateMatch(args: {
   const winner: 'home' | 'away' | 'draw' =
     homeScore > awayScore ? 'home' : homeScore < awayScore ? 'away' : 'draw';
 
-  // ── Event timeline ───────────────────────────────────────────────────
   const usedMinutes = new Set<number>();
   const events: QuickMatchEvent[] = [];
 
+  // Eligible scorers: FWD + MID (and DEF rarely, but we exclude GK).
+  // Weight by calidad — premier finishers score more often.
+  const homeOutfield = args.homeRoster.filter((p) => p.position !== 'GK');
+  const awayOutfield = args.awayRoster.filter((p) => p.position !== 'GK');
+
   for (let i = 0; i < homeScore; i++) {
-    events.push({ minute: pickMinute(args.rng, usedMinutes), type: 'goal', team: 'home' });
+    const scorer = pickWeighted(
+      homeOutfield,
+      (p) => Math.max(1, (p.calidad ?? p.skill) - 30) * (p.position === 'FWD' ? 1.5 : p.position === 'MID' ? 1.0 : 0.4),
+      args.rng,
+    );
+    events.push({
+      minute: pickMinute(args.rng, usedMinutes),
+      type: 'goal',
+      team: 'home',
+      playerId: scorer?.id,
+      playerName: scorer ? playerLabel(scorer) : undefined,
+    });
   }
   for (let i = 0; i < awayScore; i++) {
-    events.push({ minute: pickMinute(args.rng, usedMinutes), type: 'goal', team: 'away' });
+    const scorer = pickWeighted(
+      awayOutfield,
+      (p) => Math.max(1, (p.calidad ?? p.skill) - 30) * (p.position === 'FWD' ? 1.5 : p.position === 'MID' ? 1.0 : 0.4),
+      args.rng,
+    );
+    events.push({
+      minute: pickMinute(args.rng, usedMinutes),
+      type: 'goal',
+      team: 'away',
+      playerId: scorer?.id,
+      playerName: scorer ? playerLabel(scorer) : undefined,
+    });
   }
 
-  // Cards — agresividad drives count. At agg 50 → ~1 card; at agg 80 → ~3.
-  // Per-team independent rolls.
-  function cardsFor(team: 'home' | 'away', aggMean: number) {
-    const expected = Math.max(0, (aggMean - 30) / 25); // ~0 at agg 30, ~2 at agg 80
+  // Cards — weighted by agresividad.
+  function cardsFor(team: 'home' | 'away', roster: readonly QuickPlayerInput[], aggMean: number) {
+    const expected = Math.max(0, (aggMean - 30) / 25);
     const count = Math.floor(expected + args.rng() * 0.8);
     for (let i = 0; i < count; i++) {
-      // 10% red, rest yellow.
       const isRed = args.rng() < 0.1;
+      const booked = pickWeighted(
+        roster,
+        (p) => Math.max(1, (p.agresividad ?? p.skill) - 20),
+        args.rng,
+      );
       events.push({
         minute: pickMinute(args.rng, usedMinutes),
         type: isRed ? 'red_card' : 'yellow_card',
         team,
+        playerId: booked?.id,
+        playerName: booked ? playerLabel(booked) : undefined,
       });
     }
   }
-  cardsFor('home', home.aggMean);
-  cardsFor('away', away.aggMean);
+  cardsFor('home', args.homeRoster, home.aggMean);
+  cardsFor('away', args.awayRoster, away.aggMean);
 
-  // Injuries — both teams' average aggression contributes; ~5% baseline,
-  // +1% per point of avg agg above 50.
+  // Injuries — weighted by (100 − resistencia).
   const combinedAgg = (home.aggMean + away.aggMean) / 2;
   const injuryProb = 0.05 + Math.max(0, (combinedAgg - 50) / 100);
-  if (args.rng() < injuryProb) {
+  function pickInjury(team: 'home' | 'away') {
+    const roster = team === 'home' ? args.homeRoster : args.awayRoster;
+    const victim = pickWeighted(
+      roster,
+      (p) => Math.max(1, 100 - (p.resistencia ?? p.skill)),
+      args.rng,
+    );
     events.push({
       minute: pickMinute(args.rng, usedMinutes),
       type: 'injury',
-      team: args.rng() < 0.5 ? 'home' : 'away',
+      team,
+      playerId: victim?.id,
+      playerName: victim ? playerLabel(victim) : undefined,
     });
   }
-  // Second injury possible in very high-agg matches.
-  if (combinedAgg > 70 && args.rng() < 0.4) {
-    events.push({
-      minute: pickMinute(args.rng, usedMinutes),
-      type: 'injury',
-      team: args.rng() < 0.5 ? 'home' : 'away',
-    });
-  }
+  if (args.rng() < injuryProb) pickInjury(args.rng() < 0.5 ? 'home' : 'away');
+  if (combinedAgg > 70 && args.rng() < 0.4) pickInjury(args.rng() < 0.5 ? 'home' : 'away');
 
   events.sort((a, b) => a.minute - b.minute);
 

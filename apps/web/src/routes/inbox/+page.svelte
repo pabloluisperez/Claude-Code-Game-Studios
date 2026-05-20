@@ -1,42 +1,67 @@
 <!--
-  Inbox — full timeline of staff messages and calendar events.
+  Inbox — compact timeline of staff messages + calendar events.
 
-  Story: Topbar envelope → inbox
+  Visual rules:
+   - Neutral grey background by default.
+   - If the row implies action (STOP event, URGENT message): yellow tint.
+   - If critical (board_meeting_crisis, scandal, nomina_frozen):
+     red background.
+   - When action is required, surface a link to the relevant section
+     (Calendar, Finance, Squad, Staff).
+
+  Story: Inbox compaction + action links
   Control Manifest: 2026-05-20
 -->
 <script lang="ts">
   import type { PageData } from './$types';
+  import { eventDisplay, eventNeedsAction } from '$lib/event-labels';
   let { data }: { data: PageData } = $props();
 
-  let tab = $state<'messages' | 'events'>('messages');
+  let tab = $state<'all' | 'messages' | 'events'>('all');
 
-  function priorityClass(p: string): string {
-    if (p === 'URGENT') return 'alert-error';
-    if (p === 'STOP') return 'alert-error';
-    if (p === 'ADVISORY') return 'alert-warning';
-    return 'alert-info';
+  /** Action target page for a given event type. */
+  function actionUrl(type: string): string | null {
+    if (type.startsWith('sponsor_')) return '/finance';
+    if (type.startsWith('transfer_')) return '/squad';
+    if (type.startsWith('board_')) return '/calendar';
+    if (type === 'scandal' || type === 'corruption_caught') return '/calendar';
+    if (type === 'nomina_frozen') return '/finance';
+    if (type === 'youth_promotion') return '/squad';
+    if (type === 'contract_renewal') return '/squad';
+    return '/calendar';
   }
 
-  function tierBadge(t: number): string {
-    if (t === 3) return 'badge-warning';
-    if (t === 2) return 'badge-info';
-    return 'badge-ghost';
+  function isCritical(type: string): boolean {
+    return [
+      'board_meeting_crisis',
+      'scandal',
+      'corruption_caught',
+      'nomina_frozen',
+    ].includes(type);
   }
 
-  function eventIcon(type: string): string {
-    if (type.startsWith('season_')) return '🗓';
-    if (type.startsWith('transfer_')) return '💼';
-    if (type.startsWith('sponsor_')) return '🤝';
-    if (type.startsWith('board_')) return '🏛';
-    if (type.startsWith('scandal')) return '⚠️';
-    return '•';
+  function messageTone(priority: string): 'neutral' | 'action' | 'critical' {
+    if (priority === 'URGENT') return 'action';
+    return 'neutral';
+  }
+  function eventTone(type: string, priority: string, status: string): 'neutral' | 'action' | 'critical' {
+    if (status === 'resolved' || status === 'expired') return 'neutral';
+    if (isCritical(type)) return 'critical';
+    if (eventNeedsAction(type, priority)) return 'action';
+    return 'neutral';
+  }
+
+  function toneClasses(tone: 'neutral' | 'action' | 'critical'): string {
+    if (tone === 'critical') return 'bg-error/10 border-l-4 border-l-error';
+    if (tone === 'action')   return 'bg-warning/10 border-l-4 border-l-warning';
+    return 'bg-base-200 border-l-4 border-l-transparent';
   }
 </script>
 
-<div class="space-y-6 max-w-4xl mx-auto">
+<div class="space-y-4 max-w-4xl mx-auto">
   <header>
     <h1 class="text-2xl font-bold">📨 Bandeja de entrada</h1>
-    <p class="opacity-60">Mensajes del staff y eventos de la temporada.</p>
+    <p class="opacity-60 text-sm">Histórico de mensajes del staff y eventos.</p>
   </header>
 
   {#if !data.hasPlaythrough}
@@ -45,6 +70,13 @@
     </div>
   {:else}
     <div role="tablist" class="tabs tabs-boxed w-fit">
+      <button
+        role="tab"
+        class="tab {tab === 'all' ? 'tab-active' : ''}"
+        onclick={() => (tab = 'all')}
+      >
+        Todo ({data.messages.length + data.events.length})
+      </button>
       <button
         role="tab"
         class="tab {tab === 'messages' ? 'tab-active' : ''}"
@@ -61,45 +93,46 @@
       </button>
     </div>
 
-    {#if tab === 'messages'}
-      {#if data.messages.length === 0}
-        <p class="opacity-60 text-sm">Sin mensajes aún.</p>
-      {:else}
-        <div class="space-y-2">
-          {#each data.messages as m}
-            <div class="alert {priorityClass(m.priority)} {!m.isRead ? 'ring-2 ring-primary/30' : ''}">
-              <div class="flex-1">
-                <div class="flex items-center gap-2 text-xs opacity-70">
-                  <span class="badge {tierBadge(m.tier)} badge-sm">Tier {m.tier}</span>
-                  <span class="opacity-80">{m.date.display}</span>
-                  <span class="opacity-60">· semana {m.week}</span>
-                </div>
-                <div class="text-sm mt-1">{m.content}</div>
-              </div>
-            </div>
-          {/each}
-        </div>
+    <div class="space-y-1">
+      {#if (tab === 'all' || tab === 'messages')}
+        {#each data.messages as m}
+          {@const tone = messageTone(m.priority)}
+          <div class="flex items-start gap-2 px-3 py-1.5 rounded text-xs {toneClasses(tone)}">
+            <span class="opacity-60 font-mono w-24 flex-shrink-0">{m.date.display}</span>
+            <span class="opacity-50 text-[10px] uppercase w-12 flex-shrink-0">S{m.week}</span>
+            <span class="flex-1 leading-snug">{m.content}</span>
+            {#if !m.isRead}<span class="badge badge-primary badge-xs flex-shrink-0">nuevo</span>{/if}
+          </div>
+        {/each}
       {/if}
-    {:else}
-      {#if data.events.length === 0}
-        <p class="opacity-60 text-sm">Sin eventos en el calendario aún.</p>
-      {:else}
-        <div class="space-y-2">
-          {#each data.events as e}
-            <div class="flex items-start gap-3 p-3 rounded bg-base-200">
-              <span class="text-2xl">{eventIcon(e.type)}</span>
-              <div class="flex-1">
-                <div class="text-xs opacity-60">
-                  {e.date.display} · sem {e.week}
-                  <span class="badge badge-sm ml-1">{e.priority}</span>
-                  <span class="badge badge-sm badge-outline ml-1">{e.status}</span>
-                </div>
-                <div class="font-semibold text-sm mt-1">{e.type}</div>
-              </div>
-            </div>
-          {/each}
-        </div>
+
+      {#if (tab === 'all' || tab === 'events')}
+        {#each data.events as e}
+          {@const tone = eventTone(e.type, e.priority, e.status)}
+          {@const display = eventDisplay(e.type)}
+          {@const needsAction = e.status === 'pending' && eventNeedsAction(e.type, e.priority)}
+          <div class="flex items-start gap-2 px-3 py-1.5 rounded text-xs {toneClasses(tone)}">
+            <span class="opacity-60 font-mono w-24 flex-shrink-0">{e.date.display}</span>
+            <span class="opacity-50 text-[10px] uppercase w-12 flex-shrink-0">S{e.week}</span>
+            <span class="flex-shrink-0">{display.icon}</span>
+            <span class="flex-1 leading-snug">
+              <span class="font-semibold">{display.label}</span>
+              {#if e.status !== 'pending'}
+                <span class="opacity-60">· {e.status}</span>
+              {/if}
+            </span>
+            {#if needsAction}
+              <a href={actionUrl(e.type)} class="btn btn-xs btn-warning flex-shrink-0">
+                Ver
+              </a>
+            {/if}
+          </div>
+        {/each}
       {/if}
-    {/if}
+
+      {#if data.messages.length === 0 && data.events.length === 0}
+        <p class="opacity-60 text-sm">Sin mensajes ni eventos todavía.</p>
+      {/if}
+    </div>
   {/if}
 </div>
