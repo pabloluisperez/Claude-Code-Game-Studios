@@ -12,6 +12,7 @@
 <script lang="ts">
   import type { PageData } from './$types';
   import { onDestroy, onMount } from 'svelte';
+  import { flip } from 'svelte/animate';
   import { page } from '$app/stores';
   import { joinMatchRoom, disconnectMatchSocket } from '$lib/sockets';
   import { generateMatchRecap } from '@smt/shared';
@@ -142,6 +143,39 @@
     goalsAgainst: number;
   }
 
+  /** Apply a (final → live) swap on the given rows for one fixture. PJ
+   * stays at the post-week count for visual stability; we only adjust
+   * points and goals. */
+  function applyLiveDelta(
+    rows: LiveStandingRow[],
+    finalH: number,
+    finalA: number,
+    liveH: number,
+    liveA: number,
+    homeClubId: string,
+    awayClubId: string,
+  ): void {
+    const homeR = rows.find((r) => r.clubId === homeClubId);
+    const awayR = rows.find((r) => r.clubId === awayClubId);
+    if (!homeR || !awayR) return;
+    const finalWinner: 'home' | 'away' | 'draw' =
+      finalH > finalA ? 'home' : finalH < finalA ? 'away' : 'draw';
+    const liveWinner: 'home' | 'away' | 'draw' =
+      liveH > liveA ? 'home' : liveH < liveA ? 'away' : 'draw';
+    homeR.points -= finalWinner === 'home' ? 3 : finalWinner === 'draw' ? 1 : 0;
+    awayR.points -= finalWinner === 'away' ? 3 : finalWinner === 'draw' ? 1 : 0;
+    homeR.goalsFor -= finalH;
+    homeR.goalsAgainst -= finalA;
+    awayR.goalsFor -= finalA;
+    awayR.goalsAgainst -= finalH;
+    homeR.points += liveWinner === 'home' ? 3 : liveWinner === 'draw' ? 1 : 0;
+    awayR.points += liveWinner === 'away' ? 3 : liveWinner === 'draw' ? 1 : 0;
+    homeR.goalsFor += liveH;
+    homeR.goalsAgainst += liveA;
+    awayR.goalsFor += liveA;
+    awayR.goalsAgainst += liveH;
+  }
+
   const liveStandings = $derived.by<LiveStandingRow[]>(() => {
     const rows: LiveStandingRow[] = data.liveStandings.map((s) => ({
       clubId: s.clubId,
@@ -151,54 +185,30 @@
       goalsFor: s.goalsFor,
       goalsAgainst: s.goalsAgainst,
     }));
-    // Apply user's match in-progress deltas
     if (isReplaying) {
-      const userHomeId = data.fixture.homeClubId;
-      const userAwayId = data.fixture.awayClubId;
-      const home = rows.find((r) => r.clubId === userHomeId);
-      const away = rows.find((r) => r.clubId === userAwayId);
-      if (home && away) {
-        // The persisted standings already include the played user match —
-        // so to show the *live* state we must SUBTRACT the final and ADD
-        // the current live. But we don't easily know the final from this
-        // component without the fixture record. Simpler: don't double-count
-        // user-match deltas here; the persisted standings ARE the post-week
-        // final. So the live mode only animates the OTHER matches.
-      }
-      // For each other fixture, swap the post-match impact (already in
-      // persisted standings) with the LIVE impact (running score).
+      // 1) User's own match
+      const userFinalH = data.fixture.homeScore ?? 0;
+      const userFinalA = data.fixture.awayScore ?? 0;
+      applyLiveDelta(
+        rows,
+        userFinalH,
+        userFinalA,
+        homeLive,
+        awayLive,
+        data.fixture.homeClubId,
+        data.fixture.awayClubId,
+      );
+      // 2) Every other matchday fixture
       for (const f of otherFixturesLive) {
-        const finalH = f.finalHomeScore ?? 0;
-        const finalA = f.finalAwayScore ?? 0;
-        const liveH = f.liveHome;
-        const liveA = f.liveAway;
-        const homeR = rows.find((r) => r.clubId === f.homeClubId);
-        const awayR = rows.find((r) => r.clubId === f.awayClubId);
-        if (!homeR || !awayR) continue;
-        // Subtract final, add live.
-        // Points
-        const finalWinner: 'home' | 'away' | 'draw' =
-          finalH > finalA ? 'home' : finalH < finalA ? 'away' : 'draw';
-        const liveWinner: 'home' | 'away' | 'draw' =
-          liveH > liveA ? 'home' : liveH < liveA ? 'away' : 'draw';
-        // Remove final's contribution (this fixture already counts as PJ+1 in
-        // persisted; we want to show it as in-progress, so PJ -1 too).
-        homeR.played -= 1;
-        awayR.played -= 1;
-        homeR.points -= finalWinner === 'home' ? 3 : finalWinner === 'draw' ? 1 : 0;
-        awayR.points -= finalWinner === 'away' ? 3 : finalWinner === 'draw' ? 1 : 0;
-        homeR.goalsFor -= finalH;
-        homeR.goalsAgainst -= finalA;
-        awayR.goalsFor -= finalA;
-        awayR.goalsAgainst -= finalH;
-        // Add live's contribution (PJ in-progress; we don't bump PJ since
-        // match isn't over — but we add live goals).
-        homeR.points += liveWinner === 'home' ? 3 : liveWinner === 'draw' ? 1 : 0;
-        awayR.points += liveWinner === 'away' ? 3 : liveWinner === 'draw' ? 1 : 0;
-        homeR.goalsFor += liveH;
-        homeR.goalsAgainst += liveA;
-        awayR.goalsFor += liveA;
-        awayR.goalsAgainst += liveH;
+        applyLiveDelta(
+          rows,
+          f.finalHomeScore ?? 0,
+          f.finalAwayScore ?? 0,
+          f.liveHome,
+          f.liveAway,
+          f.homeClubId,
+          f.awayClubId,
+        );
       }
     }
     rows.sort((a, b) => b.points - a.points || b.goalsFor - a.goalsFor);
@@ -345,7 +355,7 @@
         {#if isReplaying}
           Minuto <span class="font-mono">{liveMinute}'</span>
         {:else if resultHidden}
-          <span class="badge badge-warning">Por jugar — vívelo antes de ver el resultado</span>
+          <span class="badge badge-warning">Por jugar</span>
         {:else if data.fixture.status === 'played'}
           Estado <span class="badge badge-success">FINAL</span>
         {:else}
@@ -424,8 +434,6 @@
               <div class="flex-1 text-sm min-w-0">
                 {#if e.playerName}
                   <span class="font-semibold">{e.playerName}</span>
-                {:else}
-                  <span class="opacity-60">—</span>
                 {/if}
               </div>
               <!-- Spacer column on opposite side so events visually stick to their half -->
@@ -488,6 +496,7 @@
             {#each liveStandings.slice(0, 12) as r, i (r.clubId)}
               {@const isMine = r.clubId === data.fixture.homeClubId || r.clubId === data.fixture.awayClubId}
               <tr
+                animate:flip={{ duration: 800 }}
                 class="standings-row {isMine ? 'font-bold bg-primary/10' : ''}"
               >
                 <td class="font-mono opacity-60 w-6">{i + 1}</td>
