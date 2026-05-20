@@ -103,8 +103,8 @@ export type MatchEventType =
 export interface MatchEvent {
   readonly type: MatchEventType;
   readonly minute: number;
-  readonly team?: 'home' | 'away';
-  readonly player_id?: string;
+  readonly team?: 'home' | 'away' | undefined;
+  readonly player_id?: string | undefined;
   /** For injury events: 'injury_risk' (AC-MATCH-28). For all others in MVP: null allowed. */
   readonly causal_node: string | null;
   /**
@@ -113,7 +113,7 @@ export interface MatchEvent {
    *   injury:   'tackle' | 'fatigue'
    * Stays absent for events that have no sub-type.
    */
-  readonly reason?: string;
+  readonly reason?: string | undefined;
 }
 
 // ── Match input ───────────────────────────────────────────────────────────────

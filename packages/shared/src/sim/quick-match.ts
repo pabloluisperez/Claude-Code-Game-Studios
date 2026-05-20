@@ -37,8 +37,8 @@ export interface QuickMatchEvent {
   readonly minute: number;
   readonly type: 'goal' | 'yellow_card' | 'red_card' | 'injury';
   readonly team: 'home' | 'away';
-  readonly playerId?: string;
-  readonly playerName?: string;
+  readonly playerId?: string | undefined;
+  readonly playerName?: string | undefined;
 }
 
 export interface QuickMatchResult {
