@@ -14,10 +14,12 @@ export const CRISIS_CASHFLOW_THRESHOLD = -10;      // €K/wk
 export const QUIEBRA_CASHFLOW_THRESHOLD = -20;     // €K/wk
 export const EN_RIESGO_CASHFLOW_THRESHOLD = -15;   // €K/wk
 
-// ── TV rights tier (per ADR-011 + GDD economy.md §F4) ────────────────────────
-
-export const TV_RIGHTS_PRIMERA = 8;   // €K/week
-export const TV_RIGHTS_SEGUNDA = 3;   // €K/week
+// ── TV rights (REMOVED 2026-05-20 — per ADR-019 + tv-rights GDD F-TV1) ───────
+// The flat constants TV_RIGHTS_PRIMERA / TV_RIGHTS_SEGUNDA and the helper
+// computeTvRights(divisionTier) were removed. TV revenue is now contract-driven
+// via the tv-rights module. Callers must pass `tvWeeklyEurKOverride` to
+// computeWeeklyRevenue (computed from the active tv_contracts row via
+// TVRightsService.readTVWeeklyRevenue or runTVPrePhase).
 
 // ── Ticket pricing (ADR-014 §MAX_TICKET_EUR formula) ─────────────────────────
 

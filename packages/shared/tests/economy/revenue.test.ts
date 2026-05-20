@@ -7,7 +7,6 @@ import { describe, it, expect } from 'vitest';
 import {
   computeMatchDayRevenue,
   computeSponsorIncome,
-  computeTvRights,
   computeWeeklyRevenue,
   marketTicketEur,
   maxTicketEur,
@@ -15,8 +14,6 @@ import {
 import {
   MAX_TICKET_FLOOR_PRIMERA,
   MAX_TICKET_FLOOR_SEGUNDA,
-  TV_RIGHTS_PRIMERA,
-  TV_RIGHTS_SEGUNDA,
 } from '../../src/sim/economy/constants.js';
 
 describe('maxTicketEur — ADR-014 formula', () => {
@@ -142,37 +139,39 @@ describe('computeSponsorIncome', () => {
   });
 });
 
-describe('computeTvRights', () => {
-  it('test_primera', () => {
-    expect(computeTvRights(1)).toBe(TV_RIGHTS_PRIMERA);
-  });
-  it('test_segunda', () => {
-    expect(computeTvRights(2)).toBe(TV_RIGHTS_SEGUNDA);
-  });
-});
-
-describe('computeWeeklyRevenue — breakdown', () => {
-  it('test_full_breakdown', () => {
+describe('computeWeeklyRevenue — breakdown (post-ADR-019 contract-driven TV)', () => {
+  it('test_full_breakdown_with_tv_contract', () => {
     const breakdown = computeWeeklyRevenue({
       matchDayRevenue: 25,
       sponsors: [
         { status: 'active', weeklyEurK: 3 },
         { status: 'cancelled', weeklyEurK: 5 },
       ],
-      divisionTier: 2,
+      tvWeeklyEurK: 1.75, // REGIONAL D2 1yr
     });
     expect(breakdown.matchDay).toBe(25);
     expect(breakdown.sponsors).toBe(3);
-    expect(breakdown.tvRights).toBe(TV_RIGHTS_SEGUNDA);
-    expect(breakdown.total).toBe(25 + 3 + TV_RIGHTS_SEGUNDA);
+    expect(breakdown.tvRights).toBe(1.75);
+    expect(breakdown.total).toBe(25 + 3 + 1.75);
   });
 
-  it('test_no_match_week_revenue_only_sponsors_tv', () => {
+  it('test_no_tv_contract_treats_revenue_as_zero', () => {
     const breakdown = computeWeeklyRevenue({
       matchDayRevenue: 0,
       sponsors: [{ status: 'active', weeklyEurK: 5 }],
-      divisionTier: 1,
+      tvWeeklyEurK: 0,
     });
-    expect(breakdown.total).toBe(0 + 5 + TV_RIGHTS_PRIMERA);
+    expect(breakdown.tvRights).toBe(0);
+    expect(breakdown.total).toBe(0 + 5 + 0);
+  });
+
+  it('test_nacional_d1_contract_full_revenue', () => {
+    const breakdown = computeWeeklyRevenue({
+      matchDayRevenue: 30,
+      sponsors: [],
+      tvWeeklyEurK: 7.16, // NACIONAL D1 1yr
+    });
+    expect(breakdown.tvRights).toBe(7.16);
+    expect(breakdown.total).toBe(30 + 0 + 7.16);
   });
 });

@@ -17,8 +17,6 @@ import {
   PRIMERA_REFERENCE_MAX,
   STADIUM_CAPACITY_SATURATION,
   TICKET_SNAP_STEP,
-  TV_RIGHTS_PRIMERA,
-  TV_RIGHTS_SEGUNDA,
 } from './constants.js';
 
 // ── MAX_TICKET_EUR + market reference (ADR-014 OQ-ECO-06) ─────────────────────
@@ -166,36 +164,21 @@ export function computeSponsorIncome(sponsors: readonly ActiveSponsorRow[]): num
   return total;
 }
 
-// ── TV rights ────────────────────────────────────────────────────────────────
-
-/**
- * @deprecated Per ADR-019 + tv-rights GDD F-TV1: TV revenue is now contract-driven,
- *   not a flat constant per division. Callers should use the tv-rights service's
- *   `readTVWeeklyRevenue(tx, playthroughId)` and pass the result to
- *   `computeWeeklyRevenue` via the `tvWeeklyEurKOverride` parameter.
- *
- * Kept temporarily to preserve compatibility with callers that haven't migrated.
- * Will be removed when all callers pass `tvWeeklyEurKOverride`.
- */
-export function computeTvRights(divisionTier: 1 | 2): number {
-  return divisionTier === 1 ? TV_RIGHTS_PRIMERA : TV_RIGHTS_SEGUNDA;
-}
-
 // ── Aggregate weekly revenue ─────────────────────────────────────────────────
+//
+// Per ADR-019 + TR-TVR-009: TV revenue is contract-driven. The caller MUST
+// pass `tvWeeklyEurK` (read from the active tv_contracts row, 0 if none).
+// The legacy `computeTvRights(divisionTier)` and flat constants are removed.
 
 export interface WeeklyRevenueArgs {
   readonly matchDayRevenue: number;        // 0 when no home match this week
   readonly sponsors: readonly ActiveSponsorRow[];
-  readonly divisionTier: 1 | 2;
   /**
-   * Per ADR-019 / TR-TVR-009: override TV revenue with the actual contract rate
-   * from the tv-rights module (0 if no ACTIVE contract). When provided, this
-   * value replaces the flat `computeTvRights(divisionTier)` lookup.
-   *
-   * Callers without a tv-rights integration may omit this and fall back to the
-   * deprecated flat constants — to be removed once all callers migrate.
+   * Per ADR-019 / TR-TVR-009: TV revenue from the active contract (0 if
+   * NONE/CANCELLED/EXPIRED). Callers read this via TVRightsService
+   * `readTVWeeklyRevenue` or the dashboard's `runTVPrePhase`.
    */
-  readonly tvWeeklyEurKOverride?: number;
+  readonly tvWeeklyEurK: number;
 }
 
 export interface WeeklyRevenueBreakdown {
@@ -209,12 +192,7 @@ export function computeWeeklyRevenue(
   args: Readonly<WeeklyRevenueArgs>,
 ): WeeklyRevenueBreakdown {
   const sponsorIncome = computeSponsorIncome(args.sponsors);
-  // Per TR-TVR-009: prefer the contract-driven override when provided.
-  // Falls back to the legacy flat constant if not (during migration window).
-  const tvRights =
-    args.tvWeeklyEurKOverride !== undefined
-      ? args.tvWeeklyEurKOverride
-      : computeTvRights(args.divisionTier);
+  const tvRights = args.tvWeeklyEurK;
   const total = args.matchDayRevenue + sponsorIncome + tvRights;
   return {
     matchDay: args.matchDayRevenue,

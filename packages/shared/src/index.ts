@@ -170,12 +170,13 @@ export {
 } from './sim/sports/football/match-session-fsm.js';
 
 // Economy (ECONOMY-002..006)
+// Note: TV_RIGHTS_PRIMERA, TV_RIGHTS_SEGUNDA, computeTvRights() removed in
+// tv-rights epic per ADR-019 (TR-TVR-009 BREAKING CHANGE). TV revenue is now
+// contract-driven via the tv-rights module.
 export {
   EN_RIESGO_BALANCE_THRESHOLD,
   CRISIS_BALANCE_THRESHOLD,
   QUIEBRA_BALANCE_THRESHOLD,
-  TV_RIGHTS_PRIMERA,
-  TV_RIGHTS_SEGUNDA,
   PRIMERA_REFERENCE_MAX,
   MAX_TICKET_FLOOR_SEGUNDA,
   MAX_TICKET_FLOOR_PRIMERA,
@@ -190,7 +191,6 @@ export {
   computeEffectiveTicketPrice,
   computeMatchDayRevenue,
   computeSponsorIncome,
-  computeTvRights,
   computeWeeklyRevenue,
   type MaxTicketArgs,
   type EffectiveTicketPriceArgs,

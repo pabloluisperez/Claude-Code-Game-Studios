@@ -96,10 +96,7 @@ export async function applyWeeklyFlow(
   const revenue = computeWeeklyRevenue({
     matchDayRevenue,
     sponsors: sponsorRows,
-    divisionTier: args.divisionTier,
-    ...(args.tvWeeklyEurKOverride !== undefined && {
-      tvWeeklyEurKOverride: args.tvWeeklyEurKOverride,
-    }),
+    tvWeeklyEurK: args.tvWeeklyEurKOverride ?? 0,
   });
 
   // 3. Compute costs (staff payroll handled by staff-system; not loaded here)

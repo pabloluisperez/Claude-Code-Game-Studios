@@ -3,7 +3,7 @@
 > **Layer**: Feature
 > **GDD**: `design/gdd/tv-rights.md`
 > **Architecture Module**: `apps/api/src/modules/tv-rights/` *(nuevo — añadir a architecture.md al crear el ADR de implementación)*
-> **Status**: ✅ **Ready** — ADR-019 (TV Rights Implementation Contract) escrito 2026-05-20. Ejecutar `/create-stories tv-rights`.
+> **Status**: ✅ **Complete** (2026-05-20) — 11/11 stories Done, 951 tests passing including 17 live-DB integration tests.
 > **Control Manifest**: 2026-05-19
 > **GDD Approved**: 2026-05-20 (R7 — 54 ACs)
 
@@ -94,30 +94,29 @@ es aritmética pura + comparaciones de precisión fija — sin APIs de engine nu
 
 | # | Story | Type | Status | Tests | ADR |
 |---|-------|------|--------|-------|-----|
-| 001 | [tv_contracts Schema + TVRightsRepo](story-001-schema-repo.md) | Integration | Code Complete | DB tests pending live DB | ADR-019 |
+| 001 | [tv_contracts Schema + TVRightsRepo](story-001-schema-repo.md) | Integration | ✅ Done | DB integration ✅ (live Postgres) | ADR-019 |
 | 002 | [F-TV1 Rate Calculation + Guards](story-002-f-tv1-rate-calculation.md) | Logic | ✅ Done | 26/26 ✅ | ADR-019 |
 | 003 | [tv_auction Generation + Unlock Rules](story-003-tv-auction-generation.md) | Logic | ✅ Done | 19/19 ✅ | ADR-008/ADR-015 |
-| 004 | [POST /api/tv/sign + Reject Endpoints](story-004-sign-reject-endpoints.md) | Integration | Code Complete | HTTP tests pending live DB | ADR-019 |
+| 004 | [POST /api/tv/sign + Reject Endpoints](story-004-sign-reject-endpoints.md) | Integration | ✅ Done | 17/17 DB integration tests ✅ | ADR-019 |
 | 005 | [applyTVCorruptionDelta + Threshold Predicates](story-005-corruption-delta-predicates.md) | Logic | ✅ Done | 27/27 ✅ | ADR-019 |
-| 006 | [Tick Order Integration (applyTVPrePhase + applyTVPostPhase)](story-006-tick-order-integration.md) | Integration | Code Complete | 16/16 pure ✅; pipeline tests pending live DB | ADR-019/ADR-008 |
-| 007 | [F-TV2 Midseason Offer + Cancellation Events](story-007-midseason-offer.md) | Logic | ✅ Done | 12/12 ✅ | ADR-019/ADR-015 |
-| 008 | [Multi-Year Rollover + Season Lifecycle](story-008-season-lifecycle-rollover.md) | Integration | Code Complete | Integration tests pending live DB | ADR-019/ADR-005 |
-| 009 | [Cashflow Integration + Economy Breaking Change](story-009-cashflow-integration.md) | Integration | Code Complete (additive) | computeWeeklyRevenue updated; BREAKING CHANGE deletion deferred | ADR-014/ADR-019 |
-| 010 | [F-TV4 fan_loyalty → fan_attendance_effective](story-010-fan-loyalty-f-tv4.md) | Logic | ✅ Done | 16/16 ✅ | ADR-019 |
+| 006 | [Tick Order Integration (applyTVPrePhase + applyTVPostPhase)](story-006-tick-order-integration.md) | Integration | ✅ Done | 16/16 pure ✅ + runTVTick DB-tested ✅ + wired into dashboard advance | ADR-019/ADR-008 |
+| 007 | [F-TV2 Midseason Offer + Cancellation Events](story-007-midseason-offer.md) | Logic | ✅ Done | 12/12 ✅ + persistTVTickEffects DB-tested | ADR-019/ADR-015 |
+| 008 | [Multi-Year Rollover + Season Lifecycle](story-008-season-lifecycle-rollover.md) | Integration | ✅ Done | processSeasonEnd DB-tested (AC-TV-13a/13b) + rolloverTVSeasonStart wired | ADR-019/ADR-005 |
+| 009 | [Cashflow Integration + Economy Breaking Change](story-009-cashflow-integration.md) | Integration | ✅ Done | BREAKING CHANGE applied — `computeTvRights()` + constants deleted; `tvWeeklyEurK` required; wired into dashboard advance | ADR-014/ADR-019 |
+| 010 | [F-TV4 fan_loyalty → fan_attendance_effective](story-010-fan-loyalty-f-tv4.md) | Logic | ✅ Done | 16/16 ✅ + F-TV4 wired into matchday revenue path | ADR-019 |
 | 011 | [/finance UI — TV Rights Panel + Event Display](story-011-finance-ui.md) | UI | ✅ Done | Manual verification via /finance/tv-rights | ADR-012/ADR-017 |
 
-**Implementation Summary (2026-05-20 — autonomous session)**:
-- 6 Logic stories ✅ Done with 116 unit tests passing (002, 003, 005, 006-pure, 007, 010)
-- 4 Integration stories code-complete (001 schema, 004 endpoints, 006 backend, 008 rollover, 009 cashflow)
-- 1 UI story ✅ Done — UX spec authored (`design/ux/tv-rights.md`) + `/finance/tv-rights` route implemented with active contract panel, `tv_auction` modal with offers/duration/risk flags, `tv_midseason_offer` modal, rejection confirm dialog
-- **935 total project tests passing** (919 shared + 15 api + 1 web; no regressions)
-- Migration `0019_shallow_captain_marvel.sql` generated + partial UNIQUE index for idempotent event generation
-- Hono routes `/tv/*` registered in `apps/api/src/server.ts` + smoke tests for the factory
-- Economy `computeWeeklyRevenue` accepts new `tvWeeklyEurKOverride` parameter
+**Implementation Summary (2026-05-20 — autonomous session, 3 commits)**:
+- **All 11 stories ✅ Done** (6 Logic + 4 Integration + 1 UI)
+- **951 total project tests passing** (918 shared + 32 api + 1 web) — 17 DB integration tests against live Postgres
+- Migration `0019_shallow_captain_marvel.sql` generated + applied + partial UNIQUE index for idempotent event generation
+- Hono routes `/tv/*` registered in `apps/api/src/server.ts`
+- UI at `/finance/tv-rights` with active contract panel, `tv_auction` modal (radios + ⚠️ risk flags), `tv_midseason_offer` modal, rejection confirm dialog
 - F-TV4 wired into `computeMatchDayRevenue` (OQ-TV-03 resolved — economy §F3 path with clamp at `stadiumCapacity`)
-- `fan_loyalty` + `corruption_exposure` registered in `design/registry/entities.yaml` as cross-system entities
-- Legacy `getTVRightsWeekly()` / `TV_RIGHTS_*` constants kept temporarily with `@deprecated` — full deletion deferred to follow-up commit when all callers migrate
-- Integration tests with live Postgres still pending (smoke-level coverage in place for routes + service exports)
+- `fan_loyalty` + `corruption_exposure` registered in `design/registry/entities.yaml`
+- **BREAKING CHANGE complete**: `computeTvRights()` + `TV_RIGHTS_PRIMERA/SEGUNDA` constants deleted; `WeeklyRevenueArgs.tvWeeklyEurK` is now required (no more legacy fallback)
+- **runTVTick wired into dashboard `?/advance` action**: TV pre-phase before cascade, post-phase after, `persistTVTickEffects` inside the snapshot transaction
+- **DB integration tests** (17/17 passing against live Postgres): AC-TV-07/17/18/21/24/43/50, atomicity (rollback on conflict), partial UNIQUE constraint (idempotent event generation), runTVTick cancellation flow, processSeasonEnd 1yr→EXPIRED + multi-year rollover
 
 ## Next Step
 

@@ -25,12 +25,21 @@ import {
   sql,
   type Db,
 } from '@smt/db';
-import type { WorldState } from '@smt/shared';
+import {
+  computeEffectiveTicketPrice,
+  computeMatchDayRevenue,
+  type WorldState,
+} from '@smt/shared';
 
 export interface EconomyTickResult {
   readonly patchedState: WorldState;
   readonly sponsorRevenue: number;
   readonly merchRevenue: number;
+  readonly matchDayRevenue: number;
+  readonly matchDayAttendance: number;
+  readonly matchDayTicketPriceEur: number;
+  /** Per ADR-019 / TR-TVR-009: TV weekly revenue from the active contract. 0 if none. */
+  readonly tvRevenue: number;
   readonly staffCost: number;
   readonly playerWages: number;
   readonly cashflow: number;
@@ -77,14 +86,36 @@ async function readEconomyTotals(
  * from the DB and patches `financial_balance`, `weekly_cashflow`,
  * `sponsor_revenue_weekly`, `staff_cost_weekly`, `player_wages_weekly`.
  *
+ * When `homeFixtureThisWeek` is true the club hosted a league match this
+ * week — match-day ticket revenue is added to the cashflow using
+ * `attendance = round(stadium_capacity × fan_attendance / 100)` and the
+ * effective ticket price derived from the cascade `ticket_price_index`.
+ *
  * Idempotent for the same (state, db) — call per advance.
  */
 export async function applyEconomyTick(args: {
   playthroughId: string;
   clubId: string;
   baseState: Readonly<WorldState>;
+  /** True when the user's club plays at home this week. */
+  homeFixtureThisWeek: boolean;
+  /** Division tier for ticket-price math (1=Primera, 2=Segunda-and-below). */
+  divisionTier: 1 | 2;
+  /**
+   * Per ADR-019 / TR-TVR-009: TV weekly revenue from the active contract
+   * (0 if NONE/CANCELLED/EXPIRED). Caller reads this via runTVPrePhase().
+   * When undefined, falls back to 0 (legacy behaviour).
+   */
+  tvWeeklyEurK?: number;
+  /**
+   * Per F-TV4 (tv-rights GDD): manager fan_loyalty value [0,50] for the
+   * matchday attendance boost. When undefined, treated as 0 (no boost).
+   */
+  fanLoyalty?: number;
 }): Promise<EconomyTickResult> {
-  const { playthroughId, clubId, baseState } = args;
+  const { playthroughId, clubId, baseState, homeFixtureThisWeek, divisionTier } = args;
+  const tvWeeklyEurK = args.tvWeeklyEurK ?? 0;
+  const fanLoyalty = args.fanLoyalty ?? 0;
 
   const totals = await db.transaction(async (tx) =>
     readEconomyTotals(tx, playthroughId, clubId),
@@ -96,23 +127,56 @@ export async function applyEconomyTick(args: {
   //   momentum_multiplier = fan_momentum / 50 (50 = neutral = 1×)
   //   availability_multiplier = squad_available_pct / 100
   // No UI to influence this in MVP — it's a derived background income.
-  const fanMomentum = (baseState as Record<string, number>)['fan_momentum'] ?? 50;
-  const squadAvail = (baseState as Record<string, number>)['squad_available_pct'] ?? 80;
+  const stateRead = baseState as Record<string, number>;
+  const fanMomentum = stateRead['fan_momentum'] ?? 50;
+  const squadAvail = stateRead['squad_available_pct'] ?? 80;
   const merchRevenue = Math.round(
     (5) * (fanMomentum / 50) * (squadAvail / 100) * 10,
   ) / 10;
 
+  // Match-day revenue — gate-receipts. Only applied when the club hosts.
+  let matchDayRevenue = 0;
+  let matchDayAttendance = 0;
+  let matchDayTicketPriceEur = 0;
+  if (homeFixtureThisWeek) {
+    const stadiumCapacity = stateRead['stadium_capacity'] ?? 3000;
+    const fanAttendance = stateRead['fan_attendance'] ?? 40;
+    const fanCultureIndex = stateRead['fan_culture_index'] ?? 35;
+    const ticketPriceIndex = stateRead['ticket_price_index'] ?? 50;
+    matchDayAttendance = Math.round(stadiumCapacity * (fanAttendance / 100));
+    const pricing = computeEffectiveTicketPrice({
+      stadiumCapacity,
+      divisionTier,
+      fanCultureIndex,
+      ticketPriceIndex,
+    });
+    matchDayTicketPriceEur = pricing.effectivePriceEur;
+    matchDayRevenue = computeMatchDayRevenue({
+      attendance: matchDayAttendance,
+      ticketPriceEur: matchDayTicketPriceEur,
+      fanLoyalty,
+      stadiumCapacity,
+    });
+  }
+
   const balanceBefore = baseState['financial_balance' as keyof WorldState] ?? 0;
   const cashflow =
-    totals.sponsorRevenue + merchRevenue - totals.staffCost - totals.playerWages;
+    totals.sponsorRevenue +
+    merchRevenue +
+    matchDayRevenue +
+    tvWeeklyEurK -
+    totals.staffCost -
+    totals.playerWages;
   const balanceAfter = balanceBefore + cashflow;
 
   const patchedState = {
-    ...(baseState as Record<string, number>),
+    ...stateRead,
     financial_balance: balanceAfter,
     weekly_cashflow: cashflow,
     sponsor_revenue_weekly: totals.sponsorRevenue,
     merch_revenue_weekly: merchRevenue,
+    matchday_revenue_weekly: matchDayRevenue,
+    tv_revenue_weekly: tvWeeklyEurK,
     staff_cost_weekly: totals.staffCost,
     player_wages_weekly: totals.playerWages,
   } as unknown as WorldState;
@@ -121,6 +185,10 @@ export async function applyEconomyTick(args: {
     patchedState,
     sponsorRevenue: totals.sponsorRevenue,
     merchRevenue,
+    matchDayRevenue,
+    matchDayAttendance,
+    matchDayTicketPriceEur,
+    tvRevenue: tvWeeklyEurK,
     staffCost: totals.staffCost,
     playerWages: totals.playerWages,
     cashflow,

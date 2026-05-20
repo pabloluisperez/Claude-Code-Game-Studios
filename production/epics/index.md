@@ -21,7 +21,7 @@ Strict layer order (Foundation → Core → Feature → Presentation). **9/10 Re
 | 7 | [event-system](event-system/EPIC.md) | Feature | event-system | `design/gdd/event-system.md` | 6/6 done | ✅ **Complete** (2026-05-19) — 24 unit tests; 13-variant resolver |
 | 8 | [league-system](league-system/EPIC.md) | Feature | league-system | `design/gdd/league-system.md` | 7/7 done | ✅ **Complete** (2026-05-19) — 33 unit tests; integration code complete |
 | 9 | [hud-ui](hud-ui/EPIC.md) | Presentation | hud-ui | `design/gdd/hud-ui.md` | 8 stories | ✅ **Ready** — stories created 2026-05-19 |
-| 10 | [tv-rights](tv-rights/EPIC.md) | Feature | tv-rights | `design/gdd/tv-rights.md` | 11 stories | ✅ **Ready** — 10 Ready + 1 Blocked (UI pending /ux-design). Start: `/story-readiness tv-rights/story-001-schema-repo.md` |
+| 10 | [tv-rights](tv-rights/EPIC.md) | Feature | tv-rights | `design/gdd/tv-rights.md` | 11/11 done | ✅ **Complete** (2026-05-20) — 951 tests passing (17 live-DB integration); wired into dashboard advance; F-TV4 in matchday revenue |
 
 ## Coverage Map: Epic ↔ Governing ADRs
 

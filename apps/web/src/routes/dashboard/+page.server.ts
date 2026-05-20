@@ -35,6 +35,11 @@ import {
 import { popEffectsDueAt } from '@smt/shared/sim/delayed-effects';
 import { runMatchDay } from '$lib/server/match-day-runner';
 import { applyEconomyTick } from '$lib/server/economy-tick';
+import {
+  persistTVTickEffects,
+  runTVPostPhase,
+  runTVPrePhase,
+} from '$lib/server/tv-rights-tick';
 import { checkAndRolloverSeason } from '$lib/server/season-rollover';
 import { detectAndPersistMilestones } from '$lib/server/milestones';
 import { grantWeeklyManagerXp } from '$lib/server/manager-xp';
@@ -269,19 +274,84 @@ export const actions: Actions = {
 
     const nextWeek = (latest?.week ?? -1) + 1;
 
+    // ── Determine current division + season (used by TV pre-phase) ──────────
+    const [tvClubRow] = await db
+      .select({ division: clubs.division })
+      .from(clubs)
+      .where(eq(clubs.id, active.clubId))
+      .limit(1);
+    const currentDivision: 'D1' | 'D2' = tvClubRow?.division === 'first' ? 'D1' : 'D2';
+
+    // Compute current season — use league-system if available; default to 1.
+    const [tvLeagueRow] = await db
+      .select({ id: leagues.id })
+      .from(leagues)
+      .where(eq(leagues.playthroughId, active.id))
+      .limit(1);
+    let tvCurrentSeason = 1;
+    if (tvLeagueRow) {
+      const [tvSeasonRow] = await db
+        .select({ seasonNumber: seasons.seasonNumber })
+        .from(seasons)
+        .where(and(eq(seasons.leagueId, tvLeagueRow.id), eq(seasons.status, 'active')))
+        .orderBy(desc(seasons.seasonNumber))
+        .limit(1);
+      if (tvSeasonRow) tvCurrentSeason = tvSeasonRow.seasonNumber;
+    }
+
+    // ── TV PRE-PHASE (Tick Order pasos 1-5) — runs BEFORE cascade ──────────
+    const prevCorruption =
+      (prevState as Record<string, number>)['corruption_exposure'] ?? 0;
+    const tvPre = await runTVPrePhase({
+      playthroughId: active.id,
+      week: nextWeek,
+      season: tvCurrentSeason,
+      currentDivision,
+      prevCorruption,
+    });
+
+    // Inject TV-adjusted corruption into cascade prevState so the cascade
+    // sees the post-F-TV3 value when it computes its own deltas.
+    const prevStateForCascade: Readonly<WorldState> = {
+      ...(prevState as Record<string, number>),
+      corruption_exposure: tvPre.corruptionAfterTV,
+    } as unknown as WorldState;
+
     // 1. Cascade tick
     const result = runTick(
       {
         rng: createSeededRng(`${active.id}:${nextWeek}`),
         currentWeek: nextWeek,
         hasMatchThisWeek: false,
-        prevState,
+        prevState: prevStateForCascade,
       },
       CASCADA_FC_GRAPH,
-      prevState,
+      prevStateForCascade,
       [],
       prevBuffer,
     );
+
+    // ── TV POST-PHASE (Tick Order pasos 6-8) — runs AFTER cascade ──────────
+    // Cascade's effect on corruption = nextState.corruption_exposure - corruptionAfterTV
+    const corruptionAfterCascade =
+      (result.nextState as Record<string, number>)['corruption_exposure'] ?? tvPre.corruptionAfterTV;
+    const externalDelta = corruptionAfterCascade - tvPre.corruptionAfterTV;
+    const tvPost = runTVPostPhase(
+      {
+        playthroughId: active.id,
+        week: nextWeek,
+        season: tvCurrentSeason,
+        currentDivision,
+        prevCorruption,
+      },
+      tvPre,
+      externalDelta,
+    );
+
+    // Patch the cascade's nextState with the post-phase final corruption value
+    // (paso 6 clamping + roundCorruption may differ slightly from cascade's
+    // free-running value).
+    (result.nextState as Record<string, number>)['corruption_exposure'] = tvPost.finalCorruption;
 
     // 1b. Season-ticket weekly drip. New abonados sign up each week from
     // the price-lock week through jornada 3 with a declining curve.
@@ -327,17 +397,41 @@ export const actions: Actions = {
       }
     }
 
-    // 2. Economy tick on top of cascade output (+ ticket bump)
+    // 2. Detect a HOME fixture for this week so gate-receipts feed cashflow.
+    //    Division mapping for ticket-price math: only D1 ('first') uses the
+    //    Primera tier; everything below (incl. Quinta) is treated as tier 2.
+    const [homeFixtureRow] = await db
+      .select({ id: fixtures.id })
+      .from(fixtures)
+      .where(
+        and(
+          eq(fixtures.week, nextWeek),
+          eq(fixtures.homeClubId, active.clubId),
+        ),
+      )
+      .limit(1);
+    const [clubRow] = await db
+      .select({ division: clubs.division })
+      .from(clubs)
+      .where(eq(clubs.id, active.clubId))
+      .limit(1);
+    const divisionTier: 1 | 2 = clubRow?.division === 'first' ? 1 : 2;
+
+    // 3. Economy tick on top of cascade output (+ ticket bump + gate receipts + TV)
     const eco = await applyEconomyTick({
       playthroughId: active.id,
       clubId: active.clubId,
       baseState: stateAfterTickets,
+      homeFixtureThisWeek: !!homeFixtureRow,
+      divisionTier,
+      tvWeeklyEurK: tvPre.revenue,
+      fanLoyalty: tvPre.fanLoyalty,
     });
 
     const { remaining } = popEffectsDueAt(prevBuffer, nextWeek);
     const nextBuffer: DelayedEffectsBuffer = [...remaining, ...result.newDelayedEffects];
 
-    // 3. Persist new snapshot + bump currentWeek
+    // 4. Persist new snapshot + bump currentWeek + TV side-effects
     await db.transaction(async (tx) => {
       await tx.insert(worldSnapshots).values({
         playthroughId: active.id,
@@ -349,12 +443,27 @@ export const actions: Actions = {
         .update(playthroughs)
         .set({ currentWeek: nextWeek, updatedAt: new Date() })
         .where(eq(playthroughs.id, active.id));
+
+      // Persist TV contract status transitions + insert any midseason offer
+      // STOP event (idempotent via partial UNIQUE on calendar_events).
+      await persistTVTickEffects(
+        tx,
+        {
+          playthroughId: active.id,
+          week: nextWeek,
+          season: tvCurrentSeason,
+          currentDivision,
+          prevCorruption,
+        },
+        tvPre,
+        tvPost,
+      );
     });
 
-    // 4. Match-day simulation
+    // 5. Match-day simulation
     const matchDay = await runMatchDay({ playthroughId: active.id, week: nextWeek });
 
-    // 5. Staff message generation
+    // 6. Staff message generation
     const activeStaff = await db
       .select({
         id: staff.id,
