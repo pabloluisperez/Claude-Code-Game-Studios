@@ -3,8 +3,8 @@
 > **Layer**: Foundation
 > **GDD**: `design/gdd/match-simulation.md`
 > **Architecture Module**: `packages/shared/src/sim/sports/football/football-plugin.ts` + `apps/api/src/modules/match/`
-> **Status**: Ready
-> **Stories**: Not yet created — run `/create-stories match-simulation`
+> **Status**: ✅ **Complete** (2026-05-19) — 18/18 stories Done. 15 fully tested + 3 code-complete with integration tests deferred to env with BullMQ + Redis + Socket.IO running (MATCH-SIM-016, 017, 018).
+> **Stories**: 18 stories at `production/epics/match-simulation/stories/` (see also README.md)
 > **Control Manifest**: 2026-05-19
 
 ## Overview
