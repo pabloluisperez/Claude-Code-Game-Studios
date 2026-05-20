@@ -64,6 +64,20 @@
       "when": 1779228235261,
       "tag": "0008_legal_squirrel_girl",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1779262485999,
+      "tag": "0009_cynical_drax",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1779262617878,
+      "tag": "0010_nebulous_nighthawk",
+      "breakpoints": true
     }
   ]
 }

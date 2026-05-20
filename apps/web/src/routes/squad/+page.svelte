@@ -7,6 +7,7 @@
 <script lang="ts">
   import type { PageData, ActionData } from './$types';
   import { enhance } from '$app/forms';
+  import { describeTraits } from '@smt/shared';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -169,10 +170,29 @@
       </div>
 
       {#if selected}
+        {@const traits = describeTraits((selected.traits as string[]) ?? [])}
         <div class="modal modal-open">
           <div class="modal-box max-w-2xl">
             <h3 class="font-bold text-lg">{selected.firstName} {selected.lastName}</h3>
             <p class="opacity-60 text-sm">{selected.position} · {selected.nationality}</p>
+
+            {#if traits.length > 0}
+              <div class="flex flex-wrap gap-2 mt-3">
+                {#each traits as t}
+                  <div
+                    class="badge gap-1
+                           {t.tone === 'positive' ? 'badge-success' : t.tone === 'negative' ? 'badge-error' : 'badge-ghost'}"
+                    title={t.description}
+                  >
+                    <span>{t.icon}</span>
+                    <span>{t.label}</span>
+                  </div>
+                {/each}
+              </div>
+              <div class="text-xs opacity-60 mt-1">
+                {traits.map((t) => t.description).join(' · ')}
+              </div>
+            {/if}
 
             <div class="grid grid-cols-2 gap-4 mt-4">
               <div>

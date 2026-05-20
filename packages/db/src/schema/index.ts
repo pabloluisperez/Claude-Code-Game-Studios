@@ -11,3 +11,4 @@ export * from './sponsors';
 export * from './manager-rpg';
 export * from './staff';
 export * from './calendar-events';
+export * from './milestones';

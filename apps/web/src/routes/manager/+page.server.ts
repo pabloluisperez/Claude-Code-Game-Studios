@@ -1,6 +1,13 @@
 import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
-import { db, managerProfiles, skillXpEvents, eq, desc } from '@smt/db';
+import {
+  db,
+  managerProfiles,
+  skillXpEvents,
+  careerMilestones,
+  eq,
+  desc,
+} from '@smt/db';
 
 export const load: PageServerLoad = async ({ parent }) => {
   const { user, activePlaythrough } = await parent();
@@ -23,9 +30,16 @@ export const load: PageServerLoad = async ({ parent }) => {
     .orderBy(desc(skillXpEvents.createdAt))
     .limit(20);
 
+  const milestones = await db
+    .select()
+    .from(careerMilestones)
+    .where(eq(careerMilestones.playthroughId, activePlaythrough.id))
+    .orderBy(desc(careerMilestones.unlockedAt));
+
   return {
     hasPlaythrough: true as const,
     profile: profile ?? null,
     log,
+    milestones,
   };
 };

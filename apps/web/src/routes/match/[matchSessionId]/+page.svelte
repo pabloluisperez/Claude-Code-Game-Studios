@@ -14,6 +14,7 @@
   import { onDestroy, onMount } from 'svelte';
   import { page } from '$app/stores';
   import { joinMatchRoom, disconnectMatchSocket } from '$lib/sockets';
+  import { generateMatchRecap } from '@smt/shared';
 
   let { data }: { data: PageData } = $props();
 
@@ -30,6 +31,27 @@
   const persistedEvents = $derived.by<FeedEvent[]>(() => {
     const outcome = data.fixture.matchOutcomeData as { events?: FeedEvent[] } | null;
     return outcome?.events ?? [];
+  });
+
+  const recap = $derived.by(() => {
+    if (
+      data.fixture.status !== 'played' ||
+      data.fixture.homeScore === null ||
+      data.fixture.awayScore === null
+    ) {
+      return null;
+    }
+    return generateMatchRecap({
+      homeName: data.fixture.homeName,
+      awayName: data.fixture.awayName,
+      homeScore: data.fixture.homeScore,
+      awayScore: data.fixture.awayScore,
+      events: persistedEvents.map((e) => ({
+        minute: e.minute,
+        type: e.type as 'goal' | 'yellow_card' | 'red_card' | 'injury',
+        team: e.team,
+      })),
+    });
   });
 
   let liveEvents = $state<FeedEvent[]>([]);
@@ -177,6 +199,19 @@
     <div class="alert alert-success shadow">
       <span>⏱ Final del partido. Vuelve al dashboard cuando quieras.</span>
     </div>
+  {/if}
+
+  <!-- Match recap (newspaper-style) -->
+  {#if recap}
+    <section class="card bg-base-100 shadow border-2 border-base-300">
+      <div class="card-body py-4">
+        <div class="flex items-baseline justify-between border-b border-base-300 pb-2 mb-2">
+          <h3 class="font-serif text-xl font-bold">Crónica</h3>
+          <span class="text-xs opacity-50">El Diario de Cascada</span>
+        </div>
+        <p class="font-serif text-base leading-relaxed">{recap}</p>
+      </div>
+    </section>
   {/if}
 
   <!-- Event feed -->

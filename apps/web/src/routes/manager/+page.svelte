@@ -162,6 +162,29 @@
       {/each}
     </section>
 
+    <!-- Trophies / milestones -->
+    {#if data.milestones.length > 0}
+      <section class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h2 class="card-title">Hitos de carrera</h2>
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mt-2">
+            {#each data.milestones as m}
+              <div
+                class="card bg-base-200 shadow-sm hover:shadow-md transition-shadow"
+                title={m.description}
+              >
+                <div class="card-body p-3 text-center">
+                  <div class="text-4xl">{m.icon}</div>
+                  <div class="font-bold text-sm mt-1">{m.label}</div>
+                  <div class="text-xs opacity-60">Sem {m.week}</div>
+                </div>
+              </div>
+            {/each}
+          </div>
+        </div>
+      </section>
+    {/if}
+
     <!-- Career log -->
     <section class="card bg-base-100 shadow">
       <div class="card-body">

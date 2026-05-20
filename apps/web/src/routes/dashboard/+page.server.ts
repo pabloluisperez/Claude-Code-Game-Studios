@@ -35,6 +35,7 @@ import { popEffectsDueAt } from '@smt/shared/sim/delayed-effects';
 import { runMatchDay } from '$lib/server/match-day-runner';
 import { applyEconomyTick } from '$lib/server/economy-tick';
 import { checkAndRolloverSeason } from '$lib/server/season-rollover';
+import { detectAndPersistMilestones } from '$lib/server/milestones';
 
 export const load: PageServerLoad = async ({ parent, url }) => {
   const { user, activePlaythrough } = await parent();
@@ -290,7 +291,12 @@ export const actions: Actions = {
 
     // 5. Staff message generation
     const activeStaff = await db
-      .select({ id: staff.id, role: staff.role, qualityTier: staff.qualityTier })
+      .select({
+        id: staff.id,
+        role: staff.role,
+        qualityTier: staff.qualityTier,
+        name: staff.name,
+      })
       .from(staff)
       .where(and(eq(staff.playthroughId, active.id), eq(staff.status, 'active')));
 
@@ -325,22 +331,48 @@ export const actions: Actions = {
           .limit(1)
           .catch(() => [{ seasonNumber: 1 }] as Array<{ seasonNumber: number }>);
 
+        // Prefix each message with the staff member's name + role label so
+        // the dashboard shows a proper "Marta (preparadora física): ..." voice
+        // instead of bare templates.
+        const ROLE_LABEL: Readonly<Record<string, string>> = {
+          groundskeeper: 'jardinero',
+          fitness_coach: 'preparador físico',
+          commercial_director: 'director comercial',
+          scouting_director: 'director de scouting',
+          finance_director: 'director financiero',
+          head_coach: 'segundo entrenador',
+        };
+        const staffById = new Map(activeStaff.map((s) => [s.id, s]));
+
         await db.insert(staffMessages).values(
-          generated.map((m) => ({
-            playthroughId: active.id,
-            staffId: m.staffId,
-            week: nextWeek,
-            season: activeSeason?.seasonNumber ?? 1,
-            priority: m.priority,
-            templateKey: m.templateKey,
-            content: m.content,
-            isRead: false,
-          })),
+          generated.map((m) => {
+            const s = staffById.get(m.staffId);
+            const firstName = (s?.name ?? 'Staff').split(' ')[0];
+            const roleLabel = ROLE_LABEL[m.role] ?? m.role;
+            const verb = m.priority === 'URGENT' ? 'avisa' : 'comenta';
+            const voiced = `${firstName} (${roleLabel}) ${verb}: ${m.content}`;
+            return {
+              playthroughId: active.id,
+              staffId: m.staffId,
+              week: nextWeek,
+              season: activeSeason?.seasonNumber ?? 1,
+              priority: m.priority,
+              templateKey: m.templateKey,
+              content: voiced,
+              isRead: false,
+            };
+          }),
         );
       }
     }
 
-    // 6. Season rollover (if needed)
+    // 6. Career milestones — append-only "firsts" log.
+    await detectAndPersistMilestones({
+      playthroughId: active.id,
+      clubId: active.clubId,
+    });
+
+    // 7. Season rollover (if needed)
     const rollover = await checkAndRolloverSeason({
       playthroughId: active.id,
       currentWeek: nextWeek,

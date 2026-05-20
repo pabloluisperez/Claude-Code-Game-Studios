@@ -79,6 +79,10 @@ export const players = pgTable(
       .notNull()
       .default([]),
 
+    // Player personality traits (0-2 per player, generated at roster creation).
+    // Cosmetic in MVP; mechanical effects post-MVP.
+    traits: jsonb('traits').$type<string[]>().notNull().default([]),
+
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

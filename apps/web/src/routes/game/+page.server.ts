@@ -41,6 +41,7 @@ import {
   generateDoubleRoundRobin,
   initManagerSkills,
   createSeededRng,
+  pickTraits,
   STAFF_WEEKLY_WAGE_EURK,
   LEAGUE_KICKOFF_WEEK,
 } from '@smt/shared';
@@ -133,7 +134,7 @@ export const actions: Actions = {
       });
 
       await tx.insert(players).values(
-        userRoster.map((p) => ({
+        userRoster.map((p, i) => ({
           clubId: newClub.id,
           playthroughId: newPlaythrough.id,
           firstName: p.firstName,
@@ -149,6 +150,7 @@ export const actions: Actions = {
           salaryEurK: 2,
           contractStartWeek: 0,
           contractEndWeek: 76,
+          traits: [...pickTraits(`${newPlaythrough.id}:user:${i}:${p.firstName}${p.lastName}`)],
         })),
       );
 
@@ -180,7 +182,7 @@ export const actions: Actions = {
       // Persist AI rosters (concat all in one insert for speed).
       const aiPlayerRows = aiSeeds.flatMap((seed, i) => {
         const aiClubId = aiClubRows[i]!.id;
-        return seed.roster.map((p) => ({
+        return seed.roster.map((p, j) => ({
           clubId: aiClubId,
           playthroughId: newPlaythrough.id,
           firstName: p.firstName,
@@ -196,6 +198,7 @@ export const actions: Actions = {
           salaryEurK: 1,
           contractStartWeek: 0,
           contractEndWeek: 76,
+          traits: [...pickTraits(`${newPlaythrough.id}:ai${i}:${j}:${p.firstName}${p.lastName}`)],
         }));
       });
       if (aiPlayerRows.length > 0) await tx.insert(players).values(aiPlayerRows);

@@ -7,7 +7,42 @@
 -->
 <script lang="ts">
   import type { PageData } from './$types';
+  import { enhance } from '$app/forms';
+  import { generateHeadlines, weekToDate } from '@smt/shared';
+  import AdvanceTransition from '$lib/components/advance-transition.svelte';
+
   let { data }: { data: PageData } = $props();
+
+  let showTransition = $state(false);
+
+  // Headlines for the transition modal — generated from the current week's
+  // data so the user sees a recap of what just happened.
+  const transitionHeadlines = $derived.by(() => {
+    if (!data.hasPlaythrough) return [];
+    return generateHeadlines({
+      clubName: data.activePlaythrough?.clubName ?? 'el club',
+      week: data.week,
+      weekDateDisplay: data.weekDate.display,
+      lastResult: data.lastResult && data.lastResult.outcome
+        ? {
+            opponentName: data.lastResult.opponentName ?? 'rival',
+            isHome: data.lastResult.isHome,
+            myScore: data.lastResult.myScore ?? 0,
+            oppScore: data.lastResult.oppScore ?? 0,
+            outcome: data.lastResult.outcome,
+          }
+        : undefined,
+      position: data.position ?? undefined,
+      totalClubs: data.standingsCount > 0 ? data.standingsCount : undefined,
+      weeklyCashflow: data.worldState?.weekly_cashflow,
+      financialBalance: data.worldState?.financial_balance,
+    });
+  });
+
+  const nextWeekDateDisplay = $derived.by(() => {
+    if (!data.hasPlaythrough) return '';
+    return weekToDate(data.week + 1).display;
+  });
 
   interface NodeReading {
     label: string;
@@ -70,6 +105,14 @@
   }
 </script>
 
+<AdvanceTransition
+  open={showTransition}
+  fromDateDisplay={data.hasPlaythrough ? data.weekDate.display : ''}
+  toDateDisplay={nextWeekDateDisplay}
+  headlines={transitionHeadlines}
+  minDurationMs={2500}
+/>
+
 <div class="space-y-6">
   {#if !data.hasPlaythrough}
     <div class="hero bg-base-200 rounded-lg">
@@ -99,7 +142,23 @@
               {/if}
             </p>
           </div>
-          <form method="POST" action="/dashboard?/advance">
+          <form
+            method="POST"
+            action="/dashboard?/advance"
+            use:enhance={() => {
+              showTransition = true;
+              return async ({ update }) => {
+                // Hold the modal at least until the server redirect lands;
+                // the modal itself enforces a minimum visual duration via its
+                // internal timer.
+                await new Promise((r) => setTimeout(r, 2500));
+                await update();
+                // The redirect navigation will unmount this page; the
+                // transition modal disappears with it. Reset just in case.
+                showTransition = false;
+              };
+            }}
+          >
             <button class="btn btn-primary btn-lg" type="submit">
               ▶ Avanzar semana
             </button>
@@ -132,6 +191,30 @@
         </div>
       </section>
     {/if}
+
+    <!-- Newspaper card — auto-generated headlines from this week's state -->
+    <section class="card bg-base-100 shadow border-2 border-base-300">
+      <div class="card-body py-4">
+        <div class="flex items-baseline justify-between border-b border-base-300 pb-2 mb-3">
+          <h2 class="font-serif text-2xl font-bold tracking-tight">El Diario de Cascada</h2>
+          <span class="text-xs opacity-50 font-mono">{data.weekDate.display}</span>
+        </div>
+        <div class="space-y-2">
+          {#each transitionHeadlines.slice(0, 4) as h, i}
+            <div class="flex gap-3 items-start py-1
+                        {i === 0 ? 'font-serif text-lg font-bold leading-tight' : 'text-sm'}">
+              <span class="opacity-50 text-xs uppercase tracking-wider mt-1 w-16 flex-shrink-0">
+                {h.tag}
+              </span>
+              <p class="flex-1">{h.text}</p>
+            </div>
+            {#if i < 3 && i < transitionHeadlines.length - 1}
+              <div class="border-t border-dashed border-base-300"></div>
+            {/if}
+          {/each}
+        </div>
+      </div>
+    </section>
 
     <!-- Nodes -->
     {#if nodes.length > 0}

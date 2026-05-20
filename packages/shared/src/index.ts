@@ -29,6 +29,27 @@ export {
   type InGameDate,
 } from './sim/calendar.js';
 
+// Newspaper headlines generator.
+export {
+  generateHeadlines,
+  type Headline,
+  type HeadlineContext,
+} from './sim/headlines.js';
+
+// Player personality traits (cosmetic in MVP).
+export {
+  pickTraits,
+  describeTraits,
+  TRAITS,
+  type TraitDef,
+} from './sim/player-traits.js';
+
+// Match recap (newspaper-style summary).
+export {
+  generateMatchRecap,
+  type MatchRecapArgs,
+} from './sim/match-recap.js';
+
 // Cascade-engine runtime — runTick + the canonical Cascada FC edge definitions.
 export { runTick } from './sim/cascade-engine.js';
 export { CASCADA_FC_GRAPH, type CascadeEdgeDef } from './sim/cascade-graph.js';
