@@ -15,6 +15,15 @@
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
+  const ROLE_ICON: Readonly<Record<string, string>> = {
+    groundskeeper: '🌱',
+    fitness_coach: '💪',
+    commercial_director: '💼',
+    scouting_director: '🔍',
+    finance_director: '💰',
+    head_coach: '🎯',
+  };
+
   type RoleInfo = Extract<PageData, { hasPlaythrough: true }>['roles'][number];
   type StaffRow = Extract<PageData, { hasPlaythrough: true }>['activeStaff'][number];
 
@@ -72,12 +81,18 @@
     <section class="grid grid-cols-1 md:grid-cols-2 gap-4">
       {#each data.roles as r (r.role)}
         {@const current = staffForRole(r.role)}
-        <div class="card bg-base-100 shadow">
+        <div
+          class="card bg-base-100 shadow-md hover:shadow-xl transition-shadow border-l-4
+                 {current ? 'border-l-success' : 'border-l-base-300'}"
+        >
           <div class="card-body">
-            <div class="flex justify-between items-baseline">
-              <div>
-                <h3 class="font-bold text-lg">{r.label}</h3>
-                <div class="text-xs opacity-60 font-mono">{r.role}</div>
+            <div class="flex justify-between items-center">
+              <div class="flex items-center gap-2">
+                <span class="text-3xl">{ROLE_ICON[r.role] ?? '🧑'}</span>
+                <div>
+                  <h3 class="font-bold text-lg leading-tight">{r.label}</h3>
+                  <div class="text-xs opacity-60 font-mono">{r.role}</div>
+                </div>
               </div>
               {#if current}
                 <span class="badge badge-success">Activo</span>
@@ -86,23 +101,24 @@
               {/if}
             </div>
 
-            <div class="text-xs opacity-70 mt-1">
+            <div class="text-xs opacity-70 mt-1 border-t border-base-300 pt-2">
               Domina: <span class="font-mono">{r.domain.join(', ')}</span>
             </div>
 
             {#if current}
-              <div class="mt-3 p-2 bg-base-200 rounded flex gap-3 items-center">
-                <Avatar seed={`staff:${current.id}:${current.name}`} size={56} framed />
+              <div class="mt-3 p-3 bg-gradient-to-br from-base-200 to-base-300 rounded-lg flex gap-3 items-center">
+                <Avatar seed={`staff:${current.id}:${current.name}`} size={64} framed />
                 <div class="flex-1">
                   <div class="font-semibold">{current.name}</div>
-                  <div class="text-xs opacity-70">
-                    Tier {current.qualityTier} · {current.weeklyEurK} €K/sem
+                  <div class="text-xs opacity-70 mt-0.5">
+                    <span class="badge badge-primary badge-sm">Tier {current.qualityTier}</span>
+                    <span class="ml-1">{current.weeklyEurK} €K/sem</span>
                   </div>
                   <form
                     method="POST"
                     action="?/dismiss"
                     use:enhance
-                    class="mt-1"
+                    class="mt-1.5"
                   >
                     <input type="hidden" name="staffId" value={current.id} />
                     <button class="btn btn-ghost btn-xs" type="submit">
@@ -111,16 +127,22 @@
                   </form>
                 </div>
               </div>
-              <div class="text-xs opacity-60 mt-2">¿Subir de tier?</div>
+              <div class="text-xs opacity-60 mt-3 mb-1 font-semibold uppercase tracking-wide">
+                ¿Subir de tier?
+              </div>
+            {:else}
+              <div class="text-xs opacity-60 mt-3 mb-1 font-semibold uppercase tracking-wide">
+                Contratar
+              </div>
             {/if}
 
-            <div class="flex gap-2 mt-2 flex-wrap">
+            <div class="flex gap-2 flex-wrap">
               {#each [1, 2, 3] as tier}
                 <form
                   method="POST"
                   action="?/hire"
                   use:enhance
-                  class="flex-1 min-w-[6rem]"
+                  class="flex-1 min-w-[5.5rem]"
                 >
                   <input type="hidden" name="role" value={r.role} />
                   <input type="hidden" name="tier" value={tier} />

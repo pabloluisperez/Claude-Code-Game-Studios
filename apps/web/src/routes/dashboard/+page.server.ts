@@ -38,7 +38,7 @@ import { applyEconomyTick } from '$lib/server/economy-tick';
 import { checkAndRolloverSeason } from '$lib/server/season-rollover';
 import { detectAndPersistMilestones } from '$lib/server/milestones';
 import { grantWeeklyManagerXp } from '$lib/server/manager-xp';
-import { maybePaySeasonTickets } from '$lib/server/season-tickets';
+import { maybeDripSeasonTickets } from '$lib/server/season-tickets';
 
 export const load: PageServerLoad = async ({ parent, url }) => {
   const { user, activePlaythrough } = await parent();
@@ -275,21 +275,49 @@ export const actions: Actions = {
       prevBuffer,
     );
 
-    // 1b. Season-ticket lump-sum, if we just entered a new season. Bumps
-    // the balance directly (one-off injection, not weekly recurring).
-    const ticketPayment = await maybePaySeasonTickets({
+    // 1b. Season-ticket weekly drip. New abonados sign up each week from
+    // the price-lock week through jornada 3 with a declining curve.
+    const ticketDrip = await maybeDripSeasonTickets({
       playthroughId: active.id,
       clubId: active.clubId,
       currentWeek: nextWeek,
     });
-    const stateAfterTickets = ticketPayment.paid
+    const stateAfterTickets = ticketDrip.paid
       ? ({
           ...(result.nextState as Record<string, number>),
           financial_balance:
             ((result.nextState as Record<string, number>)['financial_balance'] ?? 0) +
-            (ticketPayment.totalEurK ?? 0),
+            (ticketDrip.weeklyEurK ?? 0),
         } as typeof result.nextState)
       : result.nextState;
+
+    // If new abonados arrived this week, drop a finance/fan headline as a
+    // staff message so the user sees the signup wave.
+    if (ticketDrip.paid && ticketDrip.newHolders && ticketDrip.newHolders > 0) {
+      const [commercial] = await db
+        .select({ id: staff.id })
+        .from(staff)
+        .where(
+          and(
+            eq(staff.playthroughId, active.id),
+            eq(staff.role, 'commercial_director'),
+            eq(staff.status, 'active'),
+          ),
+        )
+        .limit(1);
+      if (commercial) {
+        await db.insert(staffMessages).values({
+          playthroughId: active.id,
+          staffId: commercial.id,
+          week: nextWeek,
+          season: 1,
+          priority: 'ROUTINE',
+          templateKey: 'commercial:abono_signup',
+          content: `Director comercial comenta: esta semana se sumaron ${ticketDrip.newHolders} nuevos abonados (+${ticketDrip.weeklyEurK} €K).`,
+          isRead: false,
+        });
+      }
+    }
 
     // 2. Economy tick on top of cascade output (+ ticket bump)
     const eco = await applyEconomyTick({

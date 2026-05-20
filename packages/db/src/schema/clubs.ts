@@ -25,6 +25,17 @@ export const clubs = pgTable('clubs', {
   seasonTicketHolders: integer('season_ticket_holders').notNull().default(100),
   /** Highest season number whose season-ticket lump-sum was already paid. */
   lastSeasonTicketPaidSeason: integer('last_season_ticket_paid_season').notNull().default(0),
+  /**
+   * Season number for which the ticket price has been locked by the user.
+   * Once set, the price cannot be changed for that season. Reset on
+   * season rollover so the next pretemporada unlocks again.
+   */
+  seasonTicketPriceLockedSeason: integer('season_ticket_price_locked_season').notNull().default(0),
+  /**
+   * Running count of holders who have signed up for the upcoming season's
+   * abono. Drips up each week of pretemporada + first 3 matchdays.
+   */
+  seasonTicketHoldersCollected: integer('season_ticket_holders_collected').notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 });

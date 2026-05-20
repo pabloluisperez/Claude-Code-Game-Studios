@@ -75,18 +75,28 @@
             </div>
           </div>
 
-          {#if data.pretemporada}
+          {#if data.isPriceLocked}
+            <div class="alert alert-warning py-2 mt-3">
+              <span class="text-xs">
+                🔒 Precio fijado para esta temporada — ya se está captando abonados.
+                {#if data.club.seasonTicketHoldersCollected > 0}
+                  Llevamos {data.club.seasonTicketHoldersCollected} / {data.club.seasonTicketHolders} confirmados.
+                {/if}
+              </span>
+            </div>
+          {:else if data.pretemporada}
             <div class="alert alert-info py-2 mt-3">
               <span class="text-xs">
-                ✅ Pretemporada — puedes cambiar el precio del abono.
+                ✅ Pretemporada — puedes fijar el precio del abono.
                 {#if data.weeksUntilKickoff !== null && data.weeksUntilKickoff > 0}
                   Quedan {data.weeksUntilKickoff} semana{data.weeksUntilKickoff === 1 ? '' : 's'} hasta la jornada 1.
                 {/if}
+                <strong class="block mt-1">Solo podrás fijarlo una vez por temporada.</strong>
               </span>
             </div>
             <form method="POST" action="?/setTicketPrice" use:enhance class="mt-2">
               <label class="form-control w-full max-w-xs">
-                <span class="label-text text-xs">Cambiar precio del abono (5-200 €)</span>
+                <span class="label-text text-xs">Fijar precio del abono (5-200 €)</span>
                 <div class="join">
                   <input
                     class="join-item input input-bordered"
@@ -97,19 +107,20 @@
                     step="5"
                     value={data.club.seasonTicketPriceEur}
                   />
-                  <button type="submit" class="join-item btn btn-primary">Guardar</button>
+                  <button type="submit" class="join-item btn btn-primary">Fijar</button>
                 </div>
               </label>
             </form>
             <p class="text-xs opacity-60 mt-2">
               ≤ 25 € → más abonados, peor margen.
               ≥ 50 € → menos abonados pero más caro por persona.
-              El cambio aplica a esta temporada que está a punto de empezar.
+              Una vez fijado, los abonados se suman gradualmente durante la
+              pretemporada y los 3 primeros partidos.
             </p>
           {:else}
             <div class="alert alert-warning py-2 mt-3">
               <span class="text-xs">
-                🔒 Solo puedes cambiar el precio del abono en pretemporada.
+                🔒 Solo puedes fijar el precio del abono en pretemporada.
                 Espera al final de la temporada actual.
               </span>
             </div>

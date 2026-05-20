@@ -100,6 +100,22 @@ export const load: PageServerLoad = async ({ parent }) => {
     }
   }
 
+  // Resolve the upcoming season number for lock comparison.
+  let upcomingSeasonNumber = 1;
+  if (league) {
+    const [activeSeason] = await db
+      .select({ seasonNumber: seasons.seasonNumber })
+      .from(seasons)
+      .where(and(eq(seasons.leagueId, league.id), eq(seasons.status, 'active')))
+      .orderBy(desc(seasons.seasonNumber))
+      .limit(1);
+    if (activeSeason) upcomingSeasonNumber = activeSeason.seasonNumber;
+  }
+
+  const isPriceLocked = club
+    ? club.seasonTicketPriceLockedSeason >= upcomingSeasonNumber
+    : false;
+
   return {
     hasPlaythrough: true as const,
     snapshots: snapshots.map((s) => ({
@@ -111,11 +127,14 @@ export const load: PageServerLoad = async ({ parent }) => {
       ? {
           seasonTicketPriceEur: club.seasonTicketPriceEur,
           seasonTicketHolders: club.seasonTicketHolders,
+          seasonTicketHoldersCollected: club.seasonTicketHoldersCollected,
           fanBase: club.fanBase,
         }
       : null,
     pretemporada,
     weeksUntilKickoff,
+    isPriceLocked,
+    upcomingSeasonNumber,
   };
 };
 
@@ -143,6 +162,33 @@ export const actions: Actions = {
       });
     }
 
+    // Lock check: if already set for the upcoming season, refuse.
+    const [league] = await db
+      .select()
+      .from(leagues)
+      .where(eq(leagues.playthroughId, active.id))
+      .limit(1);
+    let upcomingSeasonNumber = 1;
+    if (league) {
+      const [activeSeason] = await db
+        .select({ seasonNumber: seasons.seasonNumber })
+        .from(seasons)
+        .where(and(eq(seasons.leagueId, league.id), eq(seasons.status, 'active')))
+        .orderBy(desc(seasons.seasonNumber))
+        .limit(1);
+      if (activeSeason) upcomingSeasonNumber = activeSeason.seasonNumber;
+    }
+    const [currentClub] = await db
+      .select()
+      .from(clubs)
+      .where(eq(clubs.id, active.clubId))
+      .limit(1);
+    if (currentClub && currentClub.seasonTicketPriceLockedSeason >= upcomingSeasonNumber) {
+      return fail(400, {
+        error: 'El precio del abono ya está fijado para esta temporada.',
+      });
+    }
+
     // Adjust holder count based on the new price vs market reference (35€).
     // - 25€ or less → +10% holders (cap at fanBase × 0.4)
     // - 50€ or more → -10% holders (floor at 50)
@@ -162,6 +208,10 @@ export const actions: Actions = {
       .set({
         seasonTicketPriceEur: Math.round(raw),
         seasonTicketHolders: holders,
+        // Reset collected so the drip starts fresh from this set-week.
+        seasonTicketHoldersCollected: 0,
+        // Lock the price for the upcoming season.
+        seasonTicketPriceLockedSeason: upcomingSeasonNumber,
         updatedAt: new Date(),
       })
       .where(eq(clubs.id, active.clubId));

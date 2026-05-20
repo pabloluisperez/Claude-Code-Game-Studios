@@ -1,12 +1,16 @@
 /**
- * Season-ticket lump-sum payment.
+ * Season-ticket weekly drip.
  *
- * Triggered during advance when the user's club enters a new season for the
- * first time. Pays `holders × price` euros (converted to €K) into the next
- * worldSnapshot's balance. Tracks `clubs.lastSeasonTicketPaidSeason` so we
- * never double-pay.
+ * The flow is:
+ *   1. During early pretemporada the user sets the price (locks it for the
+ *      current season).
+ *   2. From the week the price is set through `startWeek + 2` (the third
+ *      matchday inclusive), new holders sign up each week following a
+ *      declining curve. Each new holder pays the full season price.
+ *   3. Once all targeted holders have signed (or the window closes),
+ *      collection stops for the season.
  *
- * Story: Season tickets stub
+ * Story: Abono v2 — weekly drip
  * Control Manifest: 2026-05-20
  */
 
@@ -20,22 +24,29 @@ import {
   desc,
 } from '@smt/db';
 
-export interface SeasonTicketPayment {
+/**
+ * Declining curve for week-since-lock → fraction of total holders signing
+ * up that week. Total should sum to ~1.0 across the 7-week window.
+ */
+const DRIP_CURVE: readonly number[] = [0.28, 0.20, 0.15, 0.12, 0.10, 0.08, 0.07];
+/** Length of the collection window in weeks (pretemporada tail + first 3 matchdays). */
+const DRIP_WEEKS = DRIP_CURVE.length;
+
+export interface SeasonTicketWeeklyResult {
   paid: boolean;
-  seasonNumber?: number;
-  holders?: number;
-  priceEur?: number;
-  totalEurK?: number;
+  newHolders?: number;
+  weeklyEurK?: number;
+  totalHoldersAfter?: number;
+  weekIntoCollection?: number;
 }
 
-export async function maybePaySeasonTickets(args: {
+export async function maybeDripSeasonTickets(args: {
   playthroughId: string;
   clubId: string;
   currentWeek: number;
-}): Promise<SeasonTicketPayment> {
+}): Promise<SeasonTicketWeeklyResult> {
   const { playthroughId, clubId, currentWeek } = args;
 
-  // What season are we currently in?
   const [league] = await db
     .select()
     .from(leagues)
@@ -51,29 +62,58 @@ export async function maybePaySeasonTickets(args: {
     .limit(1);
   if (!activeSeason) return { paid: false };
 
-  // Only pay starting at the season's startWeek.
-  if (currentWeek < activeSeason.startWeek) return { paid: false };
-
   const [club] = await db.select().from(clubs).where(eq(clubs.id, clubId)).limit(1);
   if (!club) return { paid: false };
-  if (club.lastSeasonTicketPaidSeason >= activeSeason.seasonNumber) {
+
+  // Only drip if the price is locked for THIS season.
+  if (club.seasonTicketPriceLockedSeason !== activeSeason.seasonNumber) {
     return { paid: false };
   }
 
-  const holders = club.seasonTicketHolders;
-  const priceEur = club.seasonTicketPriceEur;
-  const totalEurK = Math.round((holders * priceEur) / 1000);
+  // Target holders = current configured holder count. Stop once we've
+  // collected them all.
+  const targetHolders = club.seasonTicketHolders;
+  if (club.seasonTicketHoldersCollected >= targetHolders) {
+    return { paid: false };
+  }
+
+  // Collection window: from the price-lock week (approximated as
+  // startWeek − 3, since we lock during the last 3 pretemporada weeks)
+  // through startWeek + 3.
+  const windowStart = Math.max(0, activeSeason.startWeek - 3);
+  const windowEnd = activeSeason.startWeek + DRIP_WEEKS - 4;
+  if (currentWeek < windowStart || currentWeek > windowEnd) {
+    return { paid: false };
+  }
+  const weekOffset = currentWeek - windowStart;
+  const fraction = DRIP_CURVE[weekOffset] ?? 0;
+  if (fraction <= 0) return { paid: false };
+
+  const remaining = targetHolders - club.seasonTicketHoldersCollected;
+  const newHolders = Math.min(remaining, Math.max(1, Math.round(targetHolders * fraction)));
+  const weeklyEur = newHolders * club.seasonTicketPriceEur;
+  const weeklyEurK = Math.round(weeklyEur / 1000 * 10) / 10; // 1-decimal precision
+
+  const totalAfter = club.seasonTicketHoldersCollected + newHolders;
 
   await db
     .update(clubs)
-    .set({ lastSeasonTicketPaidSeason: activeSeason.seasonNumber, updatedAt: new Date() })
+    .set({
+      seasonTicketHoldersCollected: totalAfter,
+      // If fully collected, mark as paid for accounting.
+      lastSeasonTicketPaidSeason:
+        totalAfter >= targetHolders
+          ? activeSeason.seasonNumber
+          : club.lastSeasonTicketPaidSeason,
+      updatedAt: new Date(),
+    })
     .where(eq(clubs.id, clubId));
 
   return {
     paid: true,
-    seasonNumber: activeSeason.seasonNumber,
-    holders,
-    priceEur,
-    totalEurK,
+    newHolders,
+    weeklyEurK,
+    totalHoldersAfter: totalAfter,
+    weekIntoCollection: weekOffset,
   };
 }

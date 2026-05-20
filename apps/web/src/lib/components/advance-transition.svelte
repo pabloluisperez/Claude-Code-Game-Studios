@@ -59,6 +59,36 @@
     onCancel,
   }: Props = $props();
 
+  // ── Resume persistence ───────────────────────────────────────────────────
+  // We persist (fromWeek, dayIndex) in localStorage. If the user cancels
+  // mid-week and re-enters the modal at the same fromWeek, we resume from
+  // the saved dayIndex. Once the advance commits, the entry is cleared.
+  const RESUME_KEY = 'tsm-advance-resume';
+
+  interface ResumeState {
+    fromWeek: number;
+    dayIndex: number;
+  }
+
+  function readResume(): ResumeState | null {
+    if (typeof localStorage === 'undefined') return null;
+    try {
+      const raw = localStorage.getItem(RESUME_KEY);
+      if (!raw) return null;
+      const v = JSON.parse(raw) as ResumeState;
+      if (typeof v?.dayIndex === 'number' && typeof v?.fromWeek === 'number') return v;
+      return null;
+    } catch { return null; }
+  }
+  function writeResume(state: ResumeState): void {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(RESUME_KEY, JSON.stringify(state));
+  }
+  function clearResume(): void {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.removeItem(RESUME_KEY);
+  }
+
   // ── Animation state ──────────────────────────────────────────────────────
   let dayIndex = $state(0);          // 0..6
   let hourPhase = $state(0);         // 0..1 within a single day
@@ -80,34 +110,59 @@
   //   0.95..1.00  → predawn (no body visible)
   // celestialOpacity hides the sun/moon during the transitions so we never
   // see both at once.
-  const isNight = $derived(hourPhase >= 0.5);
-  const sunVisible = $derived(hourPhase >= 0 && hourPhase < 0.45);
-  const moonVisible = $derived(hourPhase >= 0.55 && hourPhase < 0.95);
-  const sunProgress = $derived(sunVisible ? hourPhase / 0.45 : 0);
-  const moonProgress = $derived(moonVisible ? (hourPhase - 0.55) / 0.4 : 0);
+  // 24H digital clock — hourPhase 0..1 maps to 00:00..23:59.
+  const clockTotalMinutes = $derived(Math.floor(hourPhase * 24 * 60));
+  const clockHH = $derived(Math.floor(clockTotalMinutes / 60) % 24);
+  const clockHHStr = $derived(String(clockHH).padStart(2, '0'));
+  const clockMMStr = $derived(String(clockTotalMinutes % 60).padStart(2, '0'));
+
+  // Real time-of-day mapping:
+  //   hourPhase 0.00 = 00:00 (midnight, fully dark)
+  //   hourPhase 0.25 = 06:00 (sunrise)
+  //   hourPhase 0.50 = 12:00 (noon, fully light)
+  //   hourPhase 0.75 = 18:00 (sunset)
+  //   hourPhase 1.00 = 24:00 (midnight again)
+  //
+  // dayness = (1 − cos(2π × hourPhase)) / 2 ∈ [0, 1]
+  //   peaks at hourPhase 0.5, troughs at 0 and 1.
+  const dayness = $derived((1 - Math.cos(2 * Math.PI * hourPhase)) / 2);
+  const isNight = $derived(dayness < 0.25);
+
+  // Sun visible 06:00–18:00 (hourPhase 0.25..0.75)
+  const sunVisible = $derived(hourPhase >= 0.25 && hourPhase <= 0.75);
+  const sunProgress = $derived(sunVisible ? (hourPhase - 0.25) / 0.5 : 0);
+
+  // Moon visible 20:00–04:00 (hourPhase ≥ 0.833 OR ≤ 0.167) — wraps midnight.
+  const moonVisible = $derived(hourPhase >= 0.833 || hourPhase <= 0.167);
+  const moonProgress = $derived(
+    hourPhase >= 0.833
+      ? (hourPhase - 0.833) / 0.333
+      : (hourPhase + 0.167) / 0.333,
+  );
+
+  // Celestial body position (sun OR moon, never both)
   const celestialProgress = $derived(sunVisible ? sunProgress : moonProgress);
   const celestialX = $derived(celestialProgress * 100);
   const celestialY = $derived(50 - 35 * Math.sin(Math.PI * celestialProgress));
 
-  // 24H digital clock — minutes advance smoothly within each day cycle.
-  const clockTotalMinutes = $derived(Math.floor(hourPhase * 24 * 60));
-  const clockHH = $derived(String(Math.floor(clockTotalMinutes / 60) % 24).padStart(2, '0'));
-  const clockMM = $derived(String(clockTotalMinutes % 60).padStart(2, '0'));
-
-  // Sky: dawn (warm) → noon (clear blue) → dusk (orange) → night (indigo).
+  // Sky: continuous HSL interpolation. Hue shifts (cool indigo at night →
+  // light blue at noon → warm orange at dawn/dusk). Lightness driven by
+  // `dayness`. Plus a warm tint when near sunrise/sunset.
+  const twilight = $derived(
+    Math.max(0, Math.min(1, 1 - Math.abs(dayness - 0.4) * 5)),
+  );
   const skyTop = $derived.by(() => {
-    const p = hourPhase;
-    if (p < 0.15) return `hsl(${20 + p * 200}, 70%, ${40 + p * 100}%)`;          // dawn
-    if (p < 0.5)  return `hsl(${200 - (p - 0.15) * 50}, 70%, 60%)`;             // day
-    if (p < 0.65) return `hsl(${30 + (p - 0.5) * 100}, 70%, ${50 - p * 30}%)`;  // dusk
-    return `hsl(${260 + (p - 0.65) * 30}, 60%, ${15 + (1 - p) * 15}%)`;         // night
+    // Night hue ~250 (indigo) → day hue ~210 (blue) → twilight ~25 (orange)
+    const hue = 250 - dayness * 40 + twilight * (25 - 210);
+    const sat = 60 + twilight * 10;
+    const light = 8 + dayness * 55;
+    return `hsl(${hue}, ${sat}%, ${light}%)`;
   });
   const skyBottom = $derived.by(() => {
-    const p = hourPhase;
-    if (p < 0.15) return `hsl(${30 + p * 100}, 60%, 70%)`;
-    if (p < 0.5)  return `hsl(${180 + (p - 0.15) * 30}, 60%, 75%)`;
-    if (p < 0.65) return `hsl(${20 + (p - 0.5) * 80}, 70%, 60%)`;
-    return `hsl(${260 + (p - 0.65) * 20}, 50%, 25%)`;
+    const hue = 240 - dayness * 50 + twilight * (20 - 200);
+    const sat = 55 + twilight * 15;
+    const light = 18 + dayness * 55;
+    return `hsl(${hue}, ${sat}%, ${light}%)`;
   });
 
   const currentDate = $derived(weekToDate(fromWeek + dayIndex / 7));
@@ -148,6 +203,7 @@
       dayIndex += 1;
       if (dayIndex >= 7) {
         completed = true;
+        clearResume();
         if (matchPendingThisAdvance) {
           // Don't auto-commit — wait for the user to pick how to watch.
           return;
@@ -160,7 +216,13 @@
   }
 
   function startCycle(): void {
-    dayIndex = 0;
+    // Resume from a saved day if the user previously cancelled mid-week.
+    const resume = readResume();
+    if (resume && resume.fromWeek === fromWeek && resume.dayIndex >= 0 && resume.dayIndex < 7) {
+      dayIndex = resume.dayIndex;
+    } else {
+      dayIndex = 0;
+    }
     hourPhase = 0;
     tickerIndex = 0;
     paused = false;
@@ -208,6 +270,8 @@
   }
   function handleCancel() {
     paused = true;
+    // Persist where we paused so the next "Avanzar semana" resumes here.
+    writeResume({ fromWeek, dayIndex });
     onCancel?.();
   }
 
@@ -294,7 +358,7 @@
           {#if paused}📍 {/if}{currentDate.display}
         </div>
         <div class="font-mono text-3xl md:text-5xl font-bold text-base-100 drop-shadow-lg tabular-nums mt-1">
-          {clockHH}:{clockMM}
+          {clockHHStr}:{clockMMStr}
         </div>
         <div class="text-base-100/70 text-sm mt-1">
           Día {dayIndex + 1} / 7 · destino {targetDate.display}

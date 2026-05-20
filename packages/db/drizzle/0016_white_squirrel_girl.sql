@@ -1,0 +1,2 @@
+ALTER TABLE "clubs" ADD COLUMN "season_ticket_price_locked_season" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "clubs" ADD COLUMN "season_ticket_holders_collected" integer DEFAULT 0 NOT NULL;
