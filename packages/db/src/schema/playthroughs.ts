@@ -33,6 +33,26 @@ export const playthroughs = pgTable('playthroughs', {
     .references(() => clubs.id, { onDelete: 'cascade' }),
   currentWeek: integer('current_week').notNull().default(0),
   /**
+   * Day position within the season (0..265 for a 38-week season + buffer).
+   *
+   * ADR-020 (Day-by-Day Tick): the canonical time-of-day cursor. Lives
+   * alongside `currentWeek` (which is now derived: `currentWeek =
+   * Math.floor(currentDayOfSeason / 7)`) for backwards compatibility with
+   * UI, queries, and tests that still reason in weeks.
+   *
+   * Invariant: `currentWeek === Math.floor(currentDayOfSeason / 7)`. The
+   * orchestrator writes both columns atomically inside `advanceDays` so
+   * external readers never observe a drift.
+   *
+   * Sprint 11 task 11-4: column added; weekly `advance()` continues to
+   * advance both in 7-day batches. True day-by-day decomposition (per
+   * ADR-020 "Option B → revisit") lands in Sprint 12+ when mid-week pause
+   * needs day-granular STOP events. For now the column tracks the same
+   * information at higher resolution without changing externally-visible
+   * behavior.
+   */
+  currentDayOfSeason: integer('current_day_of_season').notNull().default(0),
+  /**
    * Training intensity (0..100) the player has chosen for the upcoming
    * advance. Read by /squad UI; consumed and reset on each advance.
    *

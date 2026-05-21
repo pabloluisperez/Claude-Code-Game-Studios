@@ -347,6 +347,9 @@ export async function runAdvanceTickFull(
   });
 
   // ── Phase 4: atomic persistence ─────────────────────────────────────────
+  // ADR-020 invariant: currentDayOfSeason = currentWeek * 7 (Option B —
+  // weekly batches advance both columns in lockstep). Sprint 12+ will
+  // break the lockstep when mid-week pause requires day-granular halts.
   await db.transaction(async (tx) => {
     await tx.insert(worldSnapshots).values({
       playthroughId: active.id,
@@ -358,7 +361,11 @@ export async function runAdvanceTickFull(
     });
     await tx
       .update(playthroughs)
-      .set({ currentWeek: nextWeek, updatedAt: new Date() })
+      .set({
+        currentWeek: nextWeek,
+        currentDayOfSeason: nextWeek * 7,
+        updatedAt: new Date(),
+      })
       .where(eq(playthroughs.id, active.id));
 
     await persistTVTickEffects(
@@ -565,3 +572,103 @@ export async function runAdvanceTickFull(
     thresholdCrossings: tickResult.thresholdCrossings,
   };
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// PART 3: Day-by-day tick API (Sprint 11 task 11-4 — ADR-020 implementation)
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * ADR-020 invariant: `currentWeek = floor(currentDayOfSeason / 7)`.
+ *
+ * Pure math helper — exported for testing. The orchestrator + DB transaction
+ * write both columns atomically; this function exists so consumers and tests
+ * can derive the week without re-querying.
+ */
+export function deriveWeekFromDayOfSeason(currentDayOfSeason: number): number {
+  return Math.floor(currentDayOfSeason / 7);
+}
+
+/**
+ * Day-of-week label (0=Mon..6=Sun) for a given currentDayOfSeason.
+ * Per ADR-020 §2 convention. Useful for UI day badges and STOP event tagging.
+ */
+export function dayOfWeekFromDayOfSeason(currentDayOfSeason: number): number {
+  return ((currentDayOfSeason % 7) + 7) % 7;
+}
+
+export interface AdvanceDaysOptions {
+  /** Loaded by `loadAdvanceContext`. */
+  ctx: AdvanceContext;
+  /**
+   * How many in-game days to advance. Initial Sprint 11 implementation
+   * supports multiples of 7 only (`advanceDays(7)` === one weekly batch).
+   * Partial-day advancement lands in Sprint 12+ alongside mid-week pause —
+   * per ADR-020 §"Option B" deliberate deferral.
+   */
+  daysToAdvance: number;
+  /** Redirect mode chosen by the user in the AdvanceTransition modal. */
+  redirectMode: 'dashboard' | 'autoplay' | 'skip';
+}
+
+/**
+ * Advance the playthrough by N days (currently must be a multiple of 7).
+ *
+ * Public API for callers that want to think in days. Today this is a thin
+ * wrapper over `runAdvanceTickFull` because Sprint 11 task 11-4 locks
+ * Option B (weekly batching) — the daily decomposition lands in Sprint 12+.
+ *
+ * Determinism guarantee (ADR-020 Verification Required #1):
+ *   `advanceDays({ daysToAdvance: 7 })` produces a WorldState identical to
+ *   the legacy weekly `advance()` path. This invariant is locked by the
+ *   shared call to `runAdvanceTickFull` — both paths run the same code.
+ *
+ * Idempotency guarantee (ADR-020 Verification Required #2):
+ *   `advanceDays({ daysToAdvance: 0 })` is a no-op — no DB writes, no
+ *   redirect change, returns the current-week dashboard target.
+ */
+export async function advanceDays(
+  opts: AdvanceDaysOptions,
+): Promise<AdvanceTickFullResult> {
+  const { ctx, daysToAdvance, redirectMode } = opts;
+
+  // Idempotency: 0 days = no-op.
+  if (daysToAdvance === 0) {
+    const currentWeek = deriveWeekFromDayOfSeason(
+      ctx.playthrough.currentDayOfSeason ?? ctx.playthrough.currentWeek * 7,
+    );
+    return {
+      next: { type: 'dashboard' },
+      nextWeek: currentWeek,
+      financialBalance:
+        (ctx.prevState as Record<string, number>)['financial_balance'] ?? 0,
+      thresholdCrossings: [],
+    };
+  }
+
+  // Sprint 11 task 11-4 constraint: weekly batches only.
+  // The day-by-day decomposition is deferred to Sprint 12+ (per ADR-020
+  // "Implementation Plan (deliberately deferred)" — Option B preserves all
+  // existing test fixtures by batching weekly).
+  if (daysToAdvance % 7 !== 0) {
+    throw new Error(
+      `advanceDays: only multiples of 7 supported in Sprint 11 ` +
+        `(got ${daysToAdvance}). Sub-week granularity lands in Sprint 12+ ` +
+        `alongside mid-week pause. See ADR-020 §"Implementation Plan".`,
+    );
+  }
+
+  // For N=7: one call to the full pipeline. For N>7: loop, but Sprint 11
+  // currently has no caller that needs N>7 — leave the loop dormant until
+  // a use case arrives.
+  const weeks = daysToAdvance / 7;
+  if (weeks !== 1) {
+    throw new Error(
+      `advanceDays: multi-week batches not yet supported (got ${weeks} weeks). ` +
+        `Sprint 12+ will add support when the calendar UI allows "advance to ` +
+        `next STOP event" across week boundaries.`,
+    );
+  }
+
+  return runAdvanceTickFull({ ctx, redirectMode });
+}
+

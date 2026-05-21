@@ -48,14 +48,14 @@ stories:
     completed: "2026-05-21"
 
   - id: "11-4"
-    name: "Day-by-day tick implementation"
-    file: "apps/api/src/modules/advance/orchestrator.ts"
+    name: "Day-by-day tick implementation (Option B — weekly batches; partial-day Sprint 12+)"
+    file: "apps/web/src/lib/server/advance-orchestrator.ts"
     priority: should-have
-    status: backlog
+    status: done
     owner: "web-backend-specialist"
     estimate_days: 2.5
-    blocker: "11-1 + 11-2 must complete first"
-    completed: ""
+    blocker: ""
+    completed: "2026-05-21"
 
   - id: "11-5"
     name: "Playtest Polish #1 (diferido de 10-6)"
