@@ -20,8 +20,8 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import { users } from './users';
-import { clubs } from './clubs';
+import { users } from './users.js';
+import { clubs } from './clubs.js';
 
 export const playthroughs = pgTable('playthroughs', {
   id: uuid('id').primaryKey().defaultRandom(),

@@ -1,6 +1,6 @@
 import { integer, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import { users } from './users';
+import { users } from './users.js';
 
 export const divisionEnum = pgEnum('division', ['fifth', 'fourth', 'third', 'second', 'first']);
 

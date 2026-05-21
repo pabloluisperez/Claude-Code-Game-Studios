@@ -30,8 +30,8 @@ import {
   type MatchDecision,
   type MatchInput,
 } from '@smt/shared';
-import * as Repo from './match-sessions-repo';
-import type { MatchJobPayload } from '../../workers/match-worker';
+import * as Repo from './match-sessions-repo.js';
+import type { MatchJobPayload } from '../../workers/match-worker.js';
 import { rateLimit } from '../../lib/rate-limit.js';
 
 // ── Validation schemas ───────────────────────────────────────────────────────

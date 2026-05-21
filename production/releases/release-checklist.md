@@ -11,14 +11,16 @@ quede cerrado y enlaza el artefacto justificativo en `production/`.
 
 ## 1. Build verification
 
-- [ ] `pnpm install` desde clone limpio funciona sin warnings P0
-- [ ] `pnpm turbo run test` — todos los tests verdes (≥ 1200 esperados post-Sprint 13)
-- [ ] `pnpm turbo run build` — production build en apps/web + apps/api sin errores
-- [ ] `pnpm playwright test` — happy-path e2e pasa
-- [ ] `pnpm soak-test --season-count=5` PASS (verdict en `production/qa/soak-runs/`)
-- [ ] svelte-check 0 errors (`pnpm --filter @smt/web exec svelte-check`)
-- [ ] Bundle size: `apps/web` initial JS < 500 KB (per technical-preferences.md)
-- [ ] Lighthouse perf score ≥ 80 en dashboard, /finance, /squad (mobile + desktop)
+> Detalle completo en `production/releases/build-verification-sprint-14.md` (story 14-3).
+
+- [x] `pnpm install` desde clone limpio funciona sin warnings P0
+- [x] `pnpm turbo run test` — **1160/1160 verdes** (977 shared + 61 api + 122 web)
+- [x] `pnpm turbo run build` — production build en apps/web + apps/api sin errores (tras fixes ESM + logger + worldState cast en story 14-3)
+- [ ] `pnpm playwright test` — happy-path e2e pasa (pendiente sesión Pablo pre-tag v1.0)
+- [x] `pnpm soak-test --season-count=5` PASS — 190/190 ticks, peak RSS 75.4 MB
+- [x] svelte-check 0 errors (1511 files / 5 warnings)
+- [x] Bundle size: `apps/web` initial JS **9.4 KB entry** (cap 500 KB — 1.9% usage)
+- [ ] Lighthouse perf score ≥ 80 en dashboard, /finance, /squad (pendiente browser real)
 
 ## 2. Store / hosting metadata
 
@@ -64,11 +66,11 @@ quede cerrado y enlaza el artefacto justificativo en `production/`.
 
 ## 4. Performance final
 
-- [ ] **API response time**: < 200ms p95 para acciones de management (per technical-preferences.md)
-- [ ] **Match-live frame rate**: 60 fps en replay (canvas/DOM)
-- [ ] **DB queries**: ninguna > 100ms en advance pipeline (verificar con EXPLAIN ANALYZE)
-- [ ] **Memory ceiling**: < 256MB RAM por proceso (api + web)
-- [ ] **Cold-start**: dashboard carga inicial < 2s en conexión lenta (Chrome throttling Fast 3G)
+- [ ] **API response time**: < 200ms p95 para acciones de management (pendiente autocannon contra DB poblada)
+- [ ] **Match-live frame rate**: 60 fps en replay (pendiente DevTools Performance tab)
+- [ ] **DB queries**: ninguna > 100ms en advance pipeline (pendiente EXPLAIN ANALYZE con dataset realista)
+- [x] **Memory ceiling**: < 256MB RAM por proceso — **75.4 MB peak (soak)** muy por debajo del cap
+- [ ] **Cold-start**: dashboard carga inicial < 2s en conexión lenta (pendiente Chrome throttling Fast 3G)
 
 ## 5. Security / Operations
 

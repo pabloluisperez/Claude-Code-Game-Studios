@@ -11,7 +11,7 @@
 
 import { computeTransferValue } from '@smt/shared';
 import type { Player } from '@smt/db';
-import * as PlayersRepo from './repo';
+import * as PlayersRepo from './repo.js';
 
 /** Buy acceptance threshold from the GDD: offer ≥ value × 0.9. */
 export const BUY_ACCEPTANCE_THRESHOLD = 0.9;

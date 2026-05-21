@@ -21,4 +21,4 @@ export { alias } from 'drizzle-orm/pg-core';
 export {
   loadAdvanceContext,
   type AdvanceContext,
-} from './repos/advance-context';
+} from './repos/advance-context.js';

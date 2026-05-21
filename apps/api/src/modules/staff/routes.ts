@@ -16,8 +16,8 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { db } from '@smt/db';
 import { STAFF_ROLES } from '@smt/shared';
-import * as Repo from './repo';
-import { hireStaff } from './service';
+import * as Repo from './repo.js';
+import { hireStaff } from './service.js';
 
 const hireSchema = z.object({
   clubId: z.string().uuid(),

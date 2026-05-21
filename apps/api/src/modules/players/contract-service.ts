@@ -12,7 +12,7 @@
 
 import { computeMarketWageF10, computeTransferValue } from '@smt/shared';
 import type { Player } from '@smt/db';
-import * as PlayersRepo from './repo';
+import * as PlayersRepo from './repo.js';
 
 export const RENEWAL_WARNING_WEEKS = 8;
 export const DEFAULT_RENEWAL_CONTRACT_WEEKS = 104;

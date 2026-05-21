@@ -20,10 +20,10 @@
  */
 
 import { and, desc, eq } from 'drizzle-orm';
-import { clubs } from '../schema/clubs';
-import { leagues, seasons } from '../schema/leagues';
-import { playthroughs, worldSnapshots } from '../schema/playthroughs';
-import type { db as DbClient } from '../client';
+import { clubs } from '../schema/clubs.js';
+import { leagues, seasons } from '../schema/leagues.js';
+import { playthroughs, worldSnapshots } from '../schema/playthroughs.js';
+import type { db as DbClient } from '../client.js';
 import { defaultWorldState } from '@smt/shared';
 import type { WorldState } from '@smt/shared/sim/cascade-types';
 import type { DelayedEffectsBuffer } from '@smt/shared/sim/delayed-effects';

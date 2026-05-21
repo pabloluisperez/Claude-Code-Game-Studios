@@ -19,8 +19,8 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import { clubs } from './clubs';
-import { playthroughs } from './playthroughs';
+import { clubs } from './clubs.js';
+import { playthroughs } from './playthroughs.js';
 
 export const players = pgTable(
   'players',

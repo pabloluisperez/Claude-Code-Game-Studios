@@ -20,8 +20,8 @@ import {
   getMaxHirableStaffQuality,
   type ManagerSkills,
 } from '@smt/shared';
-import * as Repo from './repo';
-import { initialiseManagerProfile } from './service';
+import * as Repo from './repo.js';
+import { initialiseManagerProfile } from './service.js';
 
 const initSchema = z.object({
   name: z.string().min(1).max(100),

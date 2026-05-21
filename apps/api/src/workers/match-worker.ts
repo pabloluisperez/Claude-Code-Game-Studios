@@ -18,7 +18,7 @@ import type { Job, Queue } from 'bullmq';
 import type { MatchEvent, MatchInput, MatchOutcome, MatchSessionSnapshot } from '@smt/shared';
 import { advanceTick, applyDefaultDecisionsToSnapshot } from '@smt/shared';
 import { db } from '@smt/db';
-import * as Repo from '../modules/match/match-sessions-repo';
+import * as Repo from '../modules/match/match-sessions-repo.js';
 
 export interface MatchJobPayload {
   readonly matchSessionId: string;

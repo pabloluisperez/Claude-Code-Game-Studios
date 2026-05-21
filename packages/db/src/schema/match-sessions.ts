@@ -22,9 +22,9 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
-import { clubs } from './clubs';
-import { playthroughs } from './playthroughs';
-import { fixtures } from './fixtures';
+import { clubs } from './clubs.js';
+import { playthroughs } from './playthroughs.js';
+import { fixtures } from './fixtures.js';
 
 export const matchSessions = pgTable(
   'match_sessions',

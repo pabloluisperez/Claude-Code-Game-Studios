@@ -7,7 +7,7 @@
 
 import { integer, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import { playthroughs } from './playthroughs';
+import { playthroughs } from './playthroughs.js';
 
 export const careerMilestones = pgTable(
   'career_milestones',

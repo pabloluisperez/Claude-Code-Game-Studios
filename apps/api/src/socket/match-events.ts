@@ -13,7 +13,7 @@
 
 import type { Server } from 'socket.io';
 import type { MatchOutcome, MatchSessionSnapshot } from '@smt/shared';
-import type { MatchEventEmitter } from '../workers/match-worker';
+import type { MatchEventEmitter } from '../workers/match-worker.js';
 
 export function createSocketEmitter(io: Server): MatchEventEmitter {
   const matchNamespace = io.of('/match');

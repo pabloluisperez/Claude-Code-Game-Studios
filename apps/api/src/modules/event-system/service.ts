@@ -22,7 +22,7 @@ import {
   type EventResolveContext,
   type ResolutionResult,
 } from '@smt/shared';
-import * as Repo from './repo';
+import * as Repo from './repo.js';
 
 type Tx = Parameters<Parameters<typeof DBType.transaction>[0]>[0];
 

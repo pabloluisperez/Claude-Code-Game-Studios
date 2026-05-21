@@ -10,7 +10,7 @@
 
 import { integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import { playthroughs } from './playthroughs';
+import { playthroughs } from './playthroughs.js';
 
 export const leagues = pgTable('leagues', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -88,5 +88,5 @@ export type NewSeason = typeof seasons.$inferInsert;
 
 // Forward references — must be declared after `seasons` / `divisions` exist
 // We import them via circular-safe module imports below.
-import { fixtures } from './fixtures';
-import { standings } from './standings';
+import { fixtures } from './fixtures.js';
+import { standings } from './standings.js';

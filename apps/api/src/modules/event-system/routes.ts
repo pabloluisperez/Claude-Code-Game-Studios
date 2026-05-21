@@ -13,8 +13,8 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { db } from '@smt/db';
-import * as Repo from './repo';
-import { resolveEventById } from './service';
+import * as Repo from './repo.js';
+import { resolveEventById } from './service.js';
 
 const decideSchema = z.object({
   choice: z.string().min(1).max(64),

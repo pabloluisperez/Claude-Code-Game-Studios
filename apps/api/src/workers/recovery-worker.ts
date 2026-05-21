@@ -17,7 +17,7 @@
 import { and, eq, isNull, lt, sql } from 'drizzle-orm';
 import type { Queue } from 'bullmq';
 import { db, matchSessions } from '@smt/db';
-import type { MatchJobPayload } from './match-worker';
+import type { MatchJobPayload } from './match-worker.js';
 
 export interface RecoveryDeps {
   readonly timeoutQueue: Queue<MatchJobPayload>;

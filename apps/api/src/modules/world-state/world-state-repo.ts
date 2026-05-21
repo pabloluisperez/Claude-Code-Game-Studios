@@ -108,9 +108,11 @@ export async function loadCurrentWorldState(
   if (!row) return null;
 
   const worldState = WorldStateJsonSchema.parse(row.worldState);
+  // The Zod schema cannot express the `NodeId` branded string type; cast
+  // after parse — runtime validation already guarantees the shape.
   const delayedEffectsBuffer = DelayedEffectsJsonSchema.parse(
     row.delayedEffectsBuffer,
-  );
+  ) as DelayedEffectsBuffer;
 
   return {
     week: row.week,

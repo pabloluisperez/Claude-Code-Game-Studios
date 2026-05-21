@@ -20,8 +20,8 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import { clubs } from './clubs';
-import { divisions, seasons } from './leagues';
+import { clubs } from './clubs.js';
+import { divisions, seasons } from './leagues.js';
 
 export const fixtures = pgTable(
   'fixtures',

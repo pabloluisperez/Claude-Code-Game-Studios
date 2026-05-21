@@ -22,8 +22,8 @@ import {
   applyFreezeDecision,
   INITIAL_PAYROLL_FREEZE_STATE,
   type PayrollFreezeState,
-} from './payroll-freeze';
-import * as SponsorsService from './sponsors-service';
+} from './payroll-freeze.js';
+import * as SponsorsService from './sponsors-service.js';
 
 // ── Schemas ──────────────────────────────────────────────────────────────────
 

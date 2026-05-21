@@ -21,7 +21,7 @@ import {
   type XpGrant,
 } from '@smt/shared';
 import type { db as DBType } from '@smt/db';
-import * as Repo from './repo';
+import * as Repo from './repo.js';
 
 type Tx = Parameters<Parameters<typeof DBType.transaction>[0]>[0];
 
