@@ -113,6 +113,50 @@
   let awayLive = $state(0);
   let isReplaying = $state(false);
 
+  // BUG-PT-4 polish features (Sprint 13 task 13-5):
+  // 1. Confeti burst on user-club goals (and a more subdued fade on opponent
+  //    goals — currently same animation, future tuning).
+  // 2. VAR check: ~8% of goals get a 2s "VAR checking..." overlay, then
+  //    50/50 confirm vs disallow. Disallowed → score reverts.
+  // 3. Pre-event pause: a 500ms "👀 algo va a pasar" badge before goals/
+  //    reds/penalties (deferred to backlog — current flow ticks 1
+  //    minute/333ms which is already fast enough that a short hint is
+  //    distracting).
+  let confettiKey = $state(0);
+  let confettiSide = $state<'home' | 'away' | null>(null);
+  let varOverlay = $state<
+    | { phase: 'checking' | 'confirmed' | 'overturned'; team: 'home' | 'away'; minute: number }
+    | null
+  >(null);
+
+  /**
+   * Deterministic VAR roll seeded by match id + event minute. The same
+   * match always produces the same VAR sequence. ~8% probability of a
+   * VAR check on any goal; if it triggers, 50/50 confirm vs overturned.
+   */
+  function rollVar(minute: number): 'none' | 'confirmed' | 'overturned' {
+    // Hash-based deterministic roll — no Math.random.
+    const hash =
+      [...`${data.fixture.id}:var:${minute}`].reduce(
+        (acc, c) => ((acc << 5) - acc + c.charCodeAt(0)) | 0,
+        0,
+      ) >>> 0;
+    const triggerRoll = (hash % 1000) / 1000; // 0..1
+    if (triggerRoll >= 0.08) return 'none';
+    const outcomeRoll = ((hash >> 8) % 1000) / 1000;
+    return outcomeRoll < 0.5 ? 'overturned' : 'confirmed';
+  }
+
+  function triggerConfetti(side: 'home' | 'away'): void {
+    confettiSide = side;
+    confettiKey += 1;
+    // Auto-clear after the animation (1.5s) so consecutive goals re-trigger
+    // a fresh burst.
+    setTimeout(() => {
+      if (confettiKey > 0) confettiSide = null;
+    }, 1500);
+  }
+
   let pacingTimer: ReturnType<typeof setInterval> | null = null;
 
   function eventBadge(t: string): string {
@@ -243,8 +287,32 @@
         const ev = queue[idx]!;
         liveEvents = [...liveEvents, ev];
         if (ev.type === 'goal') {
-          if (ev.team === 'home') homeLive += 1;
-          else awayLive += 1;
+          // BUG-PT-4 task 13-5: VAR check on ~8% of goals.
+          const varOutcome = rollVar(ev.minute);
+          if (varOutcome !== 'none') {
+            // Show "VAR checking..." overlay, then confirm/disallow.
+            varOverlay = { phase: 'checking', team: ev.team, minute: ev.minute };
+            // Provisionally add the goal to the score so the user sees it
+            // before VAR reviews. If overturned, we revert later.
+            if (ev.team === 'home') homeLive += 1;
+            else awayLive += 1;
+            const goalTeam = ev.team;
+            setTimeout(() => {
+              varOverlay = { phase: varOutcome, team: goalTeam, minute: ev.minute };
+              if (varOutcome === 'overturned') {
+                if (goalTeam === 'home') homeLive -= 1;
+                else awayLive -= 1;
+              } else {
+                triggerConfetti(goalTeam);
+              }
+              // Clear overlay after the outcome card is shown briefly.
+              setTimeout(() => { varOverlay = null; }, 1500);
+            }, 2000);
+          } else {
+            if (ev.team === 'home') homeLive += 1;
+            else awayLive += 1;
+            triggerConfetti(ev.team);
+          }
         }
         idx += 1;
       }
@@ -329,6 +397,40 @@
     disconnectMatchSocket();
   });
 </script>
+
+<!-- BUG-PT-4 13-5: confeti burst + VAR overlay layers (z-index above content). -->
+{#if confettiSide !== null}
+  {#key confettiKey}
+    <div class="confetti-burst" aria-hidden="true">
+      {#each Array.from({ length: 30 }) as _, i}
+        <span
+          class="confetti-piece"
+          style="left:{(i * 31) % 100}%; animation-delay:{(i % 10) * 30}ms; background:hsl({(i * 137) % 360},80%,55%)"
+        ></span>
+      {/each}
+    </div>
+  {/key}
+{/if}
+
+{#if varOverlay !== null}
+  <div class="var-overlay" role="dialog" aria-live="polite">
+    <div class="var-card">
+      {#if varOverlay.phase === 'checking'}
+        <div class="text-3xl mb-1">📺</div>
+        <div class="text-2xl font-bold">VAR checking...</div>
+        <div class="text-sm opacity-70 mt-1">Revisando el gol del minuto {varOverlay.minute}'</div>
+      {:else if varOverlay.phase === 'confirmed'}
+        <div class="text-3xl mb-1">✅</div>
+        <div class="text-2xl font-bold text-success">GOL VÁLIDO</div>
+        <div class="text-sm opacity-70 mt-1">El árbitro confirma el gol</div>
+      {:else}
+        <div class="text-3xl mb-1">❌</div>
+        <div class="text-2xl font-bold text-error">GOL ANULADO</div>
+        <div class="text-sm opacity-70 mt-1">El VAR detecta infracción</div>
+      {/if}
+    </div>
+  </div>
+{/if}
 
 <div class="grid grid-cols-1 lg:grid-cols-[1fr_22rem] gap-4 max-w-6xl mx-auto">
 <div class="space-y-6">
@@ -592,4 +694,53 @@
 
 <style>
   .standings-row { transition: background 0.3s ease; }
+
+  /* BUG-PT-4 task 13-5: confeti burst on user-club goals (CSS particles). */
+  .confetti-burst {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 90;
+    overflow: hidden;
+  }
+  .confetti-piece {
+    position: absolute;
+    top: 40%;
+    width: 10px;
+    height: 14px;
+    border-radius: 2px;
+    transform-origin: center;
+    animation: confetti-fall 1.6s cubic-bezier(0.2, 0.8, 0.4, 1) forwards;
+  }
+  @keyframes confetti-fall {
+    0%   { transform: translateY(-20vh) rotate(0deg) scale(0.6); opacity: 0; }
+    15%  { opacity: 1; }
+    100% { transform: translateY(80vh) rotate(720deg) scale(1.2); opacity: 0; }
+  }
+
+  /* BUG-PT-4 task 13-5: VAR overlay (full-screen frosted card). */
+  .var-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 95;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(4px);
+    animation: var-fade-in 0.2s ease-out;
+  }
+  .var-card {
+    background: hsl(var(--b1));
+    color: hsl(var(--bc));
+    padding: 1.5rem 2.5rem;
+    border-radius: 1rem;
+    text-align: center;
+    box-shadow: 0 16px 64px rgba(0, 0, 0, 0.45);
+    max-width: 24rem;
+  }
+  @keyframes var-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
 </style>
