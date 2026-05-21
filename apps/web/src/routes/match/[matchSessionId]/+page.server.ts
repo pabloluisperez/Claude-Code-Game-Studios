@@ -25,10 +25,7 @@ import {
   desc,
   alias,
 } from '@smt/db';
-import {
-  computeEffectiveTicketPrice,
-  computeMatchDayRevenue,
-} from '@smt/shared/sim/economy/revenue';
+import { computeEffectiveTicketPrice } from '@smt/shared/sim/economy/revenue';
 
 export const load: PageServerLoad = async ({ params, parent }) => {
   const { user, activePlaythrough } = await parent();
@@ -112,8 +109,18 @@ export const load: PageServerLoad = async ({ params, parent }) => {
   // snapshot using the same formula as the economy tick (F-TV4 boost
   // included). This is a read-only display; the persisted balance in the
   // snapshot is already correct.
+  //
+  // Precision note: the economy tick stores cashflow in €K with
+  // `Math.round(gross/1000)`, so 12.300 € becomes 12 €K (precision loss).
+  // For the player-facing match recap we compute the EXACT gross in euros
+  // here (attendance × ticketPrice with F-TV4 boost) — this is display-only
+  // and doesn't affect the persisted balance.
   let homeMatchEconomics:
-    | { attendance: number; gateReceiptsEurK: number; ticketPriceEur: number }
+    | {
+        attendance: number;
+        gateReceiptsEur: number;
+        ticketPriceEur: number;
+      }
     | null = null;
   if (
     activePlaythrough &&
@@ -145,23 +152,29 @@ export const load: PageServerLoad = async ({ params, parent }) => {
       const fanLoyalty = ws['fan_loyalty'] ?? 0;
       const divisionTier: 1 | 2 = clubRow?.division === 'first' ? 1 : 2;
 
-      const attendance = Math.round(stadiumCapacity * (fanAttendance / 100));
+      // Base attendance from fan_attendance % of capacity.
+      const baseAttendance = stadiumCapacity * (fanAttendance / 100);
+      // F-TV4 fan-loyalty boost (0.5% per loyalty point), clamped to capacity.
+      const boostedAttendance =
+        fanLoyalty > 0
+          ? Math.min(stadiumCapacity, baseAttendance * (1 + fanLoyalty * 0.005))
+          : baseAttendance;
+      const attendance = Math.round(boostedAttendance);
+
       const pricing = computeEffectiveTicketPrice({
         stadiumCapacity,
         divisionTier,
         fanCultureIndex,
         ticketPriceIndex,
       });
-      const gateReceiptsEurK = computeMatchDayRevenue({
-        attendance,
-        ticketPriceEur: pricing.effectivePriceEur,
-        fanLoyalty,
-        stadiumCapacity,
-      });
+
+      // Exact gross in euros — no €K rounding. This is the precise figure
+      // the player sees on the match page.
+      const gateReceiptsEur = Math.round(attendance * pricing.effectivePriceEur);
 
       homeMatchEconomics = {
         attendance,
-        gateReceiptsEurK,
+        gateReceiptsEur,
         ticketPriceEur: pricing.effectivePriceEur,
       };
     }

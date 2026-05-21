@@ -15,7 +15,6 @@
   import { flip } from 'svelte/animate';
   import { page } from '$app/stores';
   import { joinMatchRoom, disconnectMatchSocket } from '$lib/sockets';
-  import { formatEurKSigned } from '$lib/format';
   import { generateMatchRecap } from '@smt/shared';
 
   let { data }: { data: PageData } = $props();
@@ -456,7 +455,7 @@
           <div>
             <div class="text-xs opacity-60 uppercase">Ingresos por taquilla</div>
             <div class="font-mono text-2xl text-success">
-              {formatEurKSigned(data.homeMatchEconomics.gateReceiptsEurK)}
+              +{data.homeMatchEconomics.gateReceiptsEur.toLocaleString('es-ES')} €
             </div>
           </div>
         </div>
