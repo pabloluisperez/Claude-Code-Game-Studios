@@ -70,7 +70,7 @@ quede cerrado y enlaza el artefacto justificativo en `production/`.
 
 ## 7. Marketing / Comms
 
-- [ ] **Changelog v1.0**: `production/releases/changelog-v1.0.md` con player-facing notes
+- [x] **Changelog v1.0**: `production/releases/changelog-v1.0.md` — story 14-8 (Sprint 14). Player-facing en ES, sin jerga técnica.
 - [ ] **Trailer**: 30-60s video del gameplay (opcional)
 - [ ] **Launch post**: borrador para blog / redes
 - [ ] **Press kit**: opcional, depende del scope de release
