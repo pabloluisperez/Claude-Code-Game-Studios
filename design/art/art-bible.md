@@ -46,11 +46,50 @@ Personajes, edificios y tokens de estado son legibles a resoluciones pequeñas (
 
 *Test de diseño*: Cuando un sprite es ambiguo a 50% de zoom, este principio elige simplificar la forma sobre añadir detalle.
 
-#### Principio 4 — Animación Funcional, No Decorativa *(Pilar 1: Tinkering Beats Optimization)*
+#### Principio 4 — Animación Funcional, con Vida Ambient Controlada *(Pilar 1 + Pilar 2)*
 
-Nada se mueve sin razón simulada. Una paloma que vuela es decoración inerte y está prohibida. Un árbitro que camina hacia el centro del campo comunica que el partido está por empezar. Toda animación loop existe porque el objeto *está haciendo algo* en la simulación. Los efectos de UI se reservan para confirmaciones de acción del jugador — y son breves.
+> **Revisado 2026-05-21** (decisión Pablo): el principio original prohibía toda
+> animación sin "razón simulada". Esto se ha relajado para habilitar el Pilar 2
+> *"The World Is The Scoreboard"* y la promesa de un mundo isométrico vivo
+> (Habbo / SimCity / Theme Park). La regla se sustituye por tres clases con
+> presupuestos y prioridades claras. Ver `design/gdd/world-life.md` para el
+> catálogo operativo.
 
-*Test de diseño*: Cuando se propone una animación ambiental, este principio pregunta "¿qué está simulando esto?" — si la respuesta es "nada", se elimina.
+Hay tres clases de animación, con prioridad descendente:
+
+**Clase A — Animación funcional (prioridad máxima).** Anclada a un evento o estado de
+simulación. Ejemplos: árbitro caminando al centro = partido por empezar; manager
+levantándose al escritorio = career milestone; crowd-tile convergiendo al estadio =
+matchday; coche del club estacionado tras fichaje firmado. Estas SIEMPRE se
+renderizan si están activas — no compiten por presupuesto.
+
+**Clase B — Crowd ambient estático (prioridad media).** Crowd-tiles con loop de
+2 frames (movimiento de hombros) en gradas, plazas, calles. NO se desplazan por el
+mapa. Densidad escala con tier (city-progression §3.1) y fan_momentum.
+
+**Clase C — Vida ambient en movimiento (prioridad baja).** Peatones individuales,
+ciclistas, patinetes, coches genéricos, perros con dueño. Se desplazan por paths
+predefinidos. NO requieren tener un rol simulado, PERO:
+
+1. Su densidad escala monotónicamente con tier (más vida → más prosperidad
+   percibida, anclando al Pilar 2).
+2. Tienen un presupuesto duro: **máximo 20 entidades Clase-C simultáneas** en
+   pantalla, **máximo 40 totales activas en el mundo**.
+3. Si una animación Clase-A o Clase-B necesita un tile, las Clase-C se
+   desvían del path (rerouting trivial; o desaparecen al borde si no caben).
+4. Variantes nocturnas: muchas menos Clase-C entidades (~30% de la diurna),
+   coherente con Pilar 4 "Calm Is The Tempo".
+5. En lluvia: paraguas (variante sprite) reemplaza la cabeza expuesta;
+   patines y bicis desaparecen del pool (realista).
+
+*Test de diseño revisado*: Cuando se propone una animación:
+1. ¿Es Clase A (rol simulado)? → sí, render unconditional.
+2. ¿Es Clase B (crowd-tile estático con loop)? → sí, render según densidad de tier.
+3. ¿Es Clase C (vida ambient en movimiento)? → sí, sujeta al presupuesto §3 de
+   `world-life.md`. No "decora vacío" — *amplifica la sensación de mundo vivo*.
+4. ¿Es algo más (UI sparkles, parpadeos, partículas de gol)? → **PROHIBIDO**.
+   Principio 4 sigue sin tolerar "feedback compulsivo" ni "spectacle gratuito"
+   (ver §1.4 "Lo que esta identidad NO es").
 
 #### Principio 5 — Manager Visible, Carrera Acumulada *(Pilar 3: You Grow Like Your Club)*
 
