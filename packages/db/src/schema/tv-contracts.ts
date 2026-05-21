@@ -26,7 +26,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import { playthroughs } from './playthroughs.js';
+import { playthroughs } from './playthroughs';
 
 export const tvContracts = pgTable(
   'tv_contracts',

@@ -108,6 +108,55 @@ afterAll(async () => {
   await db.delete(users).where(eq(users.id, testUserId));
 });
 
+// ── Sprint 8 task 8-1: new schema columns persistence + load round-trip ─────
+
+describe('Sprint 8 task 8-1 — cascade_log + threshold_crossings + seed_state', () => {
+  it('test_persistence_new_columns_optional_default_to_null', async () => {
+    // Backward compat: saving WITHOUT the new columns yields NULL on load.
+    const playthroughId = await seedPlaythrough(testUserId, testClubId);
+    await saveTickResult(db, {
+      playthroughId,
+      week: 1,
+      worldState: defaultWorldState(),
+      delayedEffectsBuffer: [],
+      // Intentionally omit cascadeLog, thresholdCrossings, seedState.
+    });
+    const loaded = await loadCurrentWorldState(db, playthroughId);
+    expect(loaded).not.toBeNull();
+    expect(loaded?.cascadeLog).toBeNull();
+    expect(loaded?.thresholdCrossings).toBeNull();
+    expect(loaded?.seedState).toBeNull();
+  });
+
+  it('test_persistence_new_columns_round_trip_when_provided', async () => {
+    // Provide all 3 new columns; verify they round-trip via jsonb + text.
+    const playthroughId = await seedPlaythrough(testUserId, testClubId);
+    const fakeCascadeLog = [
+      { source: 'edge', edgeId: 'C0', nodeId: 'team_fitness', delta: -1.0, week: 1 },
+      { source: 'delayed', edgeId: 'C5a', nodeId: 'team_fitness', delta: 0.4, week: 1 },
+    ];
+    const fakeCrossings = [
+      { nodeId: 'fan_momentum', kind: 'BLOCKING', from: 22, to: 18, week: 1 },
+    ];
+    const fakeSeedState = JSON.stringify({ i: 42, j: 7, S: [1, 2, 3] });
+
+    await saveTickResult(db, {
+      playthroughId,
+      week: 1,
+      worldState: defaultWorldState(),
+      delayedEffectsBuffer: [],
+      cascadeLog: fakeCascadeLog,
+      thresholdCrossings: fakeCrossings,
+      seedState: fakeSeedState,
+    });
+    const loaded = await loadCurrentWorldState(db, playthroughId);
+    expect(loaded).not.toBeNull();
+    expect(loaded?.cascadeLog).toEqual(fakeCascadeLog);
+    expect(loaded?.thresholdCrossings).toEqual(fakeCrossings);
+    expect(loaded?.seedState).toBe(fakeSeedState);
+  });
+});
+
 // ── AC-SER-05: round-trip via real DB ────────────────────────────────────────
 
 describe('CASCADE-015 — AC-SER-05 (INSERT + SELECT round-trip)', () => {

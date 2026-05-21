@@ -41,6 +41,13 @@ interface SaveTickResultArgs {
   readonly week: number;
   readonly worldState: Readonly<WorldState>;
   readonly delayedEffectsBuffer: DelayedEffectsBuffer;
+  /**
+   * Sprint 8 additions (task 8-1) — all OPTIONAL for backward compat with
+   * Sprint 7 callers. NULL columns persist when the caller omits them.
+   */
+  readonly cascadeLog?: readonly unknown[];
+  readonly thresholdCrossings?: readonly unknown[];
+  readonly seedState?: string;
 }
 
 /**
@@ -59,6 +66,10 @@ export async function saveTickResult(
     week: args.week,
     worldState: args.worldState as unknown as Record<string, number>,
     delayedEffectsBuffer: args.delayedEffectsBuffer as unknown as readonly unknown[],
+    // Sprint 8 task 8-1 — new columns are NULL when omitted.
+    cascadeLog: args.cascadeLog ?? null,
+    thresholdCrossings: args.thresholdCrossings ?? null,
+    seedState: args.seedState ?? null,
   });
 }
 
@@ -66,6 +77,13 @@ interface LoadResult {
   readonly week: number;
   readonly worldState: WorldState;
   readonly delayedEffectsBuffer: DelayedEffectsBuffer;
+  /**
+   * Sprint 8 additions (task 8-1) — present when the row was written with the
+   * audit columns. NULL on rows written by Sprint 7 saveTickResult callers.
+   */
+  readonly cascadeLog: readonly unknown[] | null;
+  readonly thresholdCrossings: readonly unknown[] | null;
+  readonly seedState: string | null;
 }
 
 /**
@@ -98,6 +116,9 @@ export async function loadCurrentWorldState(
     week: row.week,
     worldState,
     delayedEffectsBuffer,
+    cascadeLog: (row.cascadeLog as readonly unknown[] | null) ?? null,
+    thresholdCrossings: (row.thresholdCrossings as readonly unknown[] | null) ?? null,
+    seedState: row.seedState ?? null,
   };
 }
 

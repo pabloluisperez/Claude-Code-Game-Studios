@@ -14,6 +14,7 @@ import {
   integer,
   jsonb,
   pgTable,
+  text,
   timestamp,
   uniqueIndex,
   uuid,
@@ -78,6 +79,25 @@ export const worldSnapshots = pgTable(
     week: integer('week').notNull(),
     worldState: jsonb('world_state').notNull(),
     delayedEffectsBuffer: jsonb('delayed_effects_buffer').notNull().default([]),
+    /**
+     * Cascade audit log — CascadeLog[] from runTick. Nullable for backward
+     * compat with rows written before Sprint 8 task 8-1 added the column.
+     * The cascade engine itself does not READ this back; consumers are
+     * audit/debug tooling and future event-system replay paths.
+     */
+    cascadeLog: jsonb('cascade_log'),
+    /**
+     * Threshold crossings emitted this tick — ThresholdCrossing[] from runTick.
+     * Nullable for the same backward-compat reason. Consumed by event-system
+     * (CalendarEvent BLOCKING/ADVISORY generation) on read.
+     */
+    thresholdCrossings: jsonb('threshold_crossings'),
+    /**
+     * Seedrandom state if applicable (ADR-013 Option B / match-sim PRNG).
+     * NULL on cascade-only ticks; populated on match-week ticks. Persisted as
+     * text (JSON.stringify of seedrandom().state()).
+     */
+    seedState: text('seed_state'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
