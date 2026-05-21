@@ -714,3 +714,51 @@ Estimated: 2-2.5 days when Sprint 9 starts.
 ### Total session commits (cumulative)
 
 28+ commits across the full overnight session (sleep cycle 2026-05-20→2026-05-21). All pushed to `origin/project/SoccerManagerTotal`.
+
+---
+
+## 2026-05-21 — Morning checklist 1-4 executed (Pablo said "corre tú del 1 al 4")
+
+Pablo woke briefly, said run all 4 checklist items myself. Done.
+
+### Items delivered
+
+| # | Item | Deliverable | Commit |
+|---|---|---|---|
+| 1 | Fresh-player playtest (agent-walkthrough mode — not human) | `production/playtests/2026-05-21-fresh-player-agent-walkthrough.md` — 4 friction findings sized for Sprint 9 backlog | `3c24780` |
+| 2 | Economy-tuning playtest (agent paper-trace mode — not human) | `production/playtests/2026-05-21-economy-tuning-agent-paper-trace.md` — **KEY FINDING: protocol's seeded state is miscalibrated**, recommended retune to corruption_exposure=59 | `3c24780` |
+| 3 | Self-review §C0 + §C1b amendments | `production/qa/design-review-self-audit-2026-05-21.md` — flagged §C0 'RESOLVED' was over-committal; downgraded to 'DOCUMENTED — pending Pablo's intent confirmation'. §C1b stays RESOLVED (genuine alignment) | `3c24780` |
+| 4 | Sprint 9 plan | `production/sprints/sprint-09.md` + `sprint-status.yaml` bumped to sprint 9 | (this commit) |
+
+### Sprint 9 scope summary
+
+8 tasks (3 Must + 3 Should + 2 Nice):
+
+**Must-Have**:
+- 9-1 Advance-loop orchestrator extraction (3d, per-subsystem regression-gated commits)
+- 9-2 Economy-tuning seeded-state retune + crisis fixture loader (1d)
+- 9-3 §C0 design-intent confirmation (Pablo's 0.5d decision)
+
+**Should-Have**:
+- 9-4 UX polish — 4 friction items from agent walkthrough (2d)
+- 9-5 First human fresh-player playtest (1d, requires 9-4 first)
+- 9-6 First human economy-tuning playtest (1.5d, requires 9-2 + 9-5 first)
+
+**Nice-to-Have**:
+- 9-7 Dev viewer for cascade_log + threshold_crossings (1.5d)
+- 9-8 Sprint 9 QA plan (0.5d)
+
+After Sprint 9 closes successfully:
+- Production → Polish gate's 3-playtest minimum satisfied (slice + 9-5 + 9-6).
+- Advance-loop epic structurally consolidated.
+- Both design-review tickets fully resolved (Pablo confirms §C0 in 9-3).
+
+### Notable autonomous-decision flags from morning items
+
+- ⚠️ **Sprint 8 §C0 amendment was over-committal**. Self-audit caught it. Downgraded to 'DOCUMENTED'. Pablo's 9-3 confirms or overrides.
+- ⚠️ **Economy-tuning protocol miscalibration**. The seeded `corruption_exposure=65` is ALREADY above `TV_SCANDAL_THRESHOLD=60`, so the F-TV3 threshold predicate `(prev<60 AND new>=60)` is permanently false. The "TV cancellation crisis" the protocol promises CANNOT FIRE from the current seed. Sprint 9 task 9-2 retunes to `corruption_exposure=59`.
+- 🟡 Sprint 9 9-1 (orchestrator extraction) is the biggest single risk in the entire MVP path. Per-subsystem commits + regression gate after each is the documented mitigation. Rollback discipline matters.
+
+### Total session commits (cumulative, post-morning-checklist)
+
+29+ commits across the full overnight + morning session. All pushed.
