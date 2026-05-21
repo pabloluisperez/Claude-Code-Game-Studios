@@ -68,6 +68,19 @@ export {
   type SnapshotPayload,
 } from './sim/world-state-serde.js';
 
+// Presentation state — day-night + weather (ADR-022, v1.1 Pillar B).
+export {
+  derivePresentationState,
+  timeToDayNightBucket,
+  effectiveInfrastructureLevel,
+  WEATHER_RAIN_PROBABILITY,
+  MATCH_DAY_TIME_OF_DAY,
+  RAIN_INFRASTRUCTURE_PENALTY,
+  type PresentationState,
+  type Weather,
+  type DayNightBucket,
+} from './sim/presentation-state.js';
+
 // League content generators (AI clubs + double round-robin fixtures).
 export {
   generateAiClubs,
