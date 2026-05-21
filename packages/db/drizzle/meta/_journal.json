@@ -162,6 +162,20 @@
       "when": 1779362271398,
       "tag": "0022_dapper_valkyrie",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1779370408380,
+      "tag": "0023_workable_hercules",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1779370900000,
+      "tag": "0024_player_suspension_matches",
+      "breakpoints": true
     }
   ]
 }

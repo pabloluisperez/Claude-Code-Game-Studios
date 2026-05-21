@@ -83,6 +83,28 @@ export const players = pgTable(
     // Lifecycle
     availability: text('availability').notNull().default('available'),
     injuredUntilWeek: integer('injured_until_week'),
+    /**
+     * Number of remaining MATCHES (not weeks) the player must miss after a
+     * red-card suspension. Pablo's clarification (Sprint 13 playtest): real
+     * football suspensions are per-fixture — a bye week doesn't count down.
+     *
+     * Lifecycle:
+     *   - Red card → set to suspensionMatches(reason): 1/2/3
+     *   - 5th yellow of season → set to 1 (auto-suspension)
+     *   - Each subsequent fixture of the player's club → decrement by 1
+     *   - When it hits 0 (or NULL), the player is eligible again
+     *
+     * Sprint 13 task 13-1 (BUG-PT-5).
+     */
+    suspendedMatchesRemaining: integer('suspended_matches_remaining'),
+    /**
+     * Total yellow cards accumulated this season. When reaches 5, the player
+     * is auto-suspended for 1 match (suspendedMatchesRemaining = 1) and this
+     * counter resets to 0. Cleared at season rollover.
+     *
+     * Sprint 13 task 13-1 (Pablo clarification: 5-amarillas rule).
+     */
+    yellowCardsSeason: integer('yellow_cards_season').notNull().default(0),
 
     // F4 form history — bounded to last 5 entries by repo
     recentRatings: jsonb('recent_ratings')

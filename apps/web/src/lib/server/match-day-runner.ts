@@ -16,14 +16,19 @@ import {
   fixtures,
   standings,
   players,
+  staffMessages,
+  staff,
   eq,
   and,
   sql,
+  inArray,
   type Db,
 } from '@smt/db';
 import {
   createSeededRng,
   quickSimulateMatch,
+  extractSuspensions,
+  processYellowAccumulation,
   type QuickMatchResult,
 } from '@smt/shared';
 
@@ -61,14 +66,23 @@ async function simulateFixture(
     agresividad: players.agresividad,
     calidad: players.calidad,
   } as const;
-  const homeRoster = await tx
-    .select(playerCols)
+  // Sprint 13 task 13-1: suspended players (suspended_matches_remaining > 0)
+  // do NOT appear in the match roster — they can't play.
+  const homeRosterAll = await tx
+    .select({ ...playerCols, suspendedMatchesRemaining: players.suspendedMatchesRemaining })
     .from(players)
     .where(eq(players.clubId, args.homeClubId));
-  const awayRoster = await tx
-    .select(playerCols)
+  const awayRosterAll = await tx
+    .select({ ...playerCols, suspendedMatchesRemaining: players.suspendedMatchesRemaining })
     .from(players)
     .where(eq(players.clubId, args.awayClubId));
+
+  const homeRoster = homeRosterAll.filter(
+    (p) => (p.suspendedMatchesRemaining ?? 0) <= 0,
+  );
+  const awayRoster = awayRosterAll.filter(
+    (p) => (p.suspendedMatchesRemaining ?? 0) <= 0,
+  );
 
   return quickSimulateMatch({
     homeRoster: homeRoster.map((p) => ({
@@ -190,6 +204,17 @@ export async function runMatchDay(args: {
         winner: result.winner,
       });
 
+      // Sprint 13 task 13-1 (BUG-PT-5): persist suspensions + 5-yellow rule
+      // for this fixture. Runs in the same tx as the score persist so a
+      // failure rolls everything back.
+      await applySuspensions(tx, {
+        playthroughId,
+        week,
+        homeClubId: fx.homeClubId,
+        awayClubId: fx.awayClubId,
+        events: result.events,
+      });
+
       results.push({
         fixtureId: fx.id,
         homeClubId: fx.homeClubId,
@@ -201,4 +226,163 @@ export async function runMatchDay(args: {
 
     return { week, played: results.length, results };
   });
+}
+
+/**
+ * Sprint 13 task 13-1 (Pablo playtest BUG-PT-5):
+ *
+ * For each fixture run by match-day:
+ *   1. Read all players on both clubs (with current suspension / yellow state)
+ *   2. For each red_card event → set suspended_matches_remaining = N(reason)
+ *   3. For each yellow_card event → bump yellow_cards_season; if ≥ 5, auto-
+ *      suspend (suspended_matches_remaining = 1) and reset counter to 0
+ *   4. For all OTHER players (not sentenced this fixture) on the playing
+ *      clubs: decrement suspended_matches_remaining by 1; clear to NULL if
+ *      it reaches 0
+ *   5. Insert staff messages for the user's club describing the sentence
+ *
+ * Suspensions are per-match, not per-week (Pablo clarification): the
+ * counter only ticks when the player's club plays.
+ */
+async function applySuspensions(
+  tx: Tx,
+  args: {
+    playthroughId: string;
+    week: number;
+    homeClubId: string;
+    awayClubId: string;
+    events: QuickMatchResult['events'];
+  },
+): Promise<void> {
+  const { playthroughId, week, homeClubId, awayClubId, events } = args;
+
+  // 1. Read all players on both clubs with their current state.
+  const roster = await tx
+    .select({
+      id: players.id,
+      firstName: players.firstName,
+      lastName: players.lastName,
+      clubId: players.clubId,
+      suspendedMatchesRemaining: players.suspendedMatchesRemaining,
+      yellowCardsSeason: players.yellowCardsSeason,
+    })
+    .from(players)
+    .where(inArray(players.clubId, [homeClubId, awayClubId]));
+
+  const playerById = new Map(roster.map((p) => [p.id, p]));
+  const currentYellowsById: Record<string, number> = {};
+  for (const p of roster) {
+    currentYellowsById[p.id] = p.yellowCardsSeason;
+  }
+
+  // 2. Red-card suspensions.
+  const reds = extractSuspensions(events);
+  const sentencedThisMatch = new Set<string>();
+  const newSuspensionsForMessages: Array<{
+    playerId: string;
+    matches: number;
+    reason: string;
+  }> = [];
+
+  for (const r of reds) {
+    if (!playerById.has(r.playerId)) continue;
+    await tx
+      .update(players)
+      .set({ suspendedMatchesRemaining: r.matches })
+      .where(eq(players.id, r.playerId));
+    sentencedThisMatch.add(r.playerId);
+    newSuspensionsForMessages.push({
+      playerId: r.playerId,
+      matches: r.matches,
+      reason: r.reason,
+    });
+  }
+
+  // 3. Yellow-card accumulation (5th yellow → 1-match suspension).
+  const yellowAccs = processYellowAccumulation(events, currentYellowsById);
+  for (const ya of yellowAccs) {
+    if (!playerById.has(ya.playerId)) continue;
+    if (ya.triggersSuspension) {
+      // Auto-suspension: 1 match + reset counter to 0
+      await tx
+        .update(players)
+        .set({ suspendedMatchesRemaining: 1, yellowCardsSeason: 0 })
+        .where(eq(players.id, ya.playerId));
+      sentencedThisMatch.add(ya.playerId);
+      newSuspensionsForMessages.push({
+        playerId: ya.playerId,
+        matches: 1,
+        reason: 'five_yellows',
+      });
+    } else {
+      await tx
+        .update(players)
+        .set({ yellowCardsSeason: ya.newSeasonCount })
+        .where(eq(players.id, ya.playerId));
+    }
+  }
+
+  // 4. Decrement remaining counters for all OTHER players on these clubs
+  //    who already had an active suspension before this match.
+  const toDecrement = roster.filter(
+    (p) =>
+      !sentencedThisMatch.has(p.id) &&
+      p.suspendedMatchesRemaining !== null &&
+      p.suspendedMatchesRemaining > 0,
+  );
+  for (const p of toDecrement) {
+    const next = (p.suspendedMatchesRemaining ?? 0) - 1;
+    await tx
+      .update(players)
+      .set({
+        suspendedMatchesRemaining: next <= 0 ? null : next,
+      })
+      .where(eq(players.id, p.id));
+  }
+
+  // 5. Staff message for the user-club's coach when a new suspension fires.
+  //    Only emit messages for the playthrough's club (the one the user
+  //    manages). We resolve it by checking which of (home, away) belongs
+  //    to a player we have in roster + the head_coach staff for the
+  //    playthrough.
+  if (newSuspensionsForMessages.length > 0) {
+    const [headCoach] = await tx
+      .select({ id: staff.id })
+      .from(staff)
+      .where(
+        and(
+          eq(staff.playthroughId, playthroughId),
+          eq(staff.role, 'head_coach'),
+          eq(staff.status, 'active'),
+        ),
+      )
+      .limit(1);
+
+    if (headCoach) {
+      for (const s of newSuspensionsForMessages) {
+        const p = playerById.get(s.playerId);
+        if (!p) continue;
+        const reasonLabel =
+          s.reason === 'five_yellows'
+            ? '5 amarillas acumuladas'
+            : s.reason === 'second_yellow'
+              ? 'doble amarilla'
+              : s.reason === 'violent'
+                ? 'roja por conducta violenta'
+                : 'roja directa';
+        const matchesLabel =
+          s.matches === 1 ? '1 partido' : `${s.matches} partidos`;
+        await tx.insert(staffMessages).values({
+          playthroughId,
+          staffId: headCoach.id,
+          week,
+          season: 1,
+          priority: 'URGENT',
+          templateKey: `suspension:${s.reason}`,
+          content: `Segundo entrenador avisa: ${p.firstName} ${p.lastName} sancionado por ${reasonLabel}. Se pierde ${matchesLabel}.`,
+          isRead: false,
+        });
+      }
+    }
+  }
 }

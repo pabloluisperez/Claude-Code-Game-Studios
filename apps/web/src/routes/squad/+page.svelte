@@ -229,11 +229,29 @@
           </thead>
           <tbody>
             {#each sorted as p}
-              <tr class="hover cursor-pointer text-sm" onclick={() => (selected = p)}>
+              {@const suspended = (p.suspendedMatchesRemaining ?? 0) > 0}
+              {@const yellowsNearLimit = (p.yellowCardsSeason ?? 0) >= 4 && !suspended}
+              <tr class="hover cursor-pointer text-sm {suspended ? 'opacity-60 bg-error/5' : ''}" onclick={() => (selected = p)}>
                 <td class="font-semibold">
                   <div class="flex items-center gap-2">
                     <Avatar seed={`player:${p.id}:${p.firstName}${p.lastName}`} size={28} />
                     <span class="truncate">{p.firstName[0]}. {p.lastName}</span>
+                    {#if suspended}
+                      <!-- Sprint 13 task 13-1: badge "Suspendido N partidos · Vuelve JX" -->
+                      <span
+                        class="badge badge-error badge-sm gap-1"
+                        title="Sancionado — no puede jugar {p.suspendedMatchesRemaining} partido(s). Vuelve en jornada {data.currentWeek + (p.suspendedMatchesRemaining ?? 0)}."
+                      >
+                        🚫 {p.suspendedMatchesRemaining}
+                      </span>
+                    {:else if yellowsNearLimit}
+                      <span
+                        class="badge badge-warning badge-sm gap-1"
+                        title="{p.yellowCardsSeason} amarillas esta temporada. A las 5 → 1 partido de sanción."
+                      >
+                        🟨 {p.yellowCardsSeason}
+                      </span>
+                    {/if}
                   </div>
                 </td>
                 <td><span class="badge badge-outline badge-sm">{posLabel(p.position)}</span></td>

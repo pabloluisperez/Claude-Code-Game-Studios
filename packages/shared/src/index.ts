@@ -173,6 +173,16 @@ export type {
 } from './sim/sports/football/football-types.js';
 export { simulateMatch } from './sim/sports/football/match-simulation.js';
 export {
+  suspensionMatches,
+  extractSuspensions,
+  processYellowAccumulation,
+  isPlayerAvailable,
+  returnMatchday,
+  YELLOW_SEASON_SUSPENSION_THRESHOLD,
+  type SuspensionEntry,
+  type YellowAccumulationEntry,
+} from './sim/sports/football/suspension.js';
+export {
   initMatchSession,
   advanceTick,
   validateDecision,
