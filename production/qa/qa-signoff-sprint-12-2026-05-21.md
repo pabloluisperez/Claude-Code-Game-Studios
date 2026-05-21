@@ -16,12 +16,12 @@
 | 12-1 | STOP event scheduledDayOfSeason + per-day halt | Must Have | ✅ Done | Schema migration 0022 + `advanceDays` per-day scan + 22 regression tests |
 | 12-2 | Advance-transition modal resume-from-day | Must Have | ✅ Done | `startDayOfWeek` prop + server-driven cursor + 13 regression tests |
 | 12-3 | A11y P2 batch (skip-link + headings + sponsor labels) | Must Have | ✅ Done | 12 aria tests + `production/qa/evidence/a11y-p2-sprint-12.md` |
-| 12-4 | Manual validation pass (Pablo) | Should Have | ⏸ Blocked | Pablo's ~1h availability — guide ready below |
+| 12-4 | Manual validation pass (Pablo) | Should Have | ✅ Done | Three-part protocol completed 2026-05-21; report `production/playtests/2026-05-21-polish-sprint-12.md`; verdict READY WITH CONDITIONS |
 | 12-5 | Soak test protocol scaffolding | Nice to Have | ✅ Done | `production/qa/soak-test-protocol.md` (runner deferred Sprint 13) |
 
-**Delivered: 4 of 5 stories (3 Must + 1 Should + 1 Nice).** 12-4 is the
-sole blocking item, and it's owner-side (Pablo's manual walkthrough +
-playtest — guide below).
+**Delivered: 5 of 5 stories** (3 Must + 1 Should + 1 Nice). 12-4 closed
+post-playtest 2026-05-21 with verdict **READY WITH CONDITIONS** — see
+"Playtest verdict" below.
 
 ---
 
@@ -30,7 +30,7 @@ playtest — guide below).
 | Criterion | Status | Notes |
 |-----------|--------|-------|
 | 12-1, 12-2, 12-3 completed (Must Have) | ✅ | All three closed with tests + evidence |
-| 12-4 completed (Should Have, Polish→Release blocker) | ⏸ | Pablo time required (~1h) |
+| 12-4 completed (Should Have, Polish→Release blocker) | ✅ | Three-part protocol completed; verdict READY WITH CONDITIONS |
 | QA plan exists | ✅ | `production/qa/qa-plan-sprint-12-2026-05-21.md` + inline in `sprint-12.md` |
 | All AC verificados | ✅ | See per-story evidence |
 | Smoke check pasado | ✅ | `production/qa/smoke-sprint-12-2026-05-21.md` PASS — 1091 tests green |
@@ -39,7 +39,7 @@ playtest — guide below).
 | STOP event scheduledDayOfSeason halts correctamente | ✅ Static | Grep tests + 998 baseline regression. Live DB integration deferred via it.todo (Sprint 13) |
 | 3 hallazgos A11y P2 cerrados con evidencia | ✅ con condición | All wired + automated tests; Pablo manual walkthrough pendiente |
 | Sin bugs S1/S2 nuevos | ✅ | None observed |
-| Manual validation pass (12-4) completado | ⏸ | Guide for Pablo below |
+| Manual validation pass (12-4) completado | ✅ | Done 2026-05-21 |
 
 ---
 
@@ -55,32 +55,60 @@ playtest — guide below).
 
 ---
 
+## Playtest verdict (12-4)
+
+Pablo completed the three-part protocol on 2026-05-21:
+
+- **Part A** (A11y keyboard pass): ✅ todo OK — todos los fixes funcionan
+- **Part B** (Browser e2e con STOP sintético): ✅ tras 3 iteraciones de fix (modal halt visible, topbar long-form, banner + calendar mid-week marker, contrast píldora)
+- **Part C** (Playtest libre ~45 min): ✅ verdict positivo
+
+**Foco 1 — Mid-week pause cierra el finding E?**
+> ✅ **SÍ, completamente.** Pablo: "esto ya va guay". El halt + resume se siente natural; la cadena evento → resolver → seguir avanzando funciona.
+
+**Foco 2 — Foundation suficiente para Polish→Release?**
+> ✅ **READY WITH CONDITIONS** — tras Sprint 13 que cierre PT-4 + PT-5 (ver bug reports). Sprint 12 deja el debt arquitectural cerrado.
+
+**Foco 3 — Feel general?**
+> ✅ Las mejoras (fecha precisa, dropdown user, calendar mid-week marker, contrast píldora) **mejoran sin sobrar**.
+
+**Quick wins fijados en la misma sesión post-playtest**:
+- PT-1: squad sort por Posición ahora POR→DEF→MED→DEL (no alfabético)
+- PT-2: match live no auto-start; minuto grande durante replay
+- PT-3: scores siempre casa-fuera (eliminado intercambio user-relative)
+
+**Carry-forward Sprint 13** (formal bug reports creados):
+- BUG-PT-4: match live polish features (parada antes evento + confeti gol + VAR check)
+- BUG-PT-5: red-card suspension (S2, gameplay rule gap)
+
+---
+
 ## Conditions before Polish→Release
 
-1. **Pablo manual validation pass (12-4)** — three-part protocol in
-   `production/qa/qa-plan-sprint-12-2026-05-21.md`:
-   - Part A: A11y P1+P2 keyboard walkthrough (~10 min)
-   - Part B: Browser e2e dashboard → advance → next week, including a synthetic mid-week STOP event (~10 min)
-   - Part C: Playtest Polish #1 ~45 min — does mid-week pause cierra el finding E del 2026-05-21 playtest?
-   - Reporte en `production/playtests/YYYY-MM-DD-polish-sprint-12.md`
+1. **BUG-PT-5 (red-card suspension)** — S2 carry-forward a Sprint 13.
+   Real-football realism issue; debe cerrarse antes del Release.
 
-2. **Live DB integration tests** for STOP event halt (deferred via 5 it.todo
+2. **BUG-PT-4 (match polish)** — S3 carry-forward a Sprint 13. Recomendable
+   pre-Release porque el match es el peak emocional de la temporada.
+
+3. **Live DB integration tests** for STOP event halt (deferred via 5 it.todo
    in advance-days.test.ts + advance-stop-events.test.ts) — Sprint 13 work.
 
-3. **Soak test runner implementation** (the protocol exists from 12-5, the
-   CLI lands Sprint 13).
+4. **Soak test runner implementation** (protocol from 12-5; CLI lands Sprint 13).
 
 ---
 
 ## Carry-forward to Sprint 13
 
-| Item | Source | Type |
-|------|--------|------|
-| Soak test CLI runner + nightly CI integration | 12-5 scaffolding | Implementation |
-| Live DB integration tests for STOP halt + multi-week scenarios | 5 it.todo flags from Sprint 12 | Test coverage |
-| `POST /api/advance` Hono route + cross-app HTTP migration | Sprint 11 deviation, unchanged | Architectural (v1.1+ unless MMO) |
-| Polish→Release gate-check execution | Polish phase requirement | Validation |
-| Release checklist + store metadata | Pre-release | Release prep |
+| Item | Source | Type | Priority |
+|------|--------|------|----------|
+| BUG-PT-5: red-card suspension | Playtest 12-4 | Gameplay | **Must Have** (S2) |
+| BUG-PT-4: match live polish (parada + confeti + VAR) | Playtest 12-4 | UX polish | Should Have (S3) |
+| Soak test CLI runner + nightly CI integration | 12-5 scaffolding | Implementation | Must Have |
+| Live DB integration tests for STOP halt + multi-week scenarios | 5 it.todo flags from Sprint 12 | Test coverage | Should Have |
+| Polish→Release gate-check execution | Polish phase requirement | Validation | Must Have (sprint close) |
+| `POST /api/advance` Hono route + cross-app HTTP migration | Sprint 11 deviation, unchanged | Architectural | v1.1+ unless MMO |
+| Release checklist + store metadata | Pre-release | Release prep | Sprint 14 |
 
 ---
 

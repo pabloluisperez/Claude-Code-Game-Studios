@@ -85,6 +85,16 @@
     return '';
   }
 
+  // Playtest PT-1 fix (Pablo 2026-05-21 Sprint 12): when sorting by
+  // position, respect the football ordering (POR → DEF → MED → DEL)
+  // instead of alphabetical. Other sort keys keep the generic comparator.
+  const POSITION_ORDER: Readonly<Record<string, number>> = {
+    GK: 0,
+    DEF: 1,
+    MID: 2,
+    FWD: 3,
+  };
+
   const sorted = $derived.by(() => {
     const allPositions = posFilter.size === 0 || posFilter.size >= 4;
     const filtered = data.players.filter(
@@ -92,6 +102,11 @@
     );
     return [...filtered].sort((a, b) => {
       const dir = sortDir === 'asc' ? 1 : -1;
+      if (sortKey === 'position') {
+        const ao = POSITION_ORDER[a.position] ?? 99;
+        const bo = POSITION_ORDER[b.position] ?? 99;
+        return (ao - bo) * dir;
+      }
       const av = a[sortKey] as string | number | null;
       const bv = b[sortKey] as string | number | null;
       if (av === null || bv === null) return 0;

@@ -257,6 +257,15 @@ export const load: PageServerLoad = async ({ parent, url }) => {
             opponentName,
             myScore,
             oppScore,
+            // Playtest PT-3 fix (Pablo Sprint 12): expose raw home/away
+            // scores so the display can ALWAYS render "home-away" order
+            // regardless of whether the user is home or away. The
+            // outcome badge (win/draw/loss) still uses myScore vs
+            // oppScore — that semantic is user-relative.
+            homeScore: f.homeScore,
+            awayScore: f.awayScore,
+            homeName: f.homeName,
+            awayName: f.awayName,
             outcome,
             date: weekToDate(f.week),
           };

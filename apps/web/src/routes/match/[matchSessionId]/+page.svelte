@@ -308,9 +308,10 @@
       if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(SEEN_KEY, '1');
       return;
     }
-    if (autoplay && persistedEvents.length > 0) {
-      startReplay();
-    }
+    // Playtest PT-2 fix (Pablo Sprint 12 walkthrough): no auto-start on
+    // mount. The user must click "Reproducir en vivo" explicitly so they
+    // can read the pre-match context first. The autoplay query param now
+    // only signals user INTENT (highlight the button) — not auto-trigger.
   });
 
   // When the replay reaches the final whistle, mark this fixture as seen.
@@ -360,17 +361,27 @@
           <div class="text-xl font-semibold truncate">{data.fixture.awayName}</div>
         </div>
       </div>
-      <div class="text-center text-sm opacity-60 mt-2">
-        {#if isReplaying}
-          Minuto <span class="font-mono">{liveMinute}'</span>
-        {:else if resultHidden}
-          <span class="badge badge-warning">Por jugar</span>
-        {:else if data.fixture.status === 'played'}
-          Estado <span class="badge badge-success">FINAL</span>
-        {:else}
-          <span class="badge badge-ghost">Programado</span>
-        {/if}
-      </div>
+      {#if isReplaying}
+        <!-- Playtest PT-2 fix (Pablo Sprint 12): minuto en grande durante
+             el replay — es la señal principal de "esto está en vivo". -->
+        <div class="text-center mt-2">
+          <div class="inline-flex items-center gap-2 bg-error/20 text-error border-2 border-error rounded-full px-4 py-1">
+            <span class="animate-pulse">●</span>
+            <span class="text-xs uppercase font-bold tracking-wider">EN VIVO</span>
+            <span class="font-mono text-2xl md:text-3xl font-bold tabular-nums">{liveMinute}'</span>
+          </div>
+        </div>
+      {:else}
+        <div class="text-center text-sm opacity-60 mt-2">
+          {#if resultHidden}
+            <span class="badge badge-warning">Por jugar</span>
+          {:else if data.fixture.status === 'played'}
+            Estado <span class="badge badge-success">FINAL</span>
+          {:else}
+            <span class="badge badge-ghost">Programado</span>
+          {/if}
+        </div>
+      {/if}
 
       <!-- Polish walkthrough fix #2 (Pablo, post-Sprint-12 12-4): recaudación
            compacta dentro del scoreboard para que sea visible nada más

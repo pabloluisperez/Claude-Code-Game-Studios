@@ -395,8 +395,11 @@
                     ({data.lastResult.isHome ? 'casa' : 'fuera'})
                   </span>
                   {#if matchSeen}
+                    <!-- Playtest PT-3 fix (Pablo Sprint 12): siempre
+                         "homeScore - awayScore" en ese orden, sin
+                         intercambio según el club del usuario. -->
                     <span class="font-mono ml-3 text-2xl">
-                      {data.lastResult.myScore}–{data.lastResult.oppScore}
+                      {data.lastResult.homeScore}–{data.lastResult.awayScore}
                     </span>
                   {/if}
                 </h3>

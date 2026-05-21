@@ -49,13 +49,13 @@ stories:
 
   - id: "12-4"
     name: "Manual validation pass (Pablo) — walkthrough + e2e + Playtest #1"
-    file: "production/playtests/TBD-polish-sprint-12.md"
+    file: "production/playtests/2026-05-21-polish-sprint-12.md"
     priority: should-have
-    status: blocked
+    status: done
     owner: "Pablo"
     estimate_days: 1.0
-    blocker: "Pablo's availability (~1h continuous)"
-    completed: ""
+    blocker: ""
+    completed: "2026-05-21"
 
   - id: "12-5"
     name: "Soak test protocol scaffolding (runner deferred to Sprint 13)"
