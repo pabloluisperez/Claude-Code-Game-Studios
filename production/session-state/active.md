@@ -24,7 +24,7 @@ TOTAL:           1288/1288  ✅
 
 0 regressions. Overnight didn't break anything.
 
-### What landed (7 commits on `project/SoccerManagerTotal`)
+### What landed (9 commits on `project/SoccerManagerTotal`)
 
 | Commit | Subject |
 |---|---|
@@ -35,6 +35,8 @@ TOTAL:           1288/1288  ✅
 | `f1d0422` | docs(overnight): session-state + changelog + launch post drafts |
 | `a9e9b43` | feat(web): full icon set + PWA manifest + favicon wiring |
 | `f38f8a6` | docs(marketing): press kit + trailer storyboard for v1.0 launch |
+| `0e1fad2` | docs(overnight): final session-state wrap with smoke gate + stats |
+| `b20d9a0` | feat(assets): add stadium T3 night + rain variants |
 
 ### Assets pipeline (19 canonical HD sprites in `assets/sprites/city-hd/`)
 
@@ -173,17 +175,28 @@ Cuando despiertes (en orden de impacto):
 
 5. **Resolve open questions** §1-5 arriba para destrabar v1.0.0 tag.
 
-### Stats overnight
+### Stats overnight (final)
 
-- Total tiempo: ~3h
-- Commits: 7
-- Tests verdes: 1288/1288 (sin regresión)
-- Assets nuevos generados: 11 HD sprites + 8 icon sizes + webmanifest
+- Total tiempo: ~3.5h
+- Commits: **9**
+- Tests verdes: **1288/1288** (sin regresión — smoke gate PASS)
+- Assets nuevos generados: **13 HD sprites** (11 city-hd + 2 T3 variants) + 8 icon sizes + webmanifest
 - Docs nuevos: 5 (manifest, _raw/README, press kit, launch post, trailer SB)
 - Docs actualizados: 3 (release-checklist, changelog-v1.0, this active.md)
 - Líneas de código modificadas: ~50 (app.html + /stadium svelte)
 - Release-checklist lines auto-cerradas: 5 (§2 iconos, §3 license, §7 launch
   post, §7 trailer, §7 press kit)
+
+### Asset inventory final (`assets/sprites/city-hd/`)
+
+**21 canonical HD sprites:**
+
+Stadiums (6): t0-amateur, t1-local, t2-regional, t3-premier, t3-night, t3-rain
+Buildings (7): academy, gym, mansion, medical, office, parking, training-pitch
+Characters (2): manager-sheet, player-sheet
+Props (6): banners, corner-flags, goalposts, jerseys, soccer-balls, trophies
+
+Plus: 8 icon sizes (16, 32, 64, 128, 192, 256, 512, apple-touch) + webmanifest
 
 ---
 
