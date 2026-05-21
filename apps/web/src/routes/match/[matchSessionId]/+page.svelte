@@ -373,37 +373,48 @@
       </div>
 
       {#if data.fixture.status === 'played' && persistedEvents.length > 0}
+        <!-- Polish walkthrough fix (Pablo, post-Sprint-11): replay buttons
+             only make sense when the result is hidden (today's match, not
+             yet revealed). For past matches the user is reviewing a known
+             result — collapse to a single "Volver al dashboard" CTA. -->
         <div class="card-actions justify-center mt-3 gap-2 flex-wrap">
-          {#if !isReplaying && !finalWhistle}
-            <button class="btn btn-primary" type="button" onclick={startReplay}>
-              ▶ Reproducir en vivo
-            </button>
-          {:else if isReplaying}
-            <button class="btn btn-error btn-outline" type="button" onclick={stopReplay}>
-              Detener
-            </button>
-          {/if}
-          {#if returnTo === 'dashboard'}
-            {#if finalWhistle}
-              <a href="/dashboard?advanced=1" class="btn btn-ghost">
-                → Volver al dashboard
-              </a>
-            {:else}
-              <!-- Bug M1 fix (playtest 2026-05-21 Pablo): 'Saltar al final'
-                   previously navigated to /dashboard, leaving the player
-                   without seeing the result. Now it stops the replay
-                   in-place and reveals the recap + all events upfront. -->
-              <button
-                type="button"
-                class="btn btn-ghost"
-                onclick={() => {
-                  stopReplay();
-                  finalWhistle = true;
-                }}
-              >
-                Saltar al final
+          {#if resultHidden || isReplaying || finalWhistle}
+            {#if !isReplaying && !finalWhistle}
+              <button class="btn btn-primary" type="button" onclick={startReplay}>
+                ▶ Reproducir en vivo
+              </button>
+            {:else if isReplaying}
+              <button class="btn btn-error btn-outline" type="button" onclick={stopReplay}>
+                Detener
               </button>
             {/if}
+            {#if returnTo === 'dashboard'}
+              {#if finalWhistle}
+                <a href="/dashboard?advanced=1" class="btn btn-ghost">
+                  → Volver al dashboard
+                </a>
+              {:else if resultHidden}
+                <!-- Bug M1 fix (playtest 2026-05-21 Pablo): 'Saltar al final'
+                     previously navigated to /dashboard, leaving the player
+                     without seeing the result. Now it stops the replay
+                     in-place and reveals the recap + all events upfront. -->
+                <button
+                  type="button"
+                  class="btn btn-ghost"
+                  onclick={() => {
+                    stopReplay();
+                    finalWhistle = true;
+                  }}
+                >
+                  Saltar al final
+                </button>
+              {/if}
+            {/if}
+          {:else}
+            <!-- Past match, result already visible — single back-to-dashboard CTA. -->
+            <a href="/dashboard" class="btn btn-primary">
+              → Volver al dashboard
+            </a>
           {/if}
         </div>
       {/if}
@@ -414,6 +425,42 @@
     <div class="alert alert-success shadow">
       <span>⏱ Final del partido. Vuelve al dashboard cuando quieras.</span>
     </div>
+  {/if}
+
+  <!-- Polish walkthrough fix (Pablo, post-Sprint-11): recaudación + asistencia
+       cuando el usuario juega en casa. Card only renders when:
+         - the user's club is home
+         - the fixture is played (revenue is meaningful)
+         - the result is not hidden (we don't spoil a hidden result with
+           "won X euros at the gate")
+  -->
+  {#if data.homeMatchEconomics && !resultHidden}
+    <section class="card bg-base-100 shadow border border-success/30">
+      <div class="card-body py-4">
+        <h3 class="card-title text-base">🎟 Recaudación del partido</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-1">
+          <div>
+            <div class="text-xs opacity-60 uppercase">Asistencia</div>
+            <div class="font-mono text-2xl">
+              {data.homeMatchEconomics.attendance.toLocaleString('es-ES')}
+            </div>
+            <div class="text-xs opacity-60">espectadores</div>
+          </div>
+          <div>
+            <div class="text-xs opacity-60 uppercase">Precio entrada</div>
+            <div class="font-mono text-2xl">
+              {data.homeMatchEconomics.ticketPriceEur} €
+            </div>
+          </div>
+          <div>
+            <div class="text-xs opacity-60 uppercase">Ingresos por taquilla</div>
+            <div class="font-mono text-2xl text-success">
+              +{data.homeMatchEconomics.gateReceiptsEurK.toLocaleString('es-ES')} k€
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   {/if}
 
   <!-- Match recap (newspaper-style) — hidden while replay is in progress

@@ -21,6 +21,16 @@
     data.user !== null && !$page.url.pathname.startsWith('/login') && !$page.url.pathname.startsWith('/signup'),
   );
 
+  // Polish walkthrough fix (Pablo, post-Sprint-11): sidebar lives off the
+  // active playthrough (Dashboard, Squad, Staff, etc. all assume one exists).
+  // On /game (the playthrough selector) and any route reached without an
+  // active playthrough, the sidebar has no anchor and clutters the UI.
+  // Show chrome (topbar) but skip the side nav in that state.
+  const showSidebar = $derived(
+    data.activePlaythrough !== null &&
+      !$page.url.pathname.startsWith('/game'),
+  );
+
   function toggleSidebar() {
     sidebarOpen = !sidebarOpen;
   }
@@ -34,10 +44,13 @@
       dateDisplay={data.activePlaythrough?.date?.display}
       balanceEurK={data.activePlaythrough?.balanceEurK ?? null}
       inboxUnread={data.badges?.inboxUnread ?? 0}
+      showSidebarToggle={showSidebar}
       onToggleSidebar={toggleSidebar}
     />
     <div class="flex flex-1">
-      <Sidebar bind:open={sidebarOpen} badges={data.badges} />
+      {#if showSidebar}
+        <Sidebar bind:open={sidebarOpen} badges={data.badges} />
+      {/if}
       <main class="flex-1 container mx-auto px-4 py-8 max-w-7xl">
         {@render children()}
       </main>

@@ -5,7 +5,7 @@
   Control Manifest: 2026-05-19
 -->
 <script lang="ts">
-  import { formatEurK } from '$lib/format';
+  import { formatEurCompact } from '$lib/format';
 
   interface Props {
     user: { username: string } | null;
@@ -13,6 +13,7 @@
     dateDisplay?: string | undefined;
     balanceEurK?: number | null;
     inboxUnread?: number;
+    showSidebarToggle?: boolean;
     onToggleSidebar?: () => void;
   }
   let {
@@ -21,6 +22,7 @@
     dateDisplay,
     balanceEurK = null,
     inboxUnread = 0,
+    showSidebarToggle = true,
     onToggleSidebar,
   }: Props = $props();
 
@@ -46,22 +48,25 @@
   });
   const balanceAriaLabel = $derived.by(() => {
     if (balanceEurK === null) return 'Ver finanzas';
-    if (balanceEurK < 0) return `Balance crítico: ${balanceEurK} mil euros. Ver finanzas.`;
-    if (balanceEurK < 50) return `Balance bajo: ${balanceEurK} mil euros. Ver finanzas.`;
+    const compact = formatEurCompact(balanceEurK);
+    if (balanceEurK < 0) return `Balance crítico: ${compact}. Ver finanzas.`;
+    if (balanceEurK < 50) return `Balance bajo: ${compact}. Ver finanzas.`;
     return 'Ver finanzas';
   });
 </script>
 
 <nav class="navbar bg-base-200 px-4 sticky top-0 z-10 border-b border-base-300">
-  <div class="md:hidden mr-2">
-    <button
-      class="btn btn-ghost btn-sm"
-      aria-label="Toggle sidebar"
-      onclick={onToggleSidebar}
-    >
-      ☰
-    </button>
-  </div>
+  {#if showSidebarToggle}
+    <div class="md:hidden mr-2">
+      <button
+        class="btn btn-ghost btn-sm"
+        aria-label="Toggle sidebar"
+        onclick={onToggleSidebar}
+      >
+        ☰
+      </button>
+    </div>
+  {/if}
 
   <div class="flex-1">
     <a href="/dashboard" class="btn btn-ghost text-xl font-bold">Total Soccer Manager</a>
@@ -86,7 +91,7 @@
       >
         <span class="opacity-50">Balance</span>
         <span class="font-mono font-semibold {balanceClass}">
-          {#if balanceIcon}<span aria-hidden="true" class="mr-0.5">{balanceIcon}</span>{/if}{formatEurK(balanceEurK)}
+          {#if balanceIcon}<span aria-hidden="true" class="mr-0.5">{balanceIcon}</span>{/if}{formatEurCompact(balanceEurK)}
         </span>
       </a>
     {/if}
@@ -99,10 +104,35 @@
         {/if}
         <span class="text-xl">📨</span>
       </a>
-      <span class="text-sm opacity-70 hidden lg:inline">{user.username}</span>
-      <form method="POST" action="/logout">
-        <button class="btn btn-ghost btn-sm" type="submit">Salir</button>
-      </form>
+      <!-- Polish walkthrough fix (Pablo, post-Sprint-11): username becomes a
+           dropdown with explicit "Cambiar partida" → /game. Previously the
+           only way to reach /game was via the URL bar. -->
+      <div class="dropdown dropdown-end">
+        <button
+          type="button"
+          class="btn btn-ghost btn-sm"
+          aria-label="Menú de usuario"
+          aria-haspopup="menu"
+        >
+          <span class="hidden lg:inline">{user.username}</span>
+          <span class="text-lg lg:hidden">👤</span>
+        </button>
+        <ul
+          class="dropdown-content menu menu-sm bg-base-100 rounded-box z-20 mt-2 w-52 p-2 shadow border border-base-300"
+          role="menu"
+        >
+          <li role="none">
+            <a href="/game" role="menuitem">🎮 Cambiar partida</a>
+          </li>
+          <li role="none">
+            <form method="POST" action="/logout" class="contents">
+              <button type="submit" role="menuitem" class="w-full text-left">
+                🚪 Salir
+              </button>
+            </form>
+          </li>
+        </ul>
+      </div>
     {:else}
       <a href="/login" class="btn btn-ghost btn-sm">Login</a>
       <a href="/signup" class="btn btn-primary btn-sm">Sign up</a>

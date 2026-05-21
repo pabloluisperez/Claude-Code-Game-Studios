@@ -207,5 +207,5 @@ function makeFakeCtx(p: MinimalPlaythroughCtx) {
     latestWeek: p.currentWeek - 1,
     currentDivision: 'D2' as const,
     currentSeason: 1,
-  } as Parameters<typeof advanceDays>[0]['ctx'];
+  } as unknown as Parameters<typeof advanceDays>[0]['ctx'];
 }

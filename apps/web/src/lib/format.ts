@@ -35,3 +35,38 @@ export function formatEurKSigned(eurK: number): string {
   const sign = eur > 0 ? '+' : '';
   return `${sign}${eur.toLocaleString('es-ES')} €`;
 }
+
+/**
+ * Compact "k€" notation for tight chrome (topbar, badges, sparkline labels).
+ *
+ * Polish walkthrough fix (Pablo, post-Sprint-11): the full-euro Spanish
+ * format (`245.000 €`) crowds the topbar. Compact format collapses to
+ * `245 k€` for values ≥ 1 €K, falls through to whole euros under 1 €K, and
+ * uses millions notation for very large balances.
+ *
+ *   formatEurCompact(245)      → '245 k€'
+ *   formatEurCompact(-50)      → '-50 k€'
+ *   formatEurCompact(1500)     → '1,5 M€'
+ *   formatEurCompact(0.4)      → '400 €'
+ *   formatEurCompact(0)        → '0 €'
+ */
+export function formatEurCompact(eurK: number): string {
+  if (eurK === 0) return '0 €';
+  const absK = Math.abs(eurK);
+  const sign = eurK < 0 ? '-' : '';
+  if (absK >= 1000) {
+    // Millions tier: 1500 €K → 1,5 M€
+    const millions = absK / 1000;
+    const formatted = millions.toLocaleString('es-ES', {
+      maximumFractionDigits: 1,
+    });
+    return `${sign}${formatted} M€`;
+  }
+  if (absK >= 1) {
+    // Thousands tier: 245 €K → 245 k€
+    return `${sign}${Math.round(absK).toLocaleString('es-ES')} k€`;
+  }
+  // Sub-€K tier: show full euros (rare for balance, common for small deltas)
+  const eur = Math.round(absK * 1000);
+  return `${sign}${eur.toLocaleString('es-ES')} €`;
+}
