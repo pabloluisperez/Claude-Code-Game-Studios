@@ -32,6 +32,7 @@ import {
 } from '@smt/shared';
 import * as Repo from './match-sessions-repo';
 import type { MatchJobPayload } from '../../workers/match-worker';
+import { rateLimit } from '../../lib/rate-limit.js';
 
 // ── Validation schemas ───────────────────────────────────────────────────────
 
@@ -63,8 +64,8 @@ export function createMatchRoutes(deps: {
 }): Hono {
   const app = new Hono();
 
-  // POST /matches/start
-  app.post('/start', zValidator('json', startSchema), async (c) => {
+  // POST /matches/start — rate-limited to prevent spam-creation of sessions.
+  app.post('/start', rateLimit('matchStart'), zValidator('json', startSchema), async (c) => {
     const body = c.req.valid('json');
     const input = body as unknown as MatchInput;
     const snapshot = initMatchSession(input);
@@ -107,8 +108,8 @@ export function createMatchRoutes(deps: {
     }
   });
 
-  // POST /matches/:id/decision
-  app.post('/:id/decision', zValidator('json', decisionSchema), async (c) => {
+  // POST /matches/:id/decision — rate-limited (higher cap; interactive flow).
+  app.post('/:id/decision', rateLimit('matchDecision'), zValidator('json', decisionSchema), async (c) => {
     const sessionId = c.req.param('id');
     const body = c.req.valid('json');
     const decisions = body.decisions as readonly MatchDecision[];

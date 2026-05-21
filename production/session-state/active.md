@@ -1075,3 +1075,5 @@ Plus:
 ### Total session commits (cumulative, post-sprint-9)
 
 36+ commits across the full overnight + morning + Sprint 9 session. All pushed to `origin/project/SoccerManagerTotal`.
+
+<!-- QA-PLAN: 2026-05-21 | System: sprint-14 | Plan written: production/qa/qa-plan-sprint-14-2026-05-21.md -->

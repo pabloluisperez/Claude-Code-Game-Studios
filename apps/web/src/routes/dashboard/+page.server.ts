@@ -25,6 +25,7 @@ import {
   advanceDays,
   daysUntilNextBoundary,
 } from '$lib/server/advance-orchestrator';
+import { checkLimit, RATE_LIMITS } from '$lib/server/rate-limit';
 
 export const load: PageServerLoad = async ({ parent, url }) => {
   const { user, activePlaythrough } = await parent();
@@ -300,8 +301,24 @@ export const actions: Actions = {
    *
    * See apps/web/src/lib/server/advance-orchestrator.ts.
    */
-  advance: async ({ locals, request }) => {
+  advance: async ({ locals, request, getClientAddress }) => {
     if (!locals.user) throw redirect(303, '/login');
+
+    // Per-user rate limit: 60 advances per 60s. Defends against accidental
+    // double-submit, scripted spam, and protects the orchestrator (which
+    // writes snapshots + enqueues match workers) from runaway load.
+    const limiterKey = `advance:${locals.user.id}`;
+    const verdict = checkLimit(limiterKey, RATE_LIMITS.advance);
+    if (!verdict.allowed) {
+      return fail(429, {
+        error: `Demasiadas peticiones. Espera ${verdict.retryAfterSec}s.`,
+        retryAfterSec: verdict.retryAfterSec,
+      });
+    }
+
+    // getClientAddress is logged for ops audit; the limiter keys by user.id
+    // so anonymous spoofing of x-forwarded-for cannot bypass the cap.
+    void getClientAddress;
 
     const form = await request.formData();
     const redirectModeRaw = String(form.get('redirectMode') ?? 'dashboard');
