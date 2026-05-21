@@ -30,6 +30,7 @@ import {
   computeMatchDayRevenue,
   type WorldState,
 } from '@smt/shared';
+import { computeFinancialStatus } from '@smt/shared/sim/economy/bankruptcy';
 
 export interface EconomyTickResult {
   readonly patchedState: WorldState;
@@ -169,10 +170,19 @@ export async function applyEconomyTick(args: {
     totals.playerWages;
   const balanceAfter = balanceBefore + cashflow;
 
+  // Bug BUG-FIN-1 fix (Pablo playtest Sprint 12 2026-05-21):
+  // financial_status must be recomputed AFTER the economy tick updates
+  // financial_balance. The cascade engine computes it from the PREVIOUS
+  // week's balance (before economy runs), so a player sitting on −1M€
+  // balance + −64k€/week cashflow would still read "Sano" (last week's
+  // status). Patch financial_status with the post-economy values here.
+  const financialStatusAfter = computeFinancialStatus(balanceAfter, cashflow);
+
   const patchedState = {
     ...stateRead,
     financial_balance: balanceAfter,
     weekly_cashflow: cashflow,
+    financial_status: financialStatusAfter,
     sponsor_revenue_weekly: totals.sponsorRevenue,
     merch_revenue_weekly: merchRevenue,
     matchday_revenue_weekly: matchDayRevenue,
