@@ -94,9 +94,9 @@ quede cerrado y enlaza el artefacto justificativo en `production/`.
 ## 7. Marketing / Comms
 
 - [x] **Changelog v1.0**: `production/releases/changelog-v1.0.md` — story 14-8 (Sprint 14). Player-facing en ES, sin jerga técnica.
-- [ ] **Trailer**: 30-60s video del gameplay (opcional)
+- [x] **Trailer**: storyboard text en `production/marketing/trailer-storyboard-v1.0.md`. 45s en 5 actos, vertical 30s alterno. Producción video out-of-scope v1.0 (~6-8h post-launch).
 - [x] **Launch post**: `production/marketing/launch-post-v1.0.md` — overnight 2026-05-22. Draft con versión corta (~280 chars socials) + larga (blog/Reddit/HN). Pablo revisa canales + dominio antes de publicar.
-- [ ] **Press kit**: opcional, depende del scope de release
+- [x] **Press kit**: `production/marketing/press-kit-v1.0.md` — quick facts, boilerplate (50/100/250 palabras), visual asset listing, streamer policy, technical info, license summary. Overnight 2026-05-22.
 
 ## 8. Polish→Release gate sign-off
 
