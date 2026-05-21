@@ -16,6 +16,7 @@ import {
   seasons,
   leagues,
   calendarEvents,
+  staff,
   eq,
   and,
   desc,
@@ -134,6 +135,21 @@ export const load: PageServerLoad = async ({ parent }) => {
     ? club.seasonTicketPriceLockedSeason >= upcomingSeasonNumber
     : false;
 
+  // Story 10-3: feed the recovery-levers panel with the active staff roster.
+  // We expose only what the panel needs: how many tier-3 / tier-2 employees
+  // exist and what their combined €K/week is, so the panel can suggest
+  // 'downgrade staff' with realistic savings estimates.
+  const activeStaff = await db
+    .select({
+      id: staff.id,
+      role: staff.role,
+      qualityTier: staff.qualityTier,
+      weeklyEurK: staff.weeklyEurK,
+      name: staff.name,
+    })
+    .from(staff)
+    .where(eq(staff.playthroughId, activePlaythrough.id));
+
   return {
     hasPlaythrough: true as const,
     snapshots: snapshots.map((s) => ({
@@ -155,6 +171,7 @@ export const load: PageServerLoad = async ({ parent }) => {
     weeksUntilKickoff,
     isPriceLocked,
     upcomingSeasonNumber,
+    activeStaff,
   };
 };
 

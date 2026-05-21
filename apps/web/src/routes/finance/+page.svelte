@@ -12,6 +12,7 @@
   import { onMount } from 'svelte';
   import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
   import { formatEurK, formatEurKSigned } from '$lib/format';
+  import RecoveryLeversPanel from '$lib/components/recovery-levers-panel.svelte';
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
   let priceConfirmOpen = $state(false);
@@ -295,6 +296,20 @@
          son los sueldos, y otros gastos, ahora mismo ves que pierdes dinero
          pero no sabes donde recortar gastos.' -->
     {@const stateRead = latest.state as Record<string, number>}
+
+    <!-- Sprint 10 task 10-3: Recovery levers coaching panel. Surfaces above
+         the cashflow breakdown so 'En Riesgo / Crisis / Quiebra' players see
+         the action list before they see the diagnosis. The component
+         renders nothing when financialStatus === 0 (Sano). -->
+    <RecoveryLeversPanel
+      {financialStatus}
+      pretemporada={data.pretemporada}
+      pendingSponsorOffersCount={data.pendingSponsorOffers?.length ?? 0}
+      activeStaff={data.activeStaff ?? []}
+      playerWagesEurK={Math.round(stateRead['player_wages_weekly'] ?? 0)}
+      staffCostEurK={Math.round(stateRead['staff_cost_weekly'] ?? 0)}
+    />
+
     {@const incSponsor = Math.round(stateRead['sponsor_revenue_weekly'] ?? 0)}
     {@const incMatchday = Math.round(stateRead['matchday_revenue_weekly'] ?? 0)}
     {@const incTV = Math.round((stateRead['tv_revenue_weekly'] ?? 0) * 10) / 10}
