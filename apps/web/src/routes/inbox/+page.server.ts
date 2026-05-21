@@ -15,14 +15,38 @@ import {
   playthroughs,
   eq,
   and,
+  lt,
   desc,
 } from '@smt/db';
 import { weekToDate } from '@smt/shared';
+
+/**
+ * Bug F fix (playtest 2026-05-21 Pablo): 'Los mensajes antiguos que pierdan
+ * validez por nuevos deberían marcarse como leídos solos.' Since staff
+ * messages have no metadata pointing to specific events, the heuristic is:
+ * after N weeks the world has moved on. Auto-mark as read.
+ */
+const STAFF_MESSAGE_STALENESS_WEEKS = 3;
 
 export const load: PageServerLoad = async ({ parent }) => {
   const { user, activePlaythrough } = await parent();
   if (!user) throw redirect(303, '/login');
   if (!activePlaythrough) return { hasPlaythrough: false as const };
+
+  // Auto-mark stale unread messages as read (bug F fix).
+  const staleCutoffWeek = activePlaythrough.currentWeek - STAFF_MESSAGE_STALENESS_WEEKS;
+  if (staleCutoffWeek > 0) {
+    await db
+      .update(staffMessages)
+      .set({ isRead: true })
+      .where(
+        and(
+          eq(staffMessages.playthroughId, activePlaythrough.id),
+          eq(staffMessages.isRead, false),
+          lt(staffMessages.week, staleCutoffWeek),
+        ),
+      );
+  }
 
   const messages = await db
     .select({

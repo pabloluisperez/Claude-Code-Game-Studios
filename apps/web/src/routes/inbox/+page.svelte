@@ -57,6 +57,20 @@
     if (tone === 'action')   return 'bg-warning/10 border-l-4 border-l-warning';
     return 'bg-base-200 border-l-4 border-l-transparent';
   }
+
+  /**
+   * Tear-off calendar-sheet parts from 'Dom 2 ago 2026' → { dow, day, month }.
+   * Bug P14 fix (playtest 2026-05-21 Pablo): 'Las fechas en bandeja de
+   * entrada que se vean mas claras, como hoja de calendario'.
+   */
+  function dateSheet(display: string): { dow: string; day: string; month: string } {
+    const parts = display.split(/\s+/);
+    return {
+      dow: parts[0] ?? '—',
+      day: parts[1] ?? '—',
+      month: parts[2] ?? '',
+    };
+  }
 </script>
 
 <div class="space-y-4 max-w-4xl mx-auto">
@@ -105,21 +119,32 @@
     </div>
 
     <div class="space-y-1">
+      <!-- P14 calendar-sheet date display + P15 stable layout (badge space reserved). -->
       {#if (tab === 'all' || tab === 'messages')}
         {#each data.messages as m}
           {@const tone = messageTone(m.priority)}
+          {@const sheet = dateSheet(m.date.display)}
           <form method="POST" action="?/markRead" use:enhance class="contents">
             <input type="hidden" name="id" value={m.id} />
             <button
               type={m.isRead ? 'button' : 'submit'}
-              class="flex items-start gap-2 px-3 py-1.5 rounded text-xs text-left w-full
+              class="flex items-stretch gap-2 px-2 py-1.5 rounded text-xs text-left w-full
                      {toneClasses(tone)}
                      {!m.isRead ? 'hover:brightness-95 cursor-pointer' : 'cursor-default'}"
             >
-              <span class="opacity-60 font-mono w-24 flex-shrink-0">{m.date.display}</span>
-              <span class="opacity-50 text-[10px] uppercase w-12 flex-shrink-0">S{m.week}</span>
-              <span class="flex-1 leading-snug">{m.content}</span>
-              {#if !m.isRead}<span class="badge badge-primary badge-xs flex-shrink-0">nuevo</span>{/if}
+              <!-- Calendar-sheet tear-off -->
+              <div class="flex flex-col items-center justify-center w-12 flex-shrink-0
+                          bg-base-100/60 rounded border border-base-300/50 px-1 py-0.5">
+                <span class="text-[9px] uppercase opacity-60 font-bold leading-none">{sheet.dow}</span>
+                <span class="text-base font-bold leading-tight">{sheet.day}</span>
+                <span class="text-[9px] uppercase opacity-60 leading-none">{sheet.month}</span>
+              </div>
+              <span class="opacity-50 text-[10px] uppercase w-8 flex-shrink-0 self-center">S{m.week}</span>
+              <span class="flex-1 leading-snug self-center">{m.content}</span>
+              <!-- P15: reserve the 'nuevo' badge slot so layout doesn't shift on read. -->
+              <span class="w-12 flex-shrink-0 self-center text-right">
+                {#if !m.isRead}<span class="badge badge-primary badge-xs">nuevo</span>{/if}
+              </span>
             </button>
           </form>
         {/each}
@@ -130,21 +155,27 @@
           {@const tone = eventTone(e.type, e.priority, e.status)}
           {@const display = eventDisplay(e.type)}
           {@const needsAction = e.status === 'pending' && eventNeedsAction(e.type, e.priority)}
-          <div class="flex items-start gap-2 px-3 py-1.5 rounded text-xs {toneClasses(tone)}">
-            <span class="opacity-60 font-mono w-24 flex-shrink-0">{e.date.display}</span>
-            <span class="opacity-50 text-[10px] uppercase w-12 flex-shrink-0">S{e.week}</span>
-            <span class="flex-shrink-0">{display.icon}</span>
-            <span class="flex-1 leading-snug">
+          {@const sheet = dateSheet(e.date.display)}
+          <div class="flex items-stretch gap-2 px-2 py-1.5 rounded text-xs {toneClasses(tone)}">
+            <div class="flex flex-col items-center justify-center w-12 flex-shrink-0
+                        bg-base-100/60 rounded border border-base-300/50 px-1 py-0.5">
+              <span class="text-[9px] uppercase opacity-60 font-bold leading-none">{sheet.dow}</span>
+              <span class="text-base font-bold leading-tight">{sheet.day}</span>
+              <span class="text-[9px] uppercase opacity-60 leading-none">{sheet.month}</span>
+            </div>
+            <span class="opacity-50 text-[10px] uppercase w-8 flex-shrink-0 self-center">S{e.week}</span>
+            <span class="flex-shrink-0 self-center">{display.icon}</span>
+            <span class="flex-1 leading-snug self-center">
               <span class="font-semibold">{display.label}</span>
               {#if e.status !== 'pending'}
                 <span class="opacity-60">· {e.status}</span>
               {/if}
             </span>
-            {#if needsAction}
-              <a href={actionUrl(e.type)} class="btn btn-xs btn-warning flex-shrink-0">
-                Ver
-              </a>
-            {/if}
+            <span class="w-12 flex-shrink-0 self-center text-right">
+              {#if needsAction}
+                <a href={actionUrl(e.type)} class="btn btn-xs btn-warning">Ver</a>
+              {/if}
+            </span>
           </div>
         {/each}
       {/if}
