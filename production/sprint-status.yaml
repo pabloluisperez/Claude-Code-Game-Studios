@@ -21,78 +21,78 @@ stories:
     name: "world_snapshots schema additions: cascade_log + threshold_crossings + seed_state"
     file: "packages/db/src/schema/playthroughs.ts"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "8-2"
     name: "Document existing advance-loop architecture"
     file: "docs/architecture/advance-loop.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "8-3"
     name: "Sprint 8 QA plan"
     file: "production/qa/qa-plan-sprint-08.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "8-4"
-    name: "Extract advance-loop core into apps/api/src/modules/advance/"
+    name: "Extract advance-loop core into apps/api/src/modules/advance/ (PARTIAL — orchestrator deferred to Sprint 9)"
     file: "apps/api/src/modules/advance/"
     priority: should-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 2.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "8-5"
     name: "Resolve 7-7 C1b magnitude (option 2 — rephrase, no retune)"
     file: "design/gdd/cascade-engine.md"
     priority: should-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "8-6"
     name: "Resolve 7-6 EQL side-channels (option 3 — accept + document)"
     file: "design/gdd/cascade-engine.md"
     priority: should-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "8-7"
     name: "Draft playtest protocols: fresh-player + economy-tuning"
     file: "production/playtests/protocols/"
     priority: nice-to-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 1
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "8-8"
     name: "Backfill cascade_log + threshold_crossings writes in advance-loop"
     file: "apps/web/src/routes/dashboard/+page.server.ts"
     priority: nice-to-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 1
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"

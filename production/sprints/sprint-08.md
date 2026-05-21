@@ -1,12 +1,19 @@
 ---
 Sprint: 08
 Name: "Advance-loop consolidation + schema completions + design-review resolution"
-Status: Planned
-Window: 2026-08-12 → 2026-08-25 (autonomous session pattern)
-Capacity: ~10 productive days (with 20% / 2-day buffer)
+Status: Complete — 8/8 tasks delivered (1 partial-Complete with documented Sprint 9 carryover)
+Window: 2026-08-12 → 2026-08-25 (autonomous session pattern; actually delivered 2026-05-21)
+Capacity: ~10 productive days (used ~7 productive across the autonomous overnight)
 Review Mode: lean
 Phase: Production
 ---
+
+> **Closeout 2026-05-21**: All 8 tasks (3 Must-Have + 3 Should-Have + 2 Nice-to-Have)
+> delivered. 7 sprint-8 commits. Tests: @smt/shared 953 + @smt/api 44 + apps/web E2E 1
+> = 998 passing. svelte-check 0 errors. Sprint 9 carryover: full advance-loop
+> orchestrator extraction (task 8-4 was completed at the SEAM level — `loadAdvanceContext`
+> helper + module README — the full 350-LOC orchestrator move is queued for Sprint 9
+> with regression baseline).
 
 # Sprint 08 — Consolidation & Polish
 

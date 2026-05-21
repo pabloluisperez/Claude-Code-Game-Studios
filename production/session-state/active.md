@@ -656,3 +656,61 @@ Sprint 7 was validation + cleanup. Sprint 8 is the first feature-development spr
 ### Total session commits
 
 19+ commits across the full overnight session (sleep cycle 2026-05-20→2026-05-21). All pushed.
+
+---
+
+## 2026-05-21 — Sprint 8 CLOSED (advance-loop consolidation)
+
+Pablo briefly woke, said "planifica y ejecuta el sprint 8 sin molestarme" — Sprint 8
+planned and executed end-to-end autonomously.
+
+### 8/8 tasks delivered
+
+| ID | Task | Type | Commit |
+|---|---|---|---|
+| 8-1 | world_snapshots schema additions (cascade_log + threshold_crossings + seed_state, migration 0020) | Must-Have | `ff3b0da` |
+| 8-2 | docs/architecture/advance-loop.md — 9-step tick order + entry points + transactions + recovery + Sprint 9 refactor target | Must-Have | `09f69fb` |
+| 8-3 | production/qa/qa-plan-sprint-08.md — per-task test specs | Must-Have | `09f69fb` |
+| 8-5 | cascade-engine.md §C1b magnitude resolution (Option 2 — rephrase to direction-only, no retune) | Should-Have | `101fa04` |
+| 8-6 | cascade-engine.md §C0 EQL side-channels resolution (Option 3 — intentional emergent behavior) | Should-Have | `101fa04` |
+| 8-7 | production/playtests/protocols/fresh-player.md + economy-tuning.md | Nice-to-Have | `73c8aa2` |
+| 8-8 | Dashboard advance form action backfills cascade_log + threshold_crossings writes | Nice-to-Have | `57bc438` |
+| 8-4 | apps/api/src/modules/advance/ seam + loadAdvanceContext helper (PARTIAL — full orchestrator extraction deferred to Sprint 9 with documented Sprint-9-prep rationale in module README) | Should-Have | `36311a0` |
+
+Plus Sprint 8 plan + closeout = 9 Sprint 8 commits in total.
+
+### Test growth this sprint
+
+| Suite | Pre-Sprint-8 | Post-Sprint-8 | Net |
+|---|---|---|---|
+| `@smt/shared` unit | 953 | 953 | 0 (no shared changes) |
+| `@smt/api` unit/integration | 42 | 44 | +2 (new world-state columns round-trip) |
+| `@smt/web` unit | 1 | 1 | 0 |
+| **Total unit/integration** | **996** | **998** | **+2** |
+| `apps/web` E2E (Playwright) | 1 happy-path | 1 happy-path | 0 |
+
+`svelte-check --threshold error` 0 errors. `tsc --noEmit` clean.
+
+### Sprint 9 carryover
+
+Just one item: **8-4 full orchestrator extraction**. The seam (`loadAdvanceContext` + module README) is in place. The remaining ~350 LOC needs:
+1. Pre-refactor regression baseline run (happy-path E2E + cross-epic smoke).
+2. Per-subsystem extraction in separate commits (TV pre-phase, cascade step, economy step, match step, staff messages, season rollover).
+3. Final cutover that flips `actions.advance` to `await runAdvanceTick(...)`.
+
+Estimated: 2-2.5 days when Sprint 9 starts.
+
+### Design-review tickets — all CLOSED
+
+7-6 (EQL side-channels) and 7-7 (C1b magnitude) — both RESOLVED conservatively (option 2 for C1b, option 3 for EQL). Cascade-engine.md amendments now stamped with "Status: RESOLVED" + final-decision-rationale. No constants retuned (would have required `/balance-check` coverage that Pablo can request later if playtest data shows it's needed).
+
+### Things ready for Pablo to do when he wakes
+
+1. **Run the fresh-player playtest** when convenient — protocol at `production/playtests/protocols/fresh-player.md`. Pablo recruits playtester + runs the 60-min session + writes findings doc.
+2. **Run the economy-tuning playtest** when convenient — protocol at `production/playtests/protocols/economy-tuning.md`. Requires a crisis-seeded DB (one-off fixture loader needs to be written; Sprint 9 nice-to-have item).
+3. **Review the cascade-engine.md amendments** — confirm the conservative resolutions (Option 2/3) match his intent. If he wants Option 1 (retune K_danger or K_fit_decay), open a balance ticket with `/balance-check` coverage for Sprint 10+.
+4. **Sprint 9 planning** — when ready, run `/sprint-plan new` and the recommended scope is in `production/sprints/sprint-08.md` closeout note + this active.md entry.
+
+### Total session commits (cumulative)
+
+28+ commits across the full overnight session (sleep cycle 2026-05-20→2026-05-21). All pushed to `origin/project/SoccerManagerTotal`.
