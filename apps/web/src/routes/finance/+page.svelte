@@ -223,6 +223,7 @@
                     min="5"
                     max="100"
                     step="5"
+                    aria-label="Precio del abono en euros"
                     bind:value={priceValues[0]}
                   />
                 {/if}

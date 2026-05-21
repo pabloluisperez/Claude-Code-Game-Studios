@@ -186,6 +186,7 @@
                     type="button"
                     class="btn btn-ghost btn-xs"
                     title="Despedir"
+                    aria-label={'Despedir a ' + current.name}
                     onclick={() =>
                       askConfirm(
                         `Despedir a ${current.name}`,

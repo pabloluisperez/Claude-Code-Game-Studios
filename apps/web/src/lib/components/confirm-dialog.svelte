@@ -45,9 +45,20 @@
 </script>
 
 {#if open}
-  <div class="modal modal-open" role="dialog" aria-modal="true">
+  <!-- a11y P0-2 + P0-3 fix (production/qa/a11y-audit-2026-05-21.md):
+       aria-labelledby links the dialog to its title; the ESC handler lives
+       on the focusable dialog root (not the unfocusable backdrop) so it
+       fires regardless of which interior element holds focus. -->
+  <div
+    class="modal modal-open"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="confirm-dialog-title"
+    tabindex="-1"
+    onkeydown={(e) => e.key === 'Escape' && handleCancel()}
+  >
     <div class="modal-box max-w-md">
-      <h3 class="font-bold text-lg">{title}</h3>
+      <h3 id="confirm-dialog-title" class="font-bold text-lg">{title}</h3>
       <p class="text-sm mt-2 leading-relaxed">{message}</p>
       <div class="modal-action">
         <button class="btn btn-ghost" type="button" onclick={handleCancel}>
@@ -66,7 +77,7 @@
       class="modal-backdrop"
       role="button"
       tabindex="-1"
-      aria-label="Close"
+      aria-label="Cerrar diálogo"
       onclick={handleCancel}
       onkeydown={(e) => e.key === 'Escape' && handleCancel()}
     ></div>
