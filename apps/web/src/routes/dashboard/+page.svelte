@@ -160,6 +160,26 @@
     return 'progress-success';
   }
 
+  /**
+   * Per-node tooltip: what does this node measure + how player decisions affect it.
+   * Surfaced on hover via DaisyUI's `tooltip` class on the card. Friction #2 fix
+   * from the 2026-05-21 agent fresh-player walkthrough.
+   */
+  function nodeTooltip(nodeId: string): string {
+    switch (nodeId) {
+      case 'financial_balance':
+        return 'Tu balance bancario en €K. Sube con ingresos (taquilla, sponsor, TV) y baja con gastos (salarios, scouting). Negativo = deuda.';
+      case 'fan_momentum':
+        return 'Ánimo de la afición. Sube con victorias, baja con derrotas. Las derrotas duelen más que las victorias suben — fenómeno asimétrico de C6.';
+      case 'team_fitness':
+        return 'Forma física del equipo. Equilibrio en 70. Baja con entrenamiento extremo, partidos consecutivos sin descanso. Sube con buena alimentación + plantilla sana.';
+      case 'squad_available_pct':
+        return 'Porcentaje de jugadores disponibles (sanos + sin sanción). Baja con lesiones (más probables con campo en mal estado) y tarjetas. Sube con scouting + descanso.';
+      default:
+        return '';
+    }
+  }
+
   // Headline tag → Spanish display label (mirrors advance-transition.svelte).
   function tagLabel(tag: string): string {
     switch (tag) {
@@ -270,6 +290,22 @@
       </div>
     </section>
 
+    <!-- First-advance onboarding callout (Sprint 9 task 9-4 friction #4) -->
+    {#if data.justAdvanced && data.week === 1}
+      <div class="alert alert-success">
+        <div class="flex flex-col gap-1">
+          <span class="font-semibold">¡Tu primera semana ha pasado!</span>
+          <span class="text-sm opacity-90">
+            Mira los nodos cascada arriba (Afición, Estado físico, Plantilla disponible) —
+            han cambiado con tu primera tick. Pasa el ratón sobre cada tarjeta para saber
+            qué los afecta. Ahora explora <a href="/squad" class="link">tu plantilla</a>,
+            <a href="/finance" class="link">tus finanzas</a> o
+            <a href="/manager" class="link">tu perfil de mánager</a> antes de seguir avanzando.
+          </span>
+        </div>
+      </div>
+    {/if}
+
     <!-- Week summary (post-advance) -->
     {#if data.justAdvanced}
       {#if data.lastResult && data.lastResult.week === data.week}
@@ -348,7 +384,10 @@
     {#if nodes.length > 0}
       <section class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {#each nodes as n}
-          <div class="card bg-base-100 shadow">
+          <div
+            class="card bg-base-100 shadow tooltip tooltip-bottom"
+            data-tip={nodeTooltip(n.nodeId)}
+          >
             <div class="card-body">
               <div class="text-xs uppercase opacity-50 tracking-wide">{n.label}</div>
               <div
@@ -370,7 +409,14 @@
       </section>
     {:else}
       <div class="alert alert-info">
-        <span>Esperando primer tick del simulador para mostrar nodos cascada.</span>
+        <div class="flex flex-col gap-1">
+          <span class="font-semibold">¡Bienvenido, mánager!</span>
+          <span class="text-sm opacity-80">
+            Aún no has jugado tu primera semana. Pulsa <strong>Avanzar semana</strong> arriba
+            para ver tu primer informe — descubrirás qué nodos del juego (forma del equipo,
+            ánimo de la afición, etc.) cambian con tus decisiones.
+          </span>
+        </div>
       </div>
     {/if}
 
