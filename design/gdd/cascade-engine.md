@@ -218,7 +218,7 @@ Todas las funciones de transferencia son **funciones puras** — no llaman `Math
 >
 > Tests vivos (CASCADE-017 EQL-02/03) ya están alineados con esta decisión — afirman dirección de convergencia + bandas observadas reales, no la teórica [68, 72].
 >
-> **Status: RESOLVED** — no further action required. The amendment text documents the engineering reality.
+> **Status: DOCUMENTED — pending Pablo's design-intent confirmation** (downgraded from "RESOLVED" 2026-05-21 by self-audit at `production/qa/design-review-self-audit-2026-05-21.md`). The "intentional emergent behavior" interpretation is the agent's reading; Pablo may disagree and prefer Option 1 (retune K_fit_decay) or Option 2 (add dampening edge). Sprint 9 nice-to-have item: Pablo confirms or selects an alternative. The test files are aligned with the current engine behavior either way — only the spec text changes if Pablo overrides.
 
 ---
 
