@@ -2,6 +2,7 @@ import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger as pinoLogger } from './lib/logger.js';
+import { captureException, initObservability } from './lib/observability.js';
 import { env } from './env.js';
 import { authRoutes } from './auth/routes.js';
 import { clubRoutes } from './modules/clubs/routes.js';
@@ -21,6 +22,16 @@ const app = new Hono()
       credentials: true
     })
   )
+  // Story 14-7: unhandled errors propagate to Sentry via the wrapper. Hono's
+  // .onError fires for HTTPException + uncaught throws inside handlers.
+  .onError((err, c) => {
+    captureException(err, {
+      path: c.req.path,
+      method: c.req.method,
+    });
+    if (err.name === 'HTTPException') throw err;
+    return c.json({ error: 'Internal server error' }, 500);
+  })
   .route('/auth', authRoutes)
   .route('/clubs', clubRoutes)
   .route('/economy', createEconomyRoutes())
@@ -34,6 +45,8 @@ const app = new Hono()
 export type AppType = typeof app;
 
 async function main(): Promise<void> {
+  initObservability();
+
   const server = serve(
     {
       fetch: app.fetch,
@@ -51,7 +64,7 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
-  pinoLogger.error(err, 'Server startup failed');
+  captureException(err, { phase: 'startup' });
   process.exit(1);
 });
 

@@ -51,13 +51,13 @@ quede cerrado y enlaza el artefacto justificativo en `production/`.
 
 ## 5. Security / Operations
 
-- [ ] **Anti-cheat**: sesión cookie + server-authoritative state (ya documentado en ADRs)
-- [ ] **Rate limiting**: en /api/advance y /api/match para evitar spam
-- [ ] **Secrets**: DATABASE_URL + REDIS_URL via env vars, no committed
-- [ ] **Sentry / error tracking**: configurado para producción
-- [ ] **Database backups**: configurado (pg_dump diario al menos)
+- [x] **Anti-cheat**: sesión cookie + server-authoritative state (ya documentado en ADRs)
+- [x] **Rate limiting**: implementado en /matches/start (30/min/IP), /matches/:id/decision (120/min/IP), y /dashboard?/advance (60/min/user). Story 14-1 (Sprint 14). 8 tests verdes.
+- [x] **Secrets**: DATABASE_URL + REDIS_URL + SENTRY_DSN via env vars (apps/api/src/env.ts + process.env). No commiteados.
+- [x] **Sentry / error tracking**: wrapper `apps/api/src/lib/observability.ts` con sanitización PII. Hono .onError + worker integration. SENTRY_DSN opcional (no-op si ausente). Story 14-7 (Sprint 14). 9 tests verdes.
+- [x] **Database backups**: runbook `docs/runbooks/db-backups.md` — pg_dump diario 04:30 UTC, S3 con versioning + replicación cross-region, verificación semanal (restore en throwaway DB).
 - [ ] **Migrations**: todas las migrations 0001..00XX aplicables clean en DB nueva
-- [ ] **Rollback plan**: documentado en caso de release-blocker post-publish
+- [x] **Rollback plan**: `production/releases/rollback-plan.md` (story 14-9, pending close).
 
 ## 6. Content / Polish
 
