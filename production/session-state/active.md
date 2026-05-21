@@ -1229,3 +1229,60 @@ Tras el roadmap, Pablo pidió adelantar v1.1 todo lo posible.
 ~70% — sólo requiere art atlases + Sprints 26/27/28 cuando Pablo dé
 luz verde tras v1.0 launch.
 
+---
+
+## Asset pipeline foundation — 2026-05-21 (Pablo "dale caña a comfyui")
+
+ComfyUI MCP extendido con production-grade workflow. Primera batch de 8
+city assets validada y promocionada a `assets/sprites/city-hd/`.
+
+### MCP changes
+
+- New tool `comfyui_hires_fix` — canonical 2-pass hi-res fix workflow:
+  - Pass 1: KSampler @ 1024×768 + LoRA 1.0 + denoise 1.0 → composición + pixel art
+  - LatentUpscaleBy 1.5× nearest-exact → preserva pixel grid
+  - Pass 2: KSampler @ 1536×1152 + LoRA 0.6 + denoise 0.4 → detalle sin drift
+  - Output: 1536×1152 PNG, ~50s en Radeon 8060S
+- Files: `tools/comfyui-mcp/src/workflow-hires-fix.ts` (new),
+  `tools/comfyui-mcp/src/server.ts` (extended), `tools/comfyui-mcp/test-hires-fix.mjs`
+  (direct test bypass MCP).
+- Preset canónico Cascada FC documentado en `tools/comfyui-mcp/README.md`.
+
+### Style decision (validated)
+
+- **3/4 frontal pixel art (Stardew/Eastward inspired)** descartando iso 2:1
+  real tipo Habbo. Razones: mobile PWA 375px friendliness, Soccer Manager
+  pillar primary, manager-RPG portraits funcionan mejor frontal, pipeline
+  ya validado sin LoRA extra. Pendiente: enmienda Art Bible §3 oficial.
+
+### Assets producidos (8 en `assets/sprites/city-hd/`)
+
+Stadium tier progression:
+- `stadium-t0-amateur.png` — brown patchy field, dilapidated
+- `stadium-t1-local.png` — green/brown mix + bleachers
+- `stadium-t2-regional.png` — pro stands + jugadores visibles
+- `stadium-t3-premier.png` — bowl completo + roof structure (3/4 frontal)
+
+City buildings:
+- `building-office.png` — soccer ball trophy facade
+- `building-gym.png` — modern blue dome + equipment visible
+- `building-medical.png` — red brick + cruz blanca prominente
+- `building-academy.png` — brick + arched entrance + topiary
+
+Todos 1536×1152 px, ~1.5-2 MB cada uno. Usar con CSS
+`image-rendering: pixelated` (o PixiJS `SCALE_MODES.NEAREST`) para que
+el browser haga nearest-neighbor scaling al display size.
+
+### Scratch dir
+
+`assets/sprites/_raw/` gitignored — generaciones experimentales (~30+ PNGs
+de iteración). Solo se promueven a `city-hd/` los assets aprobados.
+
+### Lo que falta (continuación del pipeline)
+
+- Más assets de city (mansions, stands, props, sponsors)
+- LoRA isométrico opcional si Pablo quiere experimentar con iso real más tarde
+- img2img tool en el MCP para fix-ups específicos sobre assets existentes
+- Asset spec sheets per-tier (link entre GDD city tiers y los sprites)
+- Integration con el PixiJS canvas de `/stadium` y `/city` routes
+
