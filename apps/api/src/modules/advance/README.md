@@ -1,77 +1,67 @@
 # advance module
 
 Sprint 8 task 8-4 created this module as the **seam** for the full advance-loop
-extraction planned for Sprint 9+. **Sprint 9 task 9-1 (partial)** moved the
-`loadAdvanceContext` helper from this module to `packages/db/src/repos/advance-context.ts`
-because `apps/web` (which contains the current dashboard form action) cannot
-depend on `apps/api` directly — workspace deps don't connect those two apps.
-The helper now lives in `@smt/db` where both apps can import it.
+extraction. Subsequent sprints landed the extraction incrementally:
 
-As of 2026-05-21 (post Sprint 9 task 9-1 partial) this module contains:
-
-| File | Purpose | Status |
+| Sprint | Task | What landed |
 |---|---|---|
-| `load-context.ts` | **MOVED** to `packages/db/src/repos/advance-context.ts` and exported from `@smt/db` | ✅ Migrated Sprint 9 task 9-1 partial |
-| `orchestrator.ts` | `runAdvanceTick(playthroughId, decisions)` — full orchestrator (TV pre-phase + cascade + economy + match + staff + persist) | 🚧 **Deferred to Sprint 10** — full extraction requires moving the dashboard form action to a Hono route (`POST /api/advance`); cross-app refactor needs its own scoped sprint |
+| 9 | 9-1 (partial) | `loadAdvanceContext` moved to `packages/db/src/repos/advance-context.ts` so both `apps/web` and `apps/api` can import it from `@smt/db`. |
+| 10 | 10-5 (partial) | `runAdvanceTickCore` extracted the pure-compute pipeline (TV pre/post + cascade + ticket drip + delayed-effects buffer). Lives in `apps/web/src/lib/server/advance-orchestrator.ts`. |
+| 11 | 11-2 | `runAdvanceTickFull` extracted the FULL pipeline (pure-compute + DB-write: snapshot persist, currentWeek bump, TV side-effects, match-day, staff messages, manager XP, milestones, season rollover). Dashboard form action collapsed from ~340 LOC of inline orchestration to ~30 LOC delegation + redirect. |
 
-## Why was the orchestrator extraction deferred?
+## Current de-facto location
 
-The `advance` action in `apps/web/src/routes/dashboard/+page.server.ts` is
-~400 LOC and integrates 6 subsystems (TV pre-phase, cascade, economy, match,
-staff messages, season rollover) inside a single `db.transaction(...)` block.
-Each subsystem has its own subtle ordering requirements documented in
-`docs/architecture/advance-loop.md`. Extracting the full orchestrator
-risks behavior drift in any of the 6 integrations.
-
-The Sprint 8 task 8-4 plan was 2.5 days of focused work; in the autonomous
-overnight session, only `loadAdvanceContext` was implemented as a safe
-proof-of-concept. The remaining ~350 LOC will move in a Sprint 9 task with:
-
-1. A pre-refactor regression baseline run of the full `happy-path.spec.ts` +
-   `cross-epic/integration-smoke.test.ts`.
-2. Per-subsystem extraction in separate commits (one for `tvPrePhase`, one
-   for `cascadeStep`, etc.) with the same regression suite run between each.
-3. The final cutover that flips `actions.advance` from inline orchestration
-   to `await runAdvanceTick(playthrough.id, decisions)`.
-
-## Migration to `loadAdvanceContext`
-
-The dashboard form action can adopt this helper TODAY without any orchestrator
-changes. The current code:
-
-```typescript
-const [active] = await db.select().from(playthroughs).where(eq(playthroughs.userId, locals.user.id)).orderBy(desc(playthroughs.updatedAt)).limit(1);
-if (!active) return fail(400, { error: 'No hay carrera activa.' });
-
-const [latest] = await db.select().from(worldSnapshots).where(eq(worldSnapshots.playthroughId, active.id)).orderBy(desc(worldSnapshots.week)).limit(1);
-const basePrevState = (latest?.worldState as WorldState) ?? defaultWorldState();
-const prevBuffer = (latest?.delayedEffectsBuffer ?? []) as DelayedEffectsBuffer;
-const nextWeek = (latest?.week ?? -1) + 1;
-
-const [tvClubRow] = await db.select(...).from(clubs).where(eq(clubs.id, active.clubId)).limit(1);
-const currentDivision = tvClubRow?.division === 'first' ? 'D1' : 'D2';
-
-// ... 14 LOC of season lookup ...
+```
+apps/web/src/lib/server/advance-orchestrator.ts
+  ├── runAdvanceTickCore(opts)   — pure-compute portion (Sprint 10 task 10-5)
+  └── runAdvanceTickFull(opts)   — full pipeline + DB writes (Sprint 11 task 11-2)
 ```
 
-becomes (in a follow-up commit, which this README defers but does not implement):
+The orchestrator lives in `apps/web` because:
 
-```typescript
-const ctx = await loadAdvanceContext(db, locals.user.id);
-if (!ctx) return fail(400, { error: 'No hay carrera activa.' });
+1. **Cross-app dependency constraint**: `apps/web` (SvelteKit) cannot import
+   from `apps/api` (Hono) — they're sibling workspace packages with no edge.
+2. **Helper dependencies live in apps/web**: `match-day-runner`, `economy-tick`,
+   `season-rollover`, `milestones`, `manager-xp`, `ambient-staff`, and
+   `tv-rights-tick` all live in `apps/web/src/lib/server/`. Moving the
+   orchestrator to `apps/api` would require moving 7 helpers first.
+3. **Atomic transaction**: the DB-write portion runs inside a single
+   `db.transaction(...)` block. A cross-process HTTP refactor would either
+   lose atomicity or require a 2PC pattern.
 
-const basePrevState = ctx.prevState;
-const prevBuffer = ctx.prevBuffer;
-const nextWeek = ctx.latestWeek + 1;
-const currentDivision = ctx.currentDivision;
-const tvCurrentSeason = ctx.currentSeason;
-```
+## Deferred to Sprint 12+
 
-That's ~30 LOC down to 6, with no behavioral change. The follow-up commit
-will land as Sprint 9 task once the regression strategy is in place.
+The Sprint 11 plan called for the orchestrator to live in
+`apps/api/src/modules/advance/orchestrator.ts` with a `POST /api/advance`
+Hono route and the dashboard form action making a cross-process HTTP fetch.
+That migration was deferred because:
+
+1. Session-cookie forwarding from SvelteKit SSR to Hono is non-trivial.
+2. Transactional guarantees would need a re-design (or stay as-is and
+   accept the cross-process call as an awkward boundary).
+3. Realtime-multiplayer-specialist hasn't designed the MMO migration yet —
+   the cross-app boundary is the right place to make those decisions
+   together.
+
+When the MMO migration starts in Sprint 12+:
+
+1. Move the 7 helpers to `packages/shared` or a new `packages/advance` so
+   `apps/api` can import them without cross-app coupling.
+2. Move `runAdvanceTickCore` + `runAdvanceTickFull` to this directory.
+3. Add Hono route `POST /advance` calling the orchestrator.
+4. Add session-cookie forwarding from SvelteKit form action → Hono route.
+5. Delete the apps/web copy of the orchestrator.
+
+The Sprint 11 extraction sets up steps 1-3 by making the orchestrator a
+single function with a clean interface
+(`runAdvanceTickFull({ ctx, redirectMode })`) — the future move is a
+file-relocation plus dependency-port, not a behavioral refactor.
 
 ## References
 
-- `docs/architecture/advance-loop.md` — full tick-order doc + refactor target
-- `apps/web/src/routes/dashboard/+page.server.ts` — current de-facto orchestrator
+- `docs/architecture/advance-loop.md` — full tick-order doc
+- `apps/web/src/lib/server/advance-orchestrator.ts` — current orchestrator
+- `apps/web/src/routes/dashboard/+page.server.ts` — thin form action delegating to it
+- `apps/web/tests/advance-orchestrator-extraction.test.ts` — structural regression guard
 - `docs/architecture/ADR-008-world-clock-event-loop.md` — canonical world-clock spec
+- `docs/architecture/ADR-020-day-by-day-tick.md` — day-by-day tick (Sprint 11 task 11-4 lands inside this orchestrator)

@@ -21,21 +21,21 @@ stories:
     name: "Aceptar ADR-020 (tick diario)"
     file: "docs/architecture/ADR-020-day-by-day-tick.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "technical-director"
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "11-2"
-    name: "Orchestrator extraction — DB-write completo"
-    file: "apps/api/src/modules/advance/orchestrator.ts"
+    name: "Orchestrator extraction — DB-write completo (deviation: lives in apps/web)"
+    file: "apps/web/src/lib/server/advance-orchestrator.ts"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "web-backend-specialist"
     estimate_days: 2.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "11-3"
     name: "A11y P1 batch (6 hallazgos)"
