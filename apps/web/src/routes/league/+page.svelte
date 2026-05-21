@@ -40,7 +40,10 @@
   // (in either standings or fixture cards). Cross-component highlighting
   // is applied to ALL rows/fixtures involving that clubId. null = no hover
   // → fall back to highlighting only my own club.
-  let hoveredClubId = $state<string | null>(null);
+  // Sprint 13 walkthrough fix (Pablo Part C): set of hovered clubs so a
+  // single fixture hover can highlight BOTH home and away rows in the
+  // standings table simultaneously. Previously only one club was tracked.
+  let hoveredClubIds = $state<Set<string>>(new Set());
 
   type FixtureRow = Extract<PageData, { hasPlaythrough: true }>['pastFixtures'][number];
 
@@ -81,29 +84,47 @@
     return f.homeClubId === clubId || f.awayClubId === clubId;
   }
 
-  // P5 + P4 highlight: my team always gets a strong left-border + light bg;
-  // hover (any club) gets the medium primary highlight applied across both
-  // standings rows AND fixture cards.
+  // Sprint 13 walkthrough fix (Pablo Part C):
+  //   - My team always gets a strong left-border + light bg (distinto del hover)
+  //   - Hover ANY fixture → both clubs en la tabla muestran resaltado info
+  //   - Hover sobre mi club mientras es además parte del hover → mantiene
+  //     ambos estilos (primary background + info border)
   function rowHighlightClass(clubId: string): string {
-    if (hoveredClubId && hoveredClubId === clubId) {
-      return 'bg-info/15 border-l-4 border-l-info';
+    const isHovered = hoveredClubIds.has(clubId);
+    const isMine = clubId === myClubId;
+    if (isMine && isHovered) {
+      // Both: my team AND part of hovered fixture → mix both signals
+      return 'bg-primary/10 border-l-4 border-l-primary font-semibold ring-2 ring-info/40';
     }
-    if (clubId === myClubId) {
+    if (isMine) {
       return 'bg-primary/10 border-l-4 border-l-primary font-semibold';
+    }
+    if (isHovered) {
+      return 'bg-info/15 border-l-4 border-l-info';
     }
     return '';
   }
 
   function fixtureHighlightClass(f: FixtureRow): string {
-    const involvesHover = hoveredClubId && involvesClub(f, hoveredClubId);
+    const involvesHover =
+      hoveredClubIds.has(f.homeClubId) || hoveredClubIds.has(f.awayClubId);
     const involvesMe = involvesClub(f, myClubId);
     if (involvesHover) return 'bg-info/15 border border-info/40';
     if (involvesMe) return 'bg-primary/10 border border-primary/30';
     return 'bg-base-200 border border-transparent';
   }
 
+  function hoverFixture(f: FixtureRow): void {
+    // Resalta AMBOS clubs cuando el ratón pasa por un fixture.
+    hoveredClubIds = new Set([f.homeClubId, f.awayClubId]);
+  }
+
+  function hoverClub(clubId: string): void {
+    hoveredClubIds = new Set([clubId]);
+  }
+
   function clearHover() {
-    hoveredClubId = null;
+    hoveredClubIds = new Set();
   }
 </script>
 
@@ -146,7 +167,7 @@
                     {@const gd = r.goalsFor - r.goalsAgainst}
                     <tr
                       class="{zoneClass(i, data.standings.length)} {rowHighlightClass(r.clubId)}"
-                      onmouseenter={() => (hoveredClubId = r.clubId)}
+                      onmouseenter={() => hoverClub(r.clubId)}
                       onmouseleave={clearHover}
                     >
                       <td class="font-mono">{i + 1}</td>
@@ -188,10 +209,7 @@
                     {#each group as f}
                       <div
                         class="flex items-center justify-between p-1.5 text-xs rounded {fixtureHighlightClass(f)}"
-                        onmouseenter={() => {
-                          if (involvesClub(f, myClubId)) hoveredClubId = myClubId;
-                          else hoveredClubId = f.homeClubId;
-                        }}
+                        onmouseenter={() => hoverFixture(f)}
                         onmouseleave={clearHover}
                       >
                         <div class="flex-1 truncate">
@@ -283,10 +301,7 @@
                   {#each group as f}
                     <div
                       class="flex items-center justify-between p-2 rounded {fixtureHighlightClass(f)}"
-                      onmouseenter={() => {
-                        if (involvesClub(f, myClubId)) hoveredClubId = myClubId;
-                        else hoveredClubId = f.homeClubId;
-                      }}
+                      onmouseenter={() => hoverFixture(f)}
                       onmouseleave={clearHover}
                     >
                       <div class="flex-1 truncate">

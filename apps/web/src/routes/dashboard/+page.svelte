@@ -578,18 +578,26 @@
               especialistas en <a href="/staff" class="link">Staff</a>.
             </p>
           {:else}
-            <div class="space-y-3 max-h-96 overflow-y-auto">
+            <!-- Sprint 13 walkthrough fix (Pablo Part C): inbox-style rows
+                 — más compactos, mejor jerarquía visual (tone color + week
+                 chip + content). Match el patrón de /inbox para mantener
+                 consistencia en la app. -->
+            <div class="space-y-1 max-h-96 overflow-y-auto">
               {#each messages as m}
-                <div
-                  class="alert {m.priority === 'URGENT' ? 'alert-error' : 'alert-info'}
-                         {m.tier === 3 ? 'border-l-4 border-l-warning' : ''}"
-                >
-                  <div>
-                    <div class="text-xs uppercase opacity-60">
-                      {m.role.replace('_', ' ')} · {m.tier === 1 ? 'Novato' : m.tier === 2 ? 'Experimentado' : 'Élite'} · {m.priority} · sem {m.week}
-                    </div>
-                    <div class="text-sm">{m.content}</div>
-                  </div>
+                {@const tone = m.priority === 'URGENT' ? 'action' : 'neutral'}
+                {@const toneCls = tone === 'action'
+                  ? 'bg-warning/10 border-l-4 border-l-warning'
+                  : 'bg-base-200 border-l-4 border-l-transparent'}
+                <div class="flex items-stretch gap-2 px-2 py-1.5 rounded text-xs {toneCls}">
+                  <span class="opacity-50 text-[10px] uppercase w-10 flex-shrink-0 self-center font-mono">
+                    S{m.week}
+                  </span>
+                  <span class="flex-1 leading-snug self-center">{m.content}</span>
+                  <span class="w-16 flex-shrink-0 self-center text-right">
+                    {#if m.priority === 'URGENT'}
+                      <span class="badge badge-warning badge-xs">urgente</span>
+                    {/if}
+                  </span>
                 </div>
               {/each}
             </div>
