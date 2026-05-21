@@ -33,13 +33,13 @@ quede cerrado y enlaza el artefacto justificativo en `production/`.
 
 ## 3. Legal / Privacy
 
-- [ ] **Terms of Service** publicados (/terms)
-- [ ] **Privacy Policy** publicado (/privacy) — cubre auth sessions + analytics si aplica
-- [ ] **Cookie policy** si usa cookies de tracking (auth session no requiere banner GDPR estricto)
+- [x] **Terms of Service** publicados (/terms) — story 14-2 (Sprint 14)
+- [x] **Privacy Policy** publicado (/privacy) — cubre auth sessions, no analytics externo, derechos GDPR — story 14-2
+- [x] **Cookie policy** — solo una cookie técnica `session` (HTTP-only, SameSite=Lax). No banner GDPR necesario per Privacy Policy §8.
 - [ ] **License**: ver `LICENSE` en repo root — verificar que la licencia del MVP esté correcta
-- [ ] **Asset attributions**: si se usan iconos/emojis externos (Lucide, Twemoji), añadir créditos
-- [ ] **GDPR/LOPD**: data-export endpoint si captura PII
-- [ ] **Edad mínima**: 13+ (sin contenido adulto pero recomendado para gestión de carrera)
+- [x] **Asset attributions**: tabla en `production/releases/rollback-plan.md` §Asset attributions (Lucide, daisyUI, Tailwind, SvelteKit, Hono). Sin imágenes/audio de terceros en MVP.
+- [ ] **GDPR/LOPD**: data-export endpoint si captura PII (Privacy Policy §7 promete portabilidad — endpoint todavía no expuesto; backlog v1.1)
+- [x] **Edad mínima**: 13+ documentado en ToS §4 + Privacy §9
 
 ## 4. Performance final
 
@@ -57,7 +57,7 @@ quede cerrado y enlaza el artefacto justificativo en `production/`.
 - [x] **Sentry / error tracking**: wrapper `apps/api/src/lib/observability.ts` con sanitización PII. Hono .onError + worker integration. SENTRY_DSN opcional (no-op si ausente). Story 14-7 (Sprint 14). 9 tests verdes.
 - [x] **Database backups**: runbook `docs/runbooks/db-backups.md` — pg_dump diario 04:30 UTC, S3 con versioning + replicación cross-region, verificación semanal (restore en throwaway DB).
 - [ ] **Migrations**: todas las migrations 0001..00XX aplicables clean en DB nueva
-- [x] **Rollback plan**: `production/releases/rollback-plan.md` (story 14-9, pending close).
+- [x] **Rollback plan**: `production/releases/rollback-plan.md` — story 14-9 (Sprint 14). Procedures A (code rollback < 30min) + B (DB restore < 60min), decision matrix por severidad, comms templates ES. **Go-live blocker**: ejecutar al menos un restore de práctica antes de tagear v1.0.
 
 ## 6. Content / Polish
 
