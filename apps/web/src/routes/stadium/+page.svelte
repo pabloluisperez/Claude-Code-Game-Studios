@@ -9,6 +9,7 @@
   the same underlying state.
 -->
 <script lang="ts">
+  import { onMount } from 'svelte';
   import PixiCanvas from '$lib/components/pixi-canvas.svelte';
   import { goto } from '$app/navigation';
   import type { PageData } from './$types';
@@ -16,6 +17,16 @@
   import { timeToDayNightBucket } from '@smt/shared';
 
   let { data }: { data: PageData } = $props();
+
+  // ADR-024 §D2: prefers-reduced-motion → default to text view.
+  // Only the client knows this preference, so we redirect once mounted.
+  onMount(() => {
+    if (typeof window === 'undefined') return;
+    if (data.useTextFallback) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      goto('/stadium?view=text', { replaceState: true });
+    }
+  });
 
   function tierLabel(t: 1 | 2 | 3 | 4): string {
     return ['', 'Pueblo Olvidado', 'Club Emergente', 'Club Establecido', 'Imperio Local'][t];

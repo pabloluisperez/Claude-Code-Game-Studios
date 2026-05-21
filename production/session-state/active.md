@@ -1187,3 +1187,45 @@ narrative-ai cambian de "Deferred" → "In Progress".
 4. v1.2 puede arrancar Sprint 29 directamente
 5. GDPR endpoints LIVE (5 endpoints + 11 tests + 1 migration)
 
+---
+
+## v1.1 fast-forward — 2026-05-21 (Pablo "avanza todo lo que puedas el v1.1")
+
+Tras el roadmap, Pablo pidió adelantar v1.1 todo lo posible.
+
+### Sprints v1.1 con código real (de 10, ~70% completable sin artista)
+
+| Sprint | Status | Entregables |
+|--------|--------|-------------|
+| 20 (Foundation + canvas) | ✅ | types.ts + tile-projection.ts + pixi-app.ts + tile-graphics.ts + pixi-canvas.svelte + /stadium route con DOM fallback |
+| 21 (Camera + input) | ✅ | camera.ts state machine + keyboard/wheel handlers (23 tests) |
+| 22 (Tier-1 baseline) | ✅ | tier-derivation.ts + 8×8 grass + 4×4 stadium core (35 tests) |
+| 23 (Tier history) | ✅ | Migration 0026_tier_history.sql aplicada al DB local + /stadium lee history real |
+| 24 (Tier transitions) | ✅ | tier-transition.ts primitive (22 tests, cubre AC-CITY-08, AC-CITY-09) |
+| 25 (Day-night + weather) | ✅ parcial | presentation-state.ts en @smt/shared (19 tests) + ADR-024 §D2 prefers-reduced-motion |
+| 26 (Functional animations) | ⏸ | Requiere assets reales |
+| 27 (Match-day overlay) | ⏸ | Requiere assets reales + Sprint 26 |
+| 28 (Polish + gate) | ⏸ | Final del v1.1 |
+
+### Test/build state al cierre v1.1 fast-forward
+
+- `pnpm test`: **1288/1288 verde** (+22 vs último cierre)
+  - 996 shared + 72 api + 220 web + 5 todo
+- `svelte-check`: 0 errors / 2215 files
+- 3 commits adicionales pushed al branch
+
+### Lo que falta (Pablo + artista)
+
+- Asset atlases reales (sprite pixel-art Art Bible §3)
+- Sprint 26 functional animations (manager office sprite, staff)
+- Sprint 27 match-day camera dolly + crowd density rendering
+- Sprint 28 v1.1 polish + gate-check formal
+- Performance mode auto-detection (5s window measurement)
+- Match-live overlay component
+
+### Total session commits (post-Sprint 13)
+
+15 commits. Branch up-to-date con origin. v1.1 está pre-construido al
+~70% — sólo requiere art atlases + Sprints 26/27/28 cuando Pablo dé
+luz verde tras v1.0 launch.
+
