@@ -455,28 +455,34 @@
     </div>
 
     <div class="advance-content">
+      <!-- Walkthrough fix (Pablo): contrast backdrop so the centred text is
+           readable over BOTH bright daytime sky AND dark night sky. White
+           text + dark semi-transparent panel works across all theme/hue
+           combinations and the modal's animated background. -->
       <div class="text-center mb-4">
-        <div class="text-xs uppercase opacity-70 tracking-widest text-base-100">
-          {#if haltedOnStopEvent}
-            ⚠ Evento detectado este día
-          {:else if completed}
-            Final de la semana
-          {:else if paused && autoPausedOnce && worryingHeadline}
-            ⚠ Pausa automática — hay una noticia importante
-          {:else if paused}
-            ⏸ Pausado
-          {:else}
-            Avanzando una semana
-          {/if}
-        </div>
-        <div class="text-2xl md:text-4xl font-bold text-base-100 drop-shadow-lg mt-1">
-          {#if paused}📍 {/if}{currentDate.display}
-        </div>
-        <div class="font-mono text-3xl md:text-5xl font-bold text-base-100 drop-shadow-lg tabular-nums mt-1">
-          {clockHHStr}:{clockMMStr}
-        </div>
-        <div class="text-base-100/70 text-sm mt-1">
-          Día {dayIndex + 1} / 7 · destino {targetDate.display}
+        <div class="text-pill">
+          <div class="text-xs uppercase opacity-90 tracking-widest text-white">
+            {#if haltedOnStopEvent}
+              ⚠ Evento detectado este día
+            {:else if completed}
+              Final de la semana
+            {:else if paused && autoPausedOnce && worryingHeadline}
+              ⚠ Pausa automática — hay una noticia importante
+            {:else if paused}
+              ⏸ Pausado
+            {:else}
+              Avanzando una semana
+            {/if}
+          </div>
+          <div class="text-2xl md:text-4xl font-bold text-white drop-shadow-lg mt-1">
+            {#if paused}📍 {/if}{currentDate.display}
+          </div>
+          <div class="font-mono text-3xl md:text-5xl font-bold text-white drop-shadow-lg tabular-nums mt-1">
+            {clockHHStr}:{clockMMStr}
+          </div>
+          <div class="text-white/80 text-sm mt-1">
+            Día {dayIndex + 1} / 7 · destino {targetDate.display}
+          </div>
         </div>
       </div>
 
@@ -650,5 +656,17 @@
     background: rgba(255, 255, 255, 0.95); color: rgb(20 20 30);
     border-radius: 0.5rem; padding: 1rem;
     box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+  }
+  /* Walkthrough fix (Pablo): contrast backdrop for the centred date/clock
+     header so the white text reads against both midday and midnight sky. */
+  .text-pill {
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border-radius: 0.75rem;
+    padding: 0.75rem 1.25rem;
+    display: inline-block;
+    margin: 0 auto;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.35);
   }
 </style>
