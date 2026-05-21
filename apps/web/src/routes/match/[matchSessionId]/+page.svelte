@@ -290,10 +290,19 @@
       seenInSession = sessionStorage.getItem(SEEN_KEY) === '1';
     }
 
-    if (skipToEnd && !isToday) {
-      // Treat as if the match already finished — show score + recap + all
-      // events upfront, no replay. Only allowed for past matches; today's
-      // match must be watched.
+    if (skipToEnd) {
+      // Bug M3 fix (playtest 2026-05-21 Pablo): previously `skipToEnd`
+      // only applied to PAST matches (`!isToday`). For today's match it
+      // was ignored, leaving the page in idle state with no events shown.
+      // Pablo's complaint: 'Si el día de partido le doy a solo resultado
+      // me sale el match pero sin goles ni eventos, debería verse todo
+      // automáticamente.'
+      //
+      // Now: regardless of `isToday`, skipToEnd shows score + recap + all
+      // events upfront. Today's match still requires the user to have
+      // navigated here explicitly (via 'Solo resultado' button), so the
+      // "must be watched" gate is preserved at the navigation layer, not
+      // here.
       finalWhistle = true;
       seenInSession = true;
       if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(SEEN_KEY, '1');
@@ -375,9 +384,26 @@
             </button>
           {/if}
           {#if returnTo === 'dashboard'}
-            <a href="/dashboard?advanced=1" class="btn btn-ghost">
-              {finalWhistle ? '→ Volver al dashboard' : 'Saltar al final'}
-            </a>
+            {#if finalWhistle}
+              <a href="/dashboard?advanced=1" class="btn btn-ghost">
+                → Volver al dashboard
+              </a>
+            {:else}
+              <!-- Bug M1 fix (playtest 2026-05-21 Pablo): 'Saltar al final'
+                   previously navigated to /dashboard, leaving the player
+                   without seeing the result. Now it stops the replay
+                   in-place and reveals the recap + all events upfront. -->
+              <button
+                type="button"
+                class="btn btn-ghost"
+                onclick={() => {
+                  stopReplay();
+                  finalWhistle = true;
+                }}
+              >
+                Saltar al final
+              </button>
+            {/if}
           {/if}
         </div>
       {/if}

@@ -14,6 +14,19 @@
 
   let { data }: { data: PageData } = $props();
 
+  // Bug M2 fix: track whether the user has already watched today's match
+  // result (sessionStorage flag written by /match/[id] on final whistle).
+  // Drives the dashboard card's two states: 'Ir a partido' vs 'Resultado'.
+  let matchSeen = $state(false);
+  $effect(() => {
+    if (typeof sessionStorage === 'undefined') return;
+    if (data.lastResult && data.lastResult.week === data.week) {
+      matchSeen = sessionStorage.getItem(`tsm-seen-fixture:${data.lastResult.id}`) === '1';
+    } else {
+      matchSeen = false;
+    }
+  });
+
   let showTransition = $state(false);
   let advanceFormEl: HTMLFormElement | undefined = $state();
   let redirectModeInput: HTMLInputElement | undefined = $state();
@@ -314,37 +327,57 @@
     <!-- Week summary (post-advance) -->
     {#if data.justAdvanced}
       {#if data.lastResult && data.lastResult.week === data.week}
-        <!-- Match-day card: live replay or skip-to-end -->
+        <!-- Match-day card: shows two states based on whether the user has
+             seen the result yet (tracked via sessionStorage match:seen flag
+             written by /match/[id] page on final whistle).
+             Bug M2 fix (playtest 2026-05-21 Pablo): previously this card
+             stayed in 'pending' state forever, even after watching. -->
         <section class="card bg-base-200 shadow-lg border-2 border-primary/40">
           <div class="card-body">
             <div class="flex items-center justify-between flex-wrap gap-3">
               <div>
                 <div class="text-xs uppercase opacity-70 tracking-wider">
-                  Partido jugado hoy
+                  {matchSeen ? 'Resultado del partido' : 'Partido jugado hoy'}
                 </div>
                 <h3 class="font-bold text-xl mt-1">
                   vs {data.lastResult.opponentName}
                   <span class="opacity-50 text-sm font-normal ml-2">
                     ({data.lastResult.isHome ? 'casa' : 'fuera'})
                   </span>
+                  {#if matchSeen}
+                    <span class="font-mono ml-3 text-2xl">
+                      {data.lastResult.myScore}–{data.lastResult.oppScore}
+                    </span>
+                  {/if}
                 </h3>
-                <div class="text-sm opacity-80 mt-1">
-                  Tu equipo acaba de salir del vestuario. ¿Cómo quieres verlo?
-                </div>
+                {#if !matchSeen}
+                  <div class="text-sm opacity-80 mt-1">
+                    Tu equipo acaba de salir del vestuario. ¿Cómo quieres verlo?
+                  </div>
+                {/if}
               </div>
               <div class="flex gap-2 flex-wrap">
-                <a
-                  href="/match/{data.lastResult.id}?autoplay=1&return=dashboard"
-                  class="btn btn-primary"
-                >
-                  ▶ Ir a partido
-                </a>
-                <a
-                  href="/match/{data.lastResult.id}?skipToEnd=1&return=dashboard"
-                  class="btn btn-outline"
-                >
-                  ⏭ Solo resultado
-                </a>
+                {#if matchSeen}
+                  <a
+                    href="/match/{data.lastResult.id}?return=dashboard"
+                    class="btn btn-ghost btn-sm"
+                  >
+                    Ver detalles
+                  </a>
+                {:else}
+                  <a
+                    href="/match/{data.lastResult.id}?autoplay=1&return=dashboard"
+                    class="btn btn-primary"
+                  >
+                    ▶ Ir a partido
+                  </a>
+                  <a
+                    href="/match/{data.lastResult.id}?skipToEnd=1&return=dashboard"
+                    class="btn btn-outline"
+                  >
+                    ⏭ Solo resultado
+                  </a>
+                {/if}
               </div>
             </div>
           </div>
