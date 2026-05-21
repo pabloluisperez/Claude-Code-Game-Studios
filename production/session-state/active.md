@@ -2,14 +2,51 @@
 
 <!-- STATUS -->
 Stage: Polish
-Epic: Sprint 10 planning (first Polish sprint)
-Feature: Carry-forward conditions from gate-check
+Epic: Sprint 11 planning
+Feature: Orchestrator full extraction + ADR-020 acceptance + a11y P1 cleanup
 Task: Awaiting Pablo's next instruction
 <!-- /STATUS -->
 
 ## Active workstream
 
-**🎯 PRODUCTION → POLISH GATE — ✅ PASS** (2026-05-21)
+**🎯 SPRINT 10 — ✅ CLOSED** (2026-05-21)
+
+First Polish-phase sprint complete. 5 of 6 stories closed (1 partial, 1
+deferred to Pablo). All 6 Polish-phase carry-forward conditions from the
+Production → Polish gate addressed at least partially.
+
+- Sprint plan: `production/sprints/sprint-10.md`
+- QA sign-off: `production/qa/qa-signoff-sprint-10-2026-05-21.md` — APPROVED WITH CONDITIONS
+- Smoke: `production/qa/smoke-sprint-10-2026-05-21.md` — PASS, 998/998 automated tests
+- A11y audit: `production/qa/a11y-audit-2026-05-21.md` — CONDITIONAL PASS WCAG 2.1 AA
+
+### Sprint 10 deliverables (chronological)
+
+| Commit | Story | Done |
+|---|---|---|
+| `e96d4a0` | 10-1 + 10-2 + sprint plan | ADR-020 day-by-day tick (Proposed) + design/difficulty-curve.md (Approved) + sprint-10.md + sprint-status.yaml |
+| `5bd1904` | 10-3 | apps/web/src/lib/components/recovery-levers-panel.svelte (tier-aware coaching UI on /finance) |
+| `f8fdec7` | 10-4 | A11y audit (WCAG 2.1 AA) + 4 P0 fixes shipped same session |
+| `88f4993` | 10-5 (partial) | apps/web/src/lib/server/advance-orchestrator.ts — pure-compute pipeline extracted; DB-write portion still inline |
+| (this commit) | 10-end | Sprint 10 smoke + QA sign-off + session-state refresh |
+
+### Carry-forward to Sprint 11
+
+1. Complete the advance orchestrator extraction (DB-write portion: snapshot persist, match-day, staff messages, season rollover, redirect). Sprint 9 partial + Sprint 10 partial — full extraction is Sprint 11 candidate.
+2. Accept ADR-020 (currently Proposed) — Pablo decision.
+3. Implement day-by-day tick model per ADR-020 (only after acceptance + after orchestrator full extraction).
+4. A11y P1 follow-ups (6 findings — dialog focus trap, focus return, tab a11y, match aria-live, balance color signal).
+5. Polish-phase playtest #1 (10-6, deferred to Pablo's availability).
+6. Sprint 11 plan + scope.
+
+### Recommended next user action
+
+- `/sprint-plan new` to scope Sprint 11 around the carry-forward list.
+- Or spawn a focused playtest if Pablo wants to validate the recovery-levers panel first.
+
+---
+
+**🎯 PRODUCTION → POLISH GATE — ✅ PASS** (2026-05-21, earlier same session)
 
 - Stage advanced from `Production` to `Polish` after gate-check report verdict PASS.
 - Gate report: `production/qa/gate-check-production-to-polish-2026-05-21.md`.
@@ -17,20 +54,6 @@ Task: Awaiting Pablo's next instruction
 - Smoke verified — `production/qa/smoke-sprint-09-2026-05-21.md` (998/998 automated tests pass).
 - 3 documented playtests (slice + fresh-player + economy-tuning) satisfy 3-session minimum.
 - 23 polish items shipped 2026-05-21 (M1/M2/M3, B1-B4, D, P1-P15, F, global €K → €, economy retune).
-
-### Sprint 10 starting backlog (Polish-phase carry-forward)
-
-1. Full advance-loop orchestrator extraction (Sprint 9 task 9-1 carryover).
-2. Day-by-day tick model ADR — prerequisite for mid-week pause feature (E).
-3. Write `design/difficulty-curve.md` from cascade dynamics + playtest data.
-4. Recovery levers UX panel on top of P13 cashflow breakdown.
-5. Formal accessibility audit against Basic tier in `design/accessibility-requirements.md`.
-6. Maintain playtest cadence — 1 per Polish sprint minimum.
-
-### Recommended next user action
-
-- `/sprint-plan new --review lean` to scope Sprint 10 around the 6 carry-forward items.
-- Optional: spawn 4 directors as proper subagents for an audit-trail panel verdict on the gate (current verdict synthesized in autopilot mode).
 
 ---
 

@@ -21,58 +21,58 @@ stories:
     name: "Day-by-day tick model ADR"
     file: "docs/architecture/ADR-020-day-by-day-tick.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "technical-director"
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "10-2"
     name: "Difficulty curve synthesis"
     file: "design/difficulty-curve.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "game-designer"
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "10-3"
     name: "Recovery levers coaching panel"
-    file: "apps/web/src/routes/finance/+page.svelte"
+    file: "apps/web/src/lib/components/recovery-levers-panel.svelte"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "gameplay-programmer"
     estimate_days: 1.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "10-4"
     name: "Accessibility audit + fixes"
     file: "production/qa/a11y-audit-2026-05-21.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "accessibility-specialist"
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "10-5"
-    name: "Advance-loop orchestrator extraction"
-    file: "apps/api/src/modules/advance/orchestrator.ts"
+    name: "Advance-loop orchestrator extraction (partial — pure compute)"
+    file: "apps/web/src/lib/server/advance-orchestrator.ts"
     priority: should-have
-    status: backlog
+    status: done
     owner: "web-backend-specialist"
     estimate_days: 2.0
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "10-6"
-    name: "Polish-phase playtest #1"
-    file: "production/playtests/2026-05-XX-polish-sprint-10.md"
+    name: "Polish-phase playtest #1 (deferred — Pablo runs solo)"
+    file: "production/playtests/TBD-polish-sprint-10.md"
     priority: nice-to-have
-    status: backlog
+    status: blocked
     owner: "Pablo"
     estimate_days: 0.5
-    blocker: ""
+    blocker: "Pablo's availability"
     completed: ""
