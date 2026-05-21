@@ -1,6 +1,40 @@
 # Session State — Cascada FC
 
+<!-- STATUS -->
+Stage: Polish
+Epic: Sprint 10 planning (first Polish sprint)
+Feature: Carry-forward conditions from gate-check
+Task: Awaiting Pablo's next instruction
+<!-- /STATUS -->
+
 ## Active workstream
+
+**🎯 PRODUCTION → POLISH GATE — ✅ PASS** (2026-05-21)
+
+- Stage advanced from `Production` to `Polish` after gate-check report verdict PASS.
+- Gate report: `production/qa/gate-check-production-to-polish-2026-05-21.md`.
+- Sprint 9 closed with QA APPROVED WITH CONDITIONS — `production/qa/qa-signoff-sprint-09-2026-05-21.md`.
+- Smoke verified — `production/qa/smoke-sprint-09-2026-05-21.md` (998/998 automated tests pass).
+- 3 documented playtests (slice + fresh-player + economy-tuning) satisfy 3-session minimum.
+- 23 polish items shipped 2026-05-21 (M1/M2/M3, B1-B4, D, P1-P15, F, global €K → €, economy retune).
+
+### Sprint 10 starting backlog (Polish-phase carry-forward)
+
+1. Full advance-loop orchestrator extraction (Sprint 9 task 9-1 carryover).
+2. Day-by-day tick model ADR — prerequisite for mid-week pause feature (E).
+3. Write `design/difficulty-curve.md` from cascade dynamics + playtest data.
+4. Recovery levers UX panel on top of P13 cashflow breakdown.
+5. Formal accessibility audit against Basic tier in `design/accessibility-requirements.md`.
+6. Maintain playtest cadence — 1 per Polish sprint minimum.
+
+### Recommended next user action
+
+- `/sprint-plan new --review lean` to scope Sprint 10 around the 6 carry-forward items.
+- Optional: spawn 4 directors as proper subagents for an audit-trail panel verdict on the gate (current verdict synthesized in autopilot mode).
+
+---
+
+## Earlier workstreams (historical context, do not act on)
 
 **TV-rights Epic — ✅ COMPLETE** (2026-05-20)
 - GDD R7 APPROVED · ADR-019 Accepted · 11/11 stories Done · 951 tests passing (incl. 17 live-DB integration)
