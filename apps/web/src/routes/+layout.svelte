@@ -60,6 +60,12 @@
         {@render children()}
       </main>
     </div>
+    <footer class="footer footer-center bg-base-200 text-base-content/70 p-4 text-xs">
+      <nav class="grid grid-flow-col gap-4">
+        <a href="/terms" class="link link-hover">Términos de Servicio</a>
+        <a href="/privacy" class="link link-hover">Privacidad</a>
+      </nav>
+    </footer>
   </div>
 {:else}
   <a href="#main-content" class="skip-link">Saltar al contenido</a>
@@ -82,6 +88,12 @@
   <main id="main-content" class="container mx-auto px-4 py-8">
     {@render children()}
   </main>
+  <footer class="footer footer-center bg-base-200 text-base-content/70 p-4 text-xs">
+    <nav class="grid grid-flow-col gap-4">
+      <a href="/terms" class="link link-hover">Términos de Servicio</a>
+      <a href="/privacy" class="link link-hover">Privacidad</a>
+    </nav>
+  </footer>
 {/if}
 
 <style>
