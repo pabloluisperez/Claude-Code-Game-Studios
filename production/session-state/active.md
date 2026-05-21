@@ -106,6 +106,7 @@ Production → Polish gate addressed at least partially.
 - QA plan Sprint 11: `production/qa/qa-plan-sprint-11-2026-05-21.md`
 
 <!-- QA-PLAN: 2026-05-21 | System: sprint-11 | Plan written: production/qa/qa-plan-sprint-11-2026-05-21.md -->
+<!-- QA-PLAN: 2026-05-21 | System: sprint-12 | Plan written: production/qa/qa-plan-sprint-12-2026-05-21.md -->
 
 ---
 

@@ -9,60 +9,60 @@
 #   done           ↔  Complete
 #   blocked        ↔  Blocked
 
-sprint: 11
-goal: "Polish — orchestrator completo + tick diario + A11y P1"
-start: "2026-09-23"
-end: "2026-10-06"
+sprint: 12
+goal: "Polish — mid-week pause + A11y P2 + Pablo validation pass"
+start: "2026-10-07"
+end: "2026-10-20"
 generated: "2026-05-21"
 updated: "2026-05-21"
 
 stories:
-  - id: "11-1"
-    name: "Aceptar ADR-020 (tick diario)"
-    file: "docs/architecture/ADR-020-day-by-day-tick.md"
-    priority: must-have
-    status: done
-    owner: "technical-director"
-    estimate_days: 0.5
-    blocker: ""
-    completed: "2026-05-21"
-
-  - id: "11-2"
-    name: "Orchestrator extraction — DB-write completo (deviation: lives in apps/web)"
+  - id: "12-1"
+    name: "STOP event scheduledDayOfSeason + per-day loop con halt"
     file: "apps/web/src/lib/server/advance-orchestrator.ts"
     priority: must-have
-    status: done
+    status: ready-for-dev
     owner: "web-backend-specialist"
-    estimate_days: 2.5
+    estimate_days: 2.0
     blocker: ""
-    completed: "2026-05-21"
+    completed: ""
 
-  - id: "11-3"
-    name: "A11y P1 batch (6 hallazgos)"
-    file: "production/qa/evidence/a11y-p1-sprint-11.md"
+  - id: "12-2"
+    name: "Advance-transition modal resume-from-day"
+    file: "apps/web/src/lib/components/advance-transition.svelte"
     priority: must-have
-    status: done
+    status: ready-for-dev
+    owner: "gameplay-programmer"
+    estimate_days: 1.0
+    blocker: ""
+    completed: ""
+
+  - id: "12-3"
+    name: "A11y P2 batch (skip-link + heading levels + sponsor labels)"
+    file: "production/qa/evidence/a11y-p2-sprint-12.md"
+    priority: must-have
+    status: ready-for-dev
     owner: "accessibility-specialist"
-    estimate_days: 1.5
+    estimate_days: 1.0
     blocker: ""
-    completed: "2026-05-21"
+    completed: ""
 
-  - id: "11-4"
-    name: "Day-by-day tick implementation (Option B — weekly batches; partial-day Sprint 12+)"
-    file: "apps/web/src/lib/server/advance-orchestrator.ts"
+  - id: "12-4"
+    name: "Manual validation pass (Pablo) — walkthrough + e2e + Playtest #1"
+    file: "production/playtests/TBD-polish-sprint-12.md"
     priority: should-have
-    status: done
-    owner: "web-backend-specialist"
-    estimate_days: 2.5
-    blocker: ""
-    completed: "2026-05-21"
-
-  - id: "11-5"
-    name: "Playtest Polish #1 (diferido de 10-6)"
-    file: "production/playtests/TBD-polish-sprint-11.md"
-    priority: nice-to-have
     status: blocked
     owner: "Pablo"
+    estimate_days: 1.0
+    blocker: "Pablo's availability (~1h continuous)"
+    completed: ""
+
+  - id: "12-5"
+    name: "Soak test protocol scaffolding"
+    file: "production/qa/soak-test-protocol.md"
+    priority: nice-to-have
+    status: backlog
+    owner: "qa-lead"
     estimate_days: 0.5
-    blocker: "Disponibilidad Pablo"
+    blocker: ""
     completed: ""
