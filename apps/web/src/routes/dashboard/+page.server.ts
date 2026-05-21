@@ -432,12 +432,21 @@ export const actions: Actions = {
     const nextBuffer: DelayedEffectsBuffer = [...remaining, ...result.newDelayedEffects];
 
     // 4. Persist new snapshot + bump currentWeek + TV side-effects
+    // Sprint 8 task 8-8: include cascade_log + threshold_crossings audit trail
+    // in the snapshot payload (per schema additions from task 8-1). These
+    // columns are NULLABLE; older callers still work, but the dashboard
+    // advance path now backs the audit consumers (event-system future work).
     await db.transaction(async (tx) => {
       await tx.insert(worldSnapshots).values({
         playthroughId: active.id,
         week: nextWeek,
         worldState: eco.patchedState,
         delayedEffectsBuffer: nextBuffer,
+        cascadeLog: result.log as unknown as Record<string, unknown>[],
+        thresholdCrossings: result.thresholdCrossings as unknown as Record<string, unknown>[],
+        // seedState is NULL for cascade-only ticks; populated by match-sim
+        // path (ADR-013) when match-weeks add their PRNG state. The dashboard
+        // path does not own match PRNG state — leave NULL.
       });
       await tx
         .update(playthroughs)
