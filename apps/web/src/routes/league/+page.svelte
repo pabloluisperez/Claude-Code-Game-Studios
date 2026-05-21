@@ -2,6 +2,11 @@
   League — clasificación + jornadas pasadas y próximas con resultados reales.
 
   Story: HUD-UI-005 / League follow-up
+  2026-05-21 polish from playtest #1:
+    P3 2-column layout (standings left, próximas right)
+    P4 hover cross-highlighting (team in fixture → highlight in standings)
+    P5 stronger my-team highlight (border + bg, not just ★)
+    P6 'Todas las jornadas' tab with proper matchday numbering
   Control Manifest: 2026-05-19
 -->
 <script lang="ts">
@@ -9,8 +14,7 @@
   import { onMount } from 'svelte';
   let { data }: { data: PageData } = $props();
 
-  // Fixtures the user has already watched this session — others stay
-  // result-hidden until they're seen.
+  // Fixtures the user has already watched this session.
   let seenFixtures = $state<Set<string>>(new Set());
   onMount(() => {
     if (typeof sessionStorage === 'undefined') return;
@@ -32,9 +36,14 @@
 
   const myClubId = $derived(data.hasPlaythrough ? data.myClubId : '');
 
+  // P4 hover cross-highlighting: tracks the clubId currently being hovered
+  // (in either standings or fixture cards). Cross-component highlighting
+  // is applied to ALL rows/fixtures involving that clubId. null = no hover
+  // → fall back to highlighting only my own club.
+  let hoveredClubId = $state<string | null>(null);
+
   type FixtureRow = Extract<PageData, { hasPlaythrough: true }>['pastFixtures'][number];
 
-  // Group fixtures by matchday for display.
   function groupByMatchday(rows: readonly FixtureRow[]): Map<number, FixtureRow[]> {
     const map = new Map<number, FixtureRow[]>();
     for (const r of rows) {
@@ -52,16 +61,49 @@
     data.hasPlaythrough ? groupByMatchday(data.upcomingFixtures) : new Map(),
   );
 
-  let view = $state<'past' | 'upcoming'>('upcoming');
+  // Próximas 3 jornadas para la columna derecha (compact view).
+  const next3MatchdayKeys = $derived(
+    [...upcomingByMatchday.keys()].sort((a, b) => a - b).slice(0, 3),
+  );
+
+  // P6 view tabs: Próximas 3 / Todas / Pasadas. 'Todas' lista TODAS las jornadas
+  // de la temporada (pasadas y futuras) con numeración correcta de jornada,
+  // no de partidos.
+  let view = $state<'upcoming3' | 'all' | 'past'>('upcoming3');
 
   function zoneClass(idx: number, total: number): string {
-    if (idx < 3) return 'bg-success/10';
-    if (idx >= total - 3) return 'bg-error/10';
+    if (idx < 3) return 'bg-success/5';
+    if (idx >= total - 3) return 'bg-error/5';
     return '';
   }
 
-  function involvesMyClub(f: FixtureRow): boolean {
-    return f.homeClubId === myClubId || f.awayClubId === myClubId;
+  function involvesClub(f: FixtureRow, clubId: string): boolean {
+    return f.homeClubId === clubId || f.awayClubId === clubId;
+  }
+
+  // P5 + P4 highlight: my team always gets a strong left-border + light bg;
+  // hover (any club) gets the medium primary highlight applied across both
+  // standings rows AND fixture cards.
+  function rowHighlightClass(clubId: string): string {
+    if (hoveredClubId && hoveredClubId === clubId) {
+      return 'bg-info/15 border-l-4 border-l-info';
+    }
+    if (clubId === myClubId) {
+      return 'bg-primary/10 border-l-4 border-l-primary font-semibold';
+    }
+    return '';
+  }
+
+  function fixtureHighlightClass(f: FixtureRow): string {
+    const involvesHover = hoveredClubId && involvesClub(f, hoveredClubId);
+    const involvesMe = involvesClub(f, myClubId);
+    if (involvesHover) return 'bg-info/15 border border-info/40';
+    if (involvesMe) return 'bg-primary/10 border border-primary/30';
+    return 'bg-base-200 border border-transparent';
+  }
+
+  function clearHover() {
+    hoveredClubId = null;
   }
 </script>
 
@@ -76,61 +118,105 @@
       <span>Necesitas iniciar una carrera para ver la liga.</span>
     </div>
   {:else}
-    <!-- Clasificación -->
-    <section class="card bg-base-100 shadow">
-      <div class="card-body p-0">
-        {#if data.standings.length === 0}
-          <p class="p-6 opacity-60 text-sm">Aún no hay clasificación. Esperando primera jornada.</p>
-        {:else}
-          <div class="overflow-x-auto">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>#</th><th>Club</th>
-                  <th class="text-right">PJ</th>
-                  <th class="text-right">G</th>
-                  <th class="text-right">E</th>
-                  <th class="text-right">P</th>
-                  <th class="text-right">GF</th>
-                  <th class="text-right">GC</th>
-                  <th class="text-right">+/-</th>
-                  <th class="text-right">PTS</th>
-                </tr>
-              </thead>
-              <tbody>
-                {#each data.standings as r, i}
-                  {@const gd = r.goalsFor - r.goalsAgainst}
-                  <tr class="{zoneClass(i, data.standings.length)} {r.clubId === myClubId ? 'font-bold' : ''}">
-                    <td class="font-mono">{i + 1}</td>
-                    <td>
-                      {r.clubId === myClubId ? '★ ' : ''}{r.clubName}
-                      <span class="text-xs opacity-50 ml-1">({r.city})</span>
-                    </td>
-                    <td class="text-right font-mono">{r.played}</td>
-                    <td class="text-right font-mono">{r.wins}</td>
-                    <td class="text-right font-mono">{r.draws}</td>
-                    <td class="text-right font-mono">{r.losses}</td>
-                    <td class="text-right font-mono">{r.goalsFor}</td>
-                    <td class="text-right font-mono">{r.goalsAgainst}</td>
-                    <td class="text-right font-mono {gd >= 0 ? 'text-success' : 'text-error'}">
-                      {gd > 0 ? '+' : ''}{gd}
-                    </td>
-                    <td class="text-right font-mono font-bold">{r.points}</td>
+    <!-- P3: 2-column layout — clasificación a la izquierda (más compacta),
+         próximas 3 jornadas a la derecha (compacto). En móvil colapsa a 1 col. -->
+    <div class="grid grid-cols-1 lg:grid-cols-[1fr_18rem] gap-4">
+      <!-- Clasificación -->
+      <section class="card bg-base-100 shadow">
+        <div class="card-body p-0">
+          {#if data.standings.length === 0}
+            <p class="p-6 opacity-60 text-sm">Aún no hay clasificación. Esperando primera jornada.</p>
+          {:else}
+            <div class="overflow-x-auto">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Club</th>
+                    <th class="text-right">PJ</th>
+                    <th class="text-right">G</th>
+                    <th class="text-right">E</th>
+                    <th class="text-right">P</th>
+                    <th class="text-right">+/-</th>
+                    <th class="text-right">PTS</th>
                   </tr>
-                {/each}
-              </tbody>
-            </table>
-          </div>
-        {/if}
-      </div>
-    </section>
+                </thead>
+                <tbody>
+                  {#each data.standings as r, i}
+                    {@const gd = r.goalsFor - r.goalsAgainst}
+                    <tr
+                      class="{zoneClass(i, data.standings.length)} {rowHighlightClass(r.clubId)}"
+                      onmouseenter={() => (hoveredClubId = r.clubId)}
+                      onmouseleave={clearHover}
+                    >
+                      <td class="font-mono">{i + 1}</td>
+                      <td>
+                        {r.clubId === myClubId ? '★ ' : ''}{r.clubName}
+                      </td>
+                      <td class="text-right font-mono">{r.played}</td>
+                      <td class="text-right font-mono">{r.wins}</td>
+                      <td class="text-right font-mono">{r.draws}</td>
+                      <td class="text-right font-mono">{r.losses}</td>
+                      <td class="text-right font-mono {gd >= 0 ? 'text-success' : 'text-error'}">
+                        {gd > 0 ? '+' : ''}{gd}
+                      </td>
+                      <td class="text-right font-mono font-bold">{r.points}</td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          {/if}
+        </div>
+      </section>
+
+      <!-- Próximas 3 jornadas compacto -->
+      <aside class="card bg-base-100 shadow">
+        <div class="card-body p-4">
+          <h2 class="card-title text-sm">Próximas 3 jornadas</h2>
+          {#if next3MatchdayKeys.length === 0}
+            <p class="text-xs opacity-60">No quedan jornadas.</p>
+          {:else}
+            <div class="space-y-3">
+              {#each next3MatchdayKeys as md}
+                {@const group = upcomingByMatchday.get(md) ?? []}
+                <div>
+                  <div class="text-xs opacity-60 mb-1 font-semibold">
+                    Jornada {md} · sem {group[0]?.week ?? '–'}
+                  </div>
+                  <div class="space-y-0.5">
+                    {#each group as f}
+                      <div
+                        class="flex items-center justify-between p-1.5 text-xs rounded {fixtureHighlightClass(f)}"
+                        onmouseenter={() => {
+                          if (involvesClub(f, myClubId)) hoveredClubId = myClubId;
+                          else hoveredClubId = f.homeClubId;
+                        }}
+                        onmouseleave={clearHover}
+                      >
+                        <div class="flex-1 truncate">
+                          <span class="{f.homeClubId === myClubId ? 'font-bold' : ''}">{f.homeName}</span>
+                          <span class="opacity-50 mx-1">vs</span>
+                          <span class="{f.awayClubId === myClubId ? 'font-bold' : ''}">{f.awayName}</span>
+                        </div>
+                      </div>
+                    {/each}
+                  </div>
+                </div>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      </aside>
+    </div>
 
     <div class="text-xs opacity-60 flex gap-4">
       <span><span class="inline-block w-3 h-3 bg-success/40 align-middle mr-1"></span>Zona ascenso (top 3)</span>
       <span><span class="inline-block w-3 h-3 bg-error/40 align-middle mr-1"></span>Zona descenso (bottom 3)</span>
+      <span><span class="inline-block w-3 h-3 bg-primary/30 align-middle mr-1"></span>Tu equipo</span>
     </div>
 
-    <!-- Calendario -->
+    <!-- Calendario completo (debajo, full width) -->
     <section class="card bg-base-100 shadow">
       <div class="card-body">
         <div class="flex items-center justify-between flex-wrap gap-2">
@@ -138,27 +224,40 @@
           <div role="tablist" class="tabs tabs-boxed w-fit">
             <button
               role="tab"
-              class="tab {view === 'upcoming' ? 'tab-active' : ''}"
-              onclick={() => (view = 'upcoming')}
+              class="tab {view === 'upcoming3' ? 'tab-active' : ''}"
+              onclick={() => (view = 'upcoming3')}
             >
-              Próximas ({data.upcomingFixtures.length})
+              Próximas 3
+            </button>
+            <button
+              role="tab"
+              class="tab {view === 'all' ? 'tab-active' : ''}"
+              onclick={() => (view = 'all')}
+            >
+              Todas las jornadas
             </button>
             <button
               role="tab"
               class="tab {view === 'past' ? 'tab-active' : ''}"
               onclick={() => (view = 'past')}
             >
-              Pasadas ({data.pastFixtures.length})
+              Pasadas ({data.pastFixtures.length > 0 ? pastByMatchday.size : 0})
             </button>
           </div>
         </div>
 
-        {#if (view === 'past' ? pastByMatchday : upcomingByMatchday).size === 0}
-          <p class="opacity-60 text-sm mt-3">
-            {view === 'past' ? 'Todavía no se ha jugado ninguna jornada.' : 'No quedan jornadas por jugar.'}
-          </p>
+        {#if view === 'past' && pastByMatchday.size === 0}
+          <p class="opacity-60 text-sm mt-3">Todavía no se ha jugado ninguna jornada.</p>
+        {:else if view === 'upcoming3' && next3MatchdayKeys.length === 0}
+          <p class="opacity-60 text-sm mt-3">No quedan jornadas por jugar.</p>
         {:else}
-          {@const groups = view === 'past' ? pastByMatchday : upcomingByMatchday}
+          {@const groups =
+            view === 'past' ? pastByMatchday
+            : view === 'upcoming3' ? new Map(next3MatchdayKeys.map((md) => [md, upcomingByMatchday.get(md) ?? []]))
+            : new Map(
+                [...pastByMatchday.entries(), ...upcomingByMatchday.entries()]
+                  .sort((a, b) => a[0] - b[0])
+              )}
           <div class="space-y-4 mt-3">
             {#each [...groups.entries()].sort((a, b) => (view === 'past' ? b[0] - a[0] : a[0] - b[0])) as [matchday, group]}
               <div>
@@ -168,8 +267,12 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-1 text-sm">
                   {#each group as f}
                     <div
-                      class="flex items-center justify-between p-2 rounded
-                             {involvesMyClub(f) ? 'bg-primary/10 border border-primary/30' : 'bg-base-200'}"
+                      class="flex items-center justify-between p-2 rounded {fixtureHighlightClass(f)}"
+                      onmouseenter={() => {
+                        if (involvesClub(f, myClubId)) hoveredClubId = myClubId;
+                        else hoveredClubId = f.homeClubId;
+                      }}
+                      onmouseleave={clearHover}
                     >
                       <div class="flex-1 truncate">
                         <span class="{f.homeClubId === myClubId ? 'font-bold' : ''}">{f.homeName}</span>
