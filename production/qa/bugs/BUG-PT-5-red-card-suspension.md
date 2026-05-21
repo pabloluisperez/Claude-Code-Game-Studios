@@ -1,7 +1,9 @@
 # BUG-PT-5 — Red-card suspension not enforced
 
 **Severity**: S2 (gameplay rule gap — affects fairness/realism)
-**Status**: OPEN — Sprint 13+ candidate
+**Status**: ✅ **CLOSED** — Sprint 13 task 13-1 (commit b716043). Per-match
+suspension counter + 5-yellow accumulation rule shipped. Suspended players
+filtered from match-day roster. /squad badge + staff message.
 **Reporter**: Pablo (playtest Sprint 12, 2026-05-21)
 **Source**: `production/playtests/2026-05-21-polish-sprint-12.md`
 

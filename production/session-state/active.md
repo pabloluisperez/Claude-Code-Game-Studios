@@ -1,13 +1,84 @@
 # Session State — Cascada FC
 
 <!-- STATUS -->
-Stage: Polish
-Epic: Sprint 12 — CLOSED
-Feature: Mid-week pause (ADR-020 §6) + A11y P2 + soak protocol + Pablo validation pending
-Task: Sprint 12 closed — APPROVED WITH CONDITIONS · 12-4 manual pass pendiente (Pablo ~1h)
+Stage: Release ⭐ (advanced 2026-05-21 after Polish→Release gate PASS WITH CONDITIONS)
+Epic: Sprint 13 — CLOSED + Polish→Release gate PASS
+Feature: Suspension + financial fix + match polish + soak runner + stage advance
+Task: Sprint 14 = release prep (rellenar release-checklist.md sections + Go/No-Go)
 <!-- /STATUS -->
 
 ## Active workstream
+
+**🎯 STAGE ADVANCE — Polish → Release** (2026-05-21)
+
+Gate verdict: ✅ **PASS WITH CONDITIONS**
+
+Report: `production/qa/gate-check-polish-to-release-2026-05-21.md`
+
+8 gate requirements verificados:
+1. Tests verdes ✅ (1143/1143)
+2. Playtests ≥ 3 ✅ (6 documentados)
+3. No S1/S2 bugs ✅ (BUG-FIN-1 + BUG-PT-5 ambos cerrados Sprint 13)
+4. Soak test PASS ✅ (190 ticks, 0.1s, 74.4 MB)
+5. QA sign-off ✅ (APPROVED WITH CONDITIONS)
+6. A11y audit ✅ (13/13 findings cerrados)
+7. Architecture debt cleared ✅ (mid-week pause + orchestrator full)
+8. Release artifacts ⚠ (draft existe; Sprint 14 rellena)
+
+Stage advanced de Polish → Release. Sprint 14 = release prep.
+
+**🎯 SPRINT 13 — ✅ CLOSED** (2026-05-21)
+
+7 of 7 stories closed + 5 UI nits mid-flight (PT-1/2/3 post-Sprint-12 +
+PT-7/PT-8 durante Sprint 13).
+
+- Sprint plan: `production/sprints/sprint-13.md`
+- QA plan: `production/qa/qa-plan-sprint-13-2026-05-21.md`
+- QA sign-off: `production/qa/qa-signoff-sprint-13-2026-05-21.md` — APPROVED WITH CONDITIONS
+- Smoke: `production/qa/smoke-sprint-13-2026-05-21.md` — PASS 1143 tests
+- Soak validation: `production/qa/soak-runs/2026-05-21-sprint13-validation/summary.md`
+
+### Sprint 13 deliverables (chronological)
+
+| Commit | Story | Done |
+|---|---|---|
+| `16b42bc` | Plan + 13-2 fix | sprint-13.md + BUG-FIN-1 fix |
+| `e2b23ff` | QA plan | qa-plan-sprint-13 + back-fill |
+| `b716043` | 13-1 | Schema 0024 + suspension.ts + match-day hook + /squad badge + staff message |
+| `dac60ab` | PT-7+PT-8 nits | league hover both clubs + dashboard staff messages inbox-style |
+| `bf4f850` | 13-2 regression | economy-tick-financial-status.test.ts (10 tests) |
+| `802482f` | 13-5 | Match live confeti + VAR overlay (+12 tests) |
+| `4602984` | 13-6 | STOP halt live DB integration (6 tests) |
+| `36eba34` | 13-3 | Soak test runner CLI + validation run PASS |
+| `35879d4` | 13-7 | Release checklist draft |
+| (this commit) | 13-4 + closeout | Polish→Release gate PASS + smoke + sign-off + stage advance |
+
+### Carry-forward to Sprint 14 (release prep)
+
+1. **Release checklist completion** — rellenar 8 secciones del draft
+2. **Build verification end-to-end** — Lighthouse + EXPLAIN ANALYZE + bundle size measurement
+3. **Store metadata** — nombre, descripción, screenshots, pricing decision
+4. **Legal / Privacy** — ToS, Privacy Policy, GDPR, asset attributions
+5. **Operations** — rate limiting, Sentry, backups
+6. **Content polish** — onboarding flow + tooltips + copy review
+7. **Marketing** — changelog v1.0 player-facing, launch post draft
+8. **Go/No-Go decision** — Pablo decides al final del sprint
+9. (Optional) 1 playtest extra cubriendo match polish + suspension
+10. (Optional) Browser e2e expansion (Playwright)
+
+### Recommended next user action
+
+- `/sprint-plan new` para Sprint 14 (release prep)
+- O revisa `production/qa/gate-check-polish-to-release-2026-05-21.md` para confirmar el stage advance antes de planificar Sprint 14
+
+### Cumulative session commits (Sprint 13)
+
+10 commits this session. Test growth: 1091 → 1143 (+52). Stage advanced
+Polish → Release.
+
+---
+
+## Earlier workstreams (historical context, do not act on)
 
 **🎯 SPRINT 12 — ✅ CLOSED** (2026-05-21)
 

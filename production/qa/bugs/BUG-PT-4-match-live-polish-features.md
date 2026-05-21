@@ -1,7 +1,10 @@
 # BUG-PT-4 — Match live polish features missing from vertical slice
 
 **Severity**: S3 (feature gap — UX polish, not blocking)
-**Status**: OPEN — Sprint 13+ candidate
+**Status**: ✅ **CLOSED (parcial)** — Sprint 13 task 13-5 (commit 802482f).
+Confeti burst + VAR overlay shipped en match-live. Pre-event pause descoped
+(335ms/min tick es ya rápido, una pausa de 500ms se siente jarring — backlog
+v1.1+ si playtest lo pide).
 **Reporter**: Pablo (playtest Sprint 12, 2026-05-21)
 **Source**: `production/playtests/2026-05-21-polish-sprint-12.md`
 
