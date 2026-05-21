@@ -49,7 +49,7 @@ quede cerrado y enlaza el artefacto justificativo en `production/`.
 > profesionales y reputación. Cada decisión cuenta.
 
 - [ ] **Screenshots** (5+): dashboard, /finance, /squad, /match live, /league — capturar con build de producción tras 14-3.
-- [ ] **Logo + iconos**: 16/32/64/128/256/512 px (favicon ya existe; pendiente set completo)
+- [x] **Logo + iconos**: 16/32/64/128/192/256/512 px + apple-touch-icon (180) + site.webmanifest. Generados overnight 2026-05-22 con ComfyUI MCP (seed 20260522001). En `apps/web/static/icons/` + `static/favicon.png`. PWA-ready.
 - [x] **Categoría store**: Sports / Simulation · Management
 - [x] **Pricing (MVP v1.0)**: **Gratuito** durante el periodo de soft-launch. Sin micropagos. Decisión: priorizar feedback de jugadores y validación de retention antes de monetizar.
 - [x] **Soporte**: GitHub Issues público + correo de contacto en `/terms` §10 (a actualizar con el alias real del owner antes del go-live).
@@ -59,7 +59,7 @@ quede cerrado y enlaza el artefacto justificativo en `production/`.
 - [x] **Terms of Service** publicados (/terms) — story 14-2 (Sprint 14)
 - [x] **Privacy Policy** publicado (/privacy) — cubre auth sessions, no analytics externo, derechos GDPR — story 14-2
 - [x] **Cookie policy** — solo una cookie técnica `session` (HTTP-only, SameSite=Lax). No banner GDPR necesario per Privacy Policy §8.
-- [ ] **License**: ver `LICENSE` en repo root — verificar que la licencia del MVP esté correcta
+- [x] **License**: `LICENSE` en repo root — MIT License, Copyright 2026 Donchitos. Verificado overnight 2026-05-22.
 - [x] **Asset attributions**: tabla en `production/releases/rollback-plan.md` §Asset attributions (Lucide, daisyUI, Tailwind, SvelteKit, Hono). Sin imágenes/audio de terceros en MVP.
 - [ ] **GDPR/LOPD**: data-export endpoint si captura PII (Privacy Policy §7 promete portabilidad — endpoint todavía no expuesto; backlog v1.1)
 - [x] **Edad mínima**: 13+ documentado en ToS §4 + Privacy §9
@@ -95,7 +95,7 @@ quede cerrado y enlaza el artefacto justificativo en `production/`.
 
 - [x] **Changelog v1.0**: `production/releases/changelog-v1.0.md` — story 14-8 (Sprint 14). Player-facing en ES, sin jerga técnica.
 - [ ] **Trailer**: 30-60s video del gameplay (opcional)
-- [ ] **Launch post**: borrador para blog / redes
+- [x] **Launch post**: `production/marketing/launch-post-v1.0.md` — overnight 2026-05-22. Draft con versión corta (~280 chars socials) + larga (blog/Reddit/HN). Pablo revisa canales + dominio antes de publicar.
 - [ ] **Press kit**: opcional, depende del scope de release
 
 ## 8. Polish→Release gate sign-off
