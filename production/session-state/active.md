@@ -2,10 +2,108 @@
 
 <!-- STATUS -->
 Stage: Release (Sprint 14 CLOSED + v1.0.x maintenance pending Pablo manual validation)
-Epic: Roadmap v1.0.x → v2.0 documented + v1.1/v1.2 GDDs + ADRs 021-028 written
-Feature: Autopilot overnight extension — GDPR endpoints + design work for v1.1/v1.2
-Task: Awaiting Pablo return — ~2h manual validation outstanding for v1.0.0 tag
+Epic: Asset pipeline expansion + HD sprite integration into /stadium route
+Feature: Overnight 2026-05-22 — 11 new HD sprites + /stadium visual upgrade + launch comms
+Task: Awaiting Pablo return — review overnight batch (assets, route change, launch post)
 <!-- /STATUS -->
+
+## 🌙 Overnight 2026-05-22 — Asset pipeline + visual integration
+
+**Pablo authorization**: "puedes continuar implementando sin parar, me voy a
+dormir. si terminas con assets con otras cosas, funcionalidades, etc."
+
+### What landed (5 commits on `project/SoccerManagerTotal`)
+
+| Commit | Subject |
+|---|---|
+| `e83c88b` | feat(assets): refresh stadium tiers + add mansion/training-pitch HD sprites |
+| `29a7edd` | feat(assets): add 9 HD prop sheets + character sheets |
+| `8cd69aa` | docs(assets): add HD sprite MANIFEST.md + raw workspace README |
+| `e4d2c7a` | feat(stadium): replace 🏟 placeholder with HD tier-aware sprite |
+| (this) | docs(overnight): session-state + changelog + launch post drafts |
+
+### Assets pipeline (19 canonical HD sprites in `assets/sprites/city-hd/`)
+
+**Refreshed stadium tiers** (anti-futuristic regen):
+- `stadium-t0-amateur.png` (campo de tierra rural)
+- `stadium-t1-local.png` (cancha local con árboles)
+- `stadium-t2-regional.png` (match scene con jugadores)
+- `stadium-t3-premier.png` (Anfield-style bowl, replaces sci-fi v1)
+
+**New buildings**:
+- `building-mansion.png` (2-story palm tree home)
+- `building-training-pitch.png` (training pitch + players + 2 goals)
+- `building-parking.png` (top-down lot with cars)
+
+**New character sheets**:
+- `char-manager-sheet.png` (suit + portraits + briefcase)
+- `char-player-sheet.png` (player #10 red kit + animations)
+
+**New prop sheets**:
+- `prop-corner-flags.png` (4 variants)
+- `prop-trophies.png` (gold/silver/bronze cups)
+- `prop-soccer-balls.png` (16-cell variant grid)
+- `prop-goalposts.png` (6 goalpost variants)
+- `prop-banners.png` (28-cell club crest grid)
+- `prop-jerseys.png` (5 jerseys on hanger)
+
+**Documentation**:
+- `assets/sprites/MANIFEST.md` — canonical inventory + seeds for regen
+- `assets/sprites/_raw/README.md` — overnight pipeline lessons learned
+
+### Code integration
+
+**`/stadium` route** (`apps/web/src/routes/stadium/+page.svelte`):
+- Replaced unicode `🏟` placeholder with `<img>` of HD sprite for current
+  tier. Tier-aware lookup (`tierSprite(t)`) maps club's `cityTier` (1-4)
+  to canonical sprite path.
+- `image-rendering: pixelated` preserves pixel grid at display size.
+- Added `apps/web/static/sprites` symlink → `../../../assets/sprites` so
+  SvelteKit serves the canonical asset dir without duplication.
+- `svelte-check`: 0 errors. `vite build`: ✓ done in 5.04s.
+
+**Not changed** (deliberately deferred — too invasive overnight):
+- `/city` PixiJS canvas — would need texture loading + tile-graphics
+  refactor. Safer to handle in Pablo-supervised session.
+
+### Launch communication
+
+**`production/releases/changelog-v1.0.md`** — added new section "Tu estadio,
+tu progreso visible" documenting the HD tier visual evolution.
+
+**`production/marketing/launch-post-v1.0.md`** (NEW) — draft launch post:
+- Versión corta (~280 chars) para Twitter/Bluesky/Mastodon
+- Versión larga (blog/Reddit/itch.io) en tono game's "tarde de domingo"
+- Notas de canal con priorización + reglas por subreddit
+- Screenshot recommendations
+
+### Open questions for Pablo
+
+1. **Launch post — channels + timing**: el draft sugiere Twitter/Bluesky/
+   Mastodon/Reddit/HN/itch.io. ¿Cuáles te interesan publicar y cuándo? El
+   link `tusoccermanager.example.com` está como TBD — necesito el dominio real.
+
+2. **`/city` canvas HD integration**: ¿lo hacemos ahora supervisado, lo
+   dejamos para v1.1, o nunca (HD sólo en /stadium close-up)?
+
+3. **Manual validation pendiente** (mantenida desde antes del overnight):
+   - GDPR endpoints (~30 min)
+   - Sprint 12-4 keyboard walkthrough (~10 min)
+   - Sprint 12-4 STOP halt e2e (~10 min)
+   - Playtest Polish #1 (~45 min)
+
+### Recommended next user action
+
+Cuando despiertes:
+1. Abre `/stadium` en dev local — debería mostrar el sprite HD del tier
+   actual de tu club. Si te gusta, esto cierra el feedback loop del art-bible.
+2. Lee `production/marketing/launch-post-v1.0.md` y decide canales/dominio.
+3. Si querés ver todos los assets nuevos en un grid: `open assets/sprites/city-hd/`
+
+Total tiempo overnight: ~3h. Total tokens: high — asset generation es token-light
+(las imágenes vienen de ComfyUI local, no del LLM).
+
+---
 
 ## Active workstream
 

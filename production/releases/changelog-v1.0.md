@@ -80,6 +80,17 @@ y guía tu carrera durante temporadas enteras.
 - Diseño adaptable: juega en escritorio, tablet o móvil.
 - Tu progreso se guarda automáticamente en la nube ligada a tu cuenta.
 
+### Tu estadio, tu progreso visible
+
+- El estadio en `/estadio` muestra una vista HD en pixel art que **evoluciona
+  con tu club**. Empieza como un campo de tierra de pueblo perdido y crece
+  hasta convertirse en un coliseo tipo Anfield cuando alcanzas el último tier.
+- Cuatro niveles visuales distintos: *Pueblo Olvidado* → *Club Emergente* →
+  *Club Establecido* → *Imperio Local*. Cada salto te recuerda lo lejos que
+  has llegado desde el primer fichaje.
+- También verás vistas HD del campo de entrenamiento, la mansión del jugador
+  estrella, los trofeos ganados y las bufandas de la afición.
+
 ---
 
 ## Accesibilidad
