@@ -22,6 +22,10 @@
     return ['', 'Pueblo Olvidado', 'Club Emergente', 'Club Establecido', 'Imperio Local'][t];
   }
 
+  function tierSprite(t: 1 | 2 | 3 | 4): string {
+    return ['', '/sprites/city-hd/stadium-t0-amateur.png', '/sprites/city-hd/stadium-t1-local.png', '/sprites/city-hd/stadium-t2-regional.png', '/sprites/city-hd/stadium-t3-premier.png'][t] ?? '';
+  }
+
   function pitchLabel(p: string): string {
     return {
       dry: 'Tierra seca',
@@ -132,13 +136,21 @@
           </div>
         </div>
 
-        <!-- Placeholder visual del estadio en grande -->
-        <div class="mt-6 rounded bg-gradient-to-b from-base-200 to-base-300 p-12 text-center">
-          <div class="text-9xl mb-2" aria-hidden="true">🏟</div>
-          <p class="text-sm opacity-60">
-            Vista isométrica del estadio en grande (Sprint 23 — placeholder).
-            <br />
-            Aquí se renderizará el close-up con el modelo completo de tu estadio.
+        <!-- Vista HD del estadio según tier actual -->
+        <div class="mt-6 rounded bg-gradient-to-b from-base-200 to-base-300 p-4 text-center overflow-hidden">
+          <img
+            src={tierSprite(data.stadium.tier)}
+            alt="Estadio nivel {tierLabel(data.stadium.tier)}"
+            class="mx-auto max-w-full h-auto"
+            style="image-rendering: pixelated; max-height: 480px;"
+            width="1536"
+            height="1152"
+            loading="eager"
+            decoding="async"
+          />
+          <p class="text-xs opacity-60 mt-3">
+            Estadio nivel <strong>{tierLabel(data.stadium.tier)}</strong>.
+            A medida que tu club crece, el estadio evoluciona visualmente.
           </p>
         </div>
       </div>
