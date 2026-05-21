@@ -11,7 +11,7 @@
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
   import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
-  import { formatEurK } from '$lib/format';
+  import { formatEurK, formatEurKSigned } from '$lib/format';
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
   let priceConfirmOpen = $state(false);
@@ -167,7 +167,7 @@
             <div>
               <div class="text-xs opacity-60 uppercase">Ingreso anual estimado</div>
               <div class="font-mono text-2xl text-success">
-                {Math.round((data.club.seasonTicketHolders * data.club.seasonTicketPriceEur) / 1000)} k€
+                {(data.club.seasonTicketHolders * data.club.seasonTicketPriceEur).toLocaleString('es-ES')} €
               </div>
               <div class="text-xs opacity-60">se cobra al inicio de cada temporada</div>
             </div>
@@ -265,21 +265,21 @@
       <div class="card bg-base-100 shadow">
         <div class="card-body">
           <div class="text-xs uppercase opacity-50">Balance</div>
-          <div class="font-mono text-3xl {balance < 0 ? 'text-error' : ''}">{balance} €K</div>
+          <div class="font-mono text-3xl {balance < 0 ? 'text-error' : ''}">{formatEurK(balance)}</div>
         </div>
       </div>
       <div class="card bg-base-100 shadow">
         <div class="card-body">
           <div class="text-xs uppercase opacity-50">Cashflow semanal</div>
           <div class="font-mono text-3xl {cashflow < 0 ? 'text-error' : 'text-success'}">
-            {cashflow > 0 ? '+' : ''}{cashflow} €K
+            {formatEurKSigned(cashflow)}
           </div>
         </div>
       </div>
       <div class="card bg-base-100 shadow">
         <div class="card-body">
           <div class="text-xs uppercase opacity-50">Ingresos sponsor</div>
-          <div class="font-mono text-3xl text-success">+{sponsorRevenue} €K</div>
+          <div class="font-mono text-3xl text-success">{formatEurKSigned(sponsorRevenue)}</div>
         </div>
       </div>
       <div class="card bg-base-100 shadow">
@@ -417,9 +417,9 @@
               </text>
             {/each}
             <!-- Y-axis labels -->
-            <text x="2" y={ptsY(yMax)} font-size="9" fill="currentColor" fill-opacity="0.5">{Math.round(yMax)} €K</text>
+            <text x="2" y={ptsY(yMax)} font-size="9" fill="currentColor" fill-opacity="0.5">{formatEurK(yMax)}</text>
             <text x="2" y={zeroY + 4} font-size="9" fill="currentColor" fill-opacity="0.5">0</text>
-            <text x="2" y={ptsY(yMin) + 4} font-size="9" fill="currentColor" fill-opacity="0.5">{Math.round(yMin)} €K</text>
+            <text x="2" y={ptsY(yMin) + 4} font-size="9" fill="currentColor" fill-opacity="0.5">{formatEurK(yMin)}</text>
           </svg>
         </div>
       </section>
@@ -471,7 +471,7 @@
                       <div class="font-semibold">{s.name}</div>
                       <div class="text-xs opacity-70">
                         <span class="badge badge-sm">Nivel {s.tier}</span>
-                        · <span class="font-mono">{s.weeklyEurK} €K/sem</span>
+                        · <span class="font-mono">{formatEurK(s.weeklyEurK)}/sem</span>
                       </div>
                       <div class="text-xs opacity-60 mt-0.5">
                         Contrato hasta sem {s.endsWeek}
@@ -519,10 +519,10 @@
                         <div class="text-xs opacity-70">Sem {offer.week}</div>
                       </div>
                       <div class="text-xs opacity-80 mt-1">
-                        {#if meta?.weeklyAmountEurK}<strong>{meta.weeklyAmountEurK} €K/sem</strong>{/if}
+                        {#if meta?.weeklyAmountEurK}<strong>{formatEurK(meta.weeklyAmountEurK)}/sem</strong>{/if}
                         {#if meta?.contractWeeks} · {meta.contractWeeks} sem{/if}
                         {#if meta?.weeklyAmountEurK && meta?.contractWeeks}
-                          <span class="opacity-60">(≈{Math.round(meta.weeklyAmountEurK * meta.contractWeeks)} k€)</span>
+                          <span class="opacity-60">(≈ {formatEurK(meta.weeklyAmountEurK * meta.contractWeeks)} total)</span>
                         {/if}
                       </div>
                       {#if meta?.description}
@@ -543,7 +543,7 @@
                             onclick={() =>
                               askSponsorConfirm(
                                 `Aceptar ${meta?.brand ?? 'patrocinador'}`,
-                                `Firmas con ${meta?.brand ?? 'el patrocinador'} por ${meta?.weeklyAmountEurK ?? 0} €K/sem durante ${meta?.contractWeeks ?? 0} semanas. Las otras ofertas del mismo slot esta semana se descartarán.`,
+                                `Firmas con ${meta?.brand ?? 'el patrocinador'} por ${formatEurK(meta?.weeklyAmountEurK ?? 0)}/sem durante ${meta?.contractWeeks ?? 0} semanas. Las otras ofertas del mismo slot esta semana se descartarán.`,
                                 'Aceptar',
                                 false,
                                 () => sponsorForms[`${offer.id}:accept`]?.requestSubmit(),

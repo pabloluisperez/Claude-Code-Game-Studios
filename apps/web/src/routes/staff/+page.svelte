@@ -13,6 +13,7 @@
   import { enhance } from '$app/forms';
   import Avatar from '$lib/components/avatar.svelte';
   import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
+  import { formatEurK } from '$lib/format';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -171,7 +172,7 @@
                 <div class="flex-1 min-w-0">
                   <div class="font-semibold text-sm truncate">{current.name}</div>
                   <div class="text-[10px] opacity-70 leading-tight">
-                    {experienceLabel(current.qualityTier)} · {current.weeklyEurK} €K/sem
+                    {experienceLabel(current.qualityTier)} · {formatEurK(current.weeklyEurK)}/sem
                   </div>
                 </div>
                 <form
@@ -223,8 +224,8 @@
                           ? `Cambiar a ${experienceLabel(tier)}`
                           : `Contratar ${experienceLabel(tier)} de ${r.label.toLowerCase()}`,
                         current
-                          ? `Reemplazarás a ${current.name} por un nuevo ${experienceLabel(tier).toLowerCase()}. El salario semanal será ${data.wagesByTier[tier as 1 | 2 | 3]} €K.`
-                          : `Fichas un nuevo ${experienceLabel(tier).toLowerCase()} de ${r.label.toLowerCase()}. Salario semanal: ${data.wagesByTier[tier as 1 | 2 | 3]} €K.`,
+                          ? `Reemplazarás a ${current.name} por un nuevo ${experienceLabel(tier).toLowerCase()}. El salario semanal será ${formatEurK(data.wagesByTier[tier as 1 | 2 | 3])}.`
+                          : `Fichas un nuevo ${experienceLabel(tier).toLowerCase()} de ${r.label.toLowerCase()}. Salario semanal: ${formatEurK(data.wagesByTier[tier as 1 | 2 | 3])}.`,
                         current ? 'Cambiar' : 'Contratar',
                         false,
                         () => hireForms[`${r.role}:${tier}`]?.requestSubmit(),

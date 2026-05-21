@@ -364,7 +364,7 @@ export const actions: Actions = {
           season: 1,
           priority: 'ROUTINE',
           templateKey: 'commercial:abono_signup',
-          content: `Director comercial comenta: esta semana se sumaron ${ticketDrip.newHolders} nuevos abonados (+${ticketDrip.weeklyEurK} €K).`,
+          content: `Director comercial comenta: esta semana se sumaron ${ticketDrip.newHolders} nuevos abonados (+${Math.round((ticketDrip.weeklyEurK ?? 0) * 1000).toLocaleString('es-ES')} €).`,
           isRead: false,
         });
       }

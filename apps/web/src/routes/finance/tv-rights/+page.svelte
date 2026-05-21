@@ -16,6 +16,7 @@
     TVMidseasonOfferPayload,
     TVTier,
   } from '@smt/shared';
+  import { formatEurK } from '$lib/format';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -34,7 +35,7 @@
   };
 
   function formatRate(eurK: number): string {
-    return `${eurK.toFixed(2)} €K/sem`;
+    return `${formatEurK(eurK)}/sem`;
   }
 
   function formatYearOfContract(seasonInContract: number, durationSeasons: number): string {
@@ -81,10 +82,23 @@
 </svelte:head>
 
 <section class="space-y-6 p-4 md:p-6 max-w-3xl mx-auto">
-  <header class="flex items-center justify-between">
-    <h1 class="text-2xl font-bold">Derechos de televisión</h1>
-    <a href="/finance" class="link link-hover text-sm">← Finanzas</a>
+  <header>
+    <h1 class="text-2xl font-bold">Finanzas</h1>
+    <p class="opacity-60">Balance, ingresos, gastos y patrocinadores del club</p>
   </header>
+
+  <!--
+    P9 fix (playtest 2026-05-21 Pablo): TV rights page used to lose the
+    finance tabs entirely, leaving only a '← Finanzas' back link. Now we
+    mirror the finance tab bar here, with the 4 sibling tabs all linking
+    via plain hrefs (each tab is its own route or ?tab= URL param).
+  -->
+  <div role="tablist" class="tabs tabs-boxed w-fit">
+    <a role="tab" class="tab" href="/finance">📊 Resumen</a>
+    <a role="tab" class="tab" href="/finance?tab=patrocinadores">🤝 Patrocinadores</a>
+    <a role="tab" class="tab" href="/finance?tab=abonos">🎟 Abonos</a>
+    <a role="tab" class="tab tab-active" href="/finance/tv-rights">📺 Derechos TV</a>
+  </div>
 
   {#if !data.hasPlaythrough}
     <div class="alert">

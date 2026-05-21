@@ -9,6 +9,7 @@
   import type { PageData } from './$types';
   import { enhance } from '$app/forms';
   import { eventDisplay, eventNeedsAction } from '$lib/event-labels';
+  import { formatEurK } from '$lib/format';
   import { onMount } from 'svelte';
 
   let { data }: { data: PageData } = $props();
@@ -208,7 +209,7 @@
                 <div class="font-semibold">{meta.brand}</div>
                 {#if meta.weeklyAmountEurK}
                   <div class="text-xs">
-                    {meta.weeklyAmountEurK} €K/sem
+                    {formatEurK(meta.weeklyAmountEurK)}/sem
                     {#if meta.contractWeeks}· {meta.contractWeeks} semanas{/if}
                   </div>
                 {/if}
