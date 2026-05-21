@@ -33,8 +33,11 @@ display size: 256×192 px (1/6 of native). For full-screen hero scenes:
 | `stadium-t1-local.png` | T1 | Local club pitch with trees around, white lines, modest fence | 20260521011 |
 | `stadium-t2-regional.png` | T2 | Match scene with players in formation, two goals, professional | 20260521012 |
 | `stadium-t3-premier.png` | T3 | Anfield-style full bowl, red stands with white roof, capacity crowd | 20260521002 |
+| `stadium-t3-night.png` | T3 night | Same T3 bowl under floodlights, starry sky, illuminated crowd | 20260522100 |
+| `stadium-t3-rain.png` | T3 rain | Same T3 bowl in heavy rain, wet pitch, umbrellas in stands | 20260522101 |
 
-All stadium tiers are 1536×1152 px landscape. T3 is the canonical "club is at the top" sprite.
+All stadium tiers are 1536×1152 px landscape. T3 has 3 variants for
+time-of-day / weather contexts (default day, night with floodlights, rain).
 
 ### Buildings (`building-*.png`)
 
