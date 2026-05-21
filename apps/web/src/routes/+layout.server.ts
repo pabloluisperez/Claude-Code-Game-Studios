@@ -80,11 +80,17 @@ export const load: LayoutServerLoad = async ({ locals }) => {
     | null;
   const balanceEurK = worldState?.['financial_balance'] ?? null;
 
+  // Sprint 12 walkthrough fix (Pablo Part B): when the playthrough sits
+  // mid-week (post-STOP halt), the topbar should show the ACTUAL day,
+  // not the week's Sunday. weekToDate accepts fractional weeks, so
+  // weekToDate(currentDayOfSeason / 7) = anchor + currentDayOfSeason days.
+  const dayPrecise = (active.currentDayOfSeason ?? active.currentWeek * 7) / 7;
+
   return {
     user: locals.user,
     activePlaythrough: {
       ...active,
-      date: weekToDate(active.currentWeek),
+      date: weekToDate(dayPrecise),
       balanceEurK,
     },
     badges: {

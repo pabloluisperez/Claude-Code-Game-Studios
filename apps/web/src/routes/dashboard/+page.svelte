@@ -8,6 +8,7 @@
 <script lang="ts">
   import type { PageData } from './$types';
   import { enhance } from '$app/forms';
+  import { page } from '$app/stores';
   import { generateHeadlines, weekToDate } from '@smt/shared';
   import AdvanceTransition from '$lib/components/advance-transition.svelte';
   import { formatEurK } from '$lib/format';
@@ -322,6 +323,36 @@
         </div>
       </div>
     </section>
+
+    <!-- Sprint 12 walkthrough fix (Pablo Part B): STOP-event halt banner.
+         When the orchestrator halts mid-week, the form action redirects to
+         /dashboard?stop_event=<id>&day=<n>. This alert surfaces the reason
+         the halt happened so the player can act. -->
+    {#if $page.url.searchParams.get('stop_event')}
+      {@const stopId = $page.url.searchParams.get('stop_event')}
+      {@const stopDay = $page.url.searchParams.get('day')}
+      {@const stopEvent = pendingEvents.find((e) => e.id === stopId)}
+      <section class="alert alert-warning shadow">
+        <div class="flex flex-col gap-1 flex-1">
+          <span class="font-semibold">⚠ Evento mid-week detectado · Día {stopDay}</span>
+          {#if stopEvent}
+            {@const meta = stopEvent.metadata as { label?: string } | null}
+            <span class="text-sm opacity-90">
+              {meta?.label ?? stopEvent.type} — Resuélvelo antes de seguir avanzando.
+            </span>
+            <div class="mt-1">
+              <a href={eventDestination(stopEvent.type)} class="btn btn-sm btn-primary">
+                Resolver ahora
+              </a>
+            </div>
+          {:else}
+            <span class="text-sm opacity-90">
+              El evento ya no está pendiente (puede que se resolviera). Vuelve a avanzar.
+            </span>
+          {/if}
+        </div>
+      </section>
+    {/if}
 
     <!-- First-advance onboarding callout — first real week of management. -->
     {#if data.justAdvanced && data.week === 1}
