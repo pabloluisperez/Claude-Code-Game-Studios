@@ -36,6 +36,14 @@
      * to day 7. Default 0 preserves Sprint 11 behavior.
      */
     startDayOfWeek?: number;
+    /**
+     * Sprint 12 walkthrough fix (Pablo Part B): day-of-week the SERVER
+     * will halt at due to a pending STOP event. When provided, the modal
+     * animation stops at that day with a special "Algo importante este
+     * día" panel instead of running the full 7-day cycle. Null/undefined
+     * means no STOP scheduled — modal animates the full week.
+     */
+    haltAtDayOfWeek?: number | null;
     headlines: readonly Headline[];
     /** Wall-clock duration of one in-game day (default 5s). */
     msPerDay?: number;
@@ -59,6 +67,7 @@
     open,
     fromWeek,
     startDayOfWeek = 0,
+    haltAtDayOfWeek = null,
     headlines,
     msPerDay = 5000,
     matchPendingThisAdvance = false,
@@ -103,6 +112,9 @@
   let tickerIndex = $state(0);
   let paused = $state(false);
   let completed = $state(false);
+  // Sprint 12 walkthrough fix (Pablo Part B): true when the modal halted
+  // early because the server will halt on a STOP event at this day.
+  let haltedOnStopEvent = $state(false);
 
   let lastTs = $state(0);
   let raf: number | null = null;
@@ -209,6 +221,14 @@
     if (hourPhase >= 1) {
       hourPhase = 0;
       dayIndex += 1;
+      // Sprint 12 walkthrough fix (Pablo Part B): halt early if the server
+      // will halt at this day (STOP event scheduled).
+      if (haltAtDayOfWeek !== null && dayIndex >= haltAtDayOfWeek) {
+        haltedOnStopEvent = true;
+        completed = true;
+        clearResume();
+        return;
+      }
       if (dayIndex >= 7) {
         // Always pause at day 7 — the user must explicitly confirm before
         // the week commits. If a match is pending they pick "Vivir/Saltar";
@@ -240,6 +260,7 @@
     tickerIndex = 0;
     paused = false;
     completed = false;
+    haltedOnStopEvent = false;
     autoPausedOnce = false;
     lastTs = 0;
     if (raf) cancelAnimationFrame(raf);
@@ -436,7 +457,9 @@
     <div class="advance-content">
       <div class="text-center mb-4">
         <div class="text-xs uppercase opacity-70 tracking-widest text-base-100">
-          {#if completed}
+          {#if haltedOnStopEvent}
+            ⚠ Evento detectado este día
+          {:else if completed}
             Final de la semana
           {:else if paused && autoPausedOnce && worryingHeadline}
             ⚠ Pausa automática — hay una noticia importante
@@ -543,7 +566,21 @@
            depend on whether there's a user match this week. -->
       {#if completed && onMatchChoice}
         <div class="action-panel mt-6 text-center">
-          {#if matchPendingThisAdvance}
+          {#if haltedOnStopEvent}
+            <!-- Sprint 12 walkthrough fix: STOP-event halt mid-week panel.
+                 The modal stopped at the day the server will halt because
+                 of a pending STOP event. The submit button takes the user
+                 to /dashboard?stop_event=... so they can resolve it. -->
+            <div class="text-3xl mb-2">⚠</div>
+            <div class="text-lg font-bold">Algo importante este día</div>
+            <p class="text-sm opacity-80 mb-3">
+              Un evento te reclama atención antes de seguir avanzando.
+              Vuelve al despacho para resolverlo.
+            </p>
+            <button class="btn btn-primary" type="button" onclick={() => onMatchChoice('dashboard')}>
+              → Volver al dashboard
+            </button>
+          {:else if matchPendingThisAdvance}
             <div class="text-3xl mb-2">⚽</div>
             <div class="text-lg font-bold">¡Llegó el día del partido!</div>
             <p class="text-sm opacity-80 mb-3">¿Cómo quieres vivirlo?</p>

@@ -168,6 +168,41 @@ export const load: PageServerLoad = async ({ parent, url }) => {
     activePlaythrough.currentDayOfSeason ?? activePlaythrough.currentWeek * 7;
   const dayInWeek = currentDayOfSeason % 7;
 
+  // Sprint 12 walkthrough fix (Pablo Part B): the AdvanceTransition modal
+  // animates 7 days locally and submits at day 7. When a STOP event is
+  // scheduled mid-week, the server halts but the modal had already gone
+  // all the way to Sunday — misleading the player. We pre-compute the
+  // next STOP day in the current week range and pass it to the modal so
+  // the animation halts at the same day the server will.
+  const nextStops = await db
+    .select({
+      id: calendarEvents.id,
+      week: calendarEvents.week,
+      scheduledDayOfSeason: calendarEvents.scheduledDayOfSeason,
+      type: calendarEvents.type,
+    })
+    .from(calendarEvents)
+    .where(
+      and(
+        eq(calendarEvents.playthroughId, activePlaythrough.id),
+        eq(calendarEvents.status, 'pending'),
+        eq(calendarEvents.priority, 'STOP'),
+      ),
+    );
+
+  const weekStart = activePlaythrough.currentWeek * 7;
+  const weekEnd = weekStart + 7;
+  let haltAtDayOfWeek: number | null = null;
+  for (const ev of nextStops) {
+    const eventDay = ev.scheduledDayOfSeason ?? ev.week * 7;
+    if (eventDay > currentDayOfSeason && eventDay <= weekEnd) {
+      const dayOfWeek = eventDay - weekStart;
+      if (haltAtDayOfWeek === null || dayOfWeek < haltAtDayOfWeek) {
+        haltAtDayOfWeek = dayOfWeek;
+      }
+    }
+  }
+
   return {
     hasPlaythrough: true as const,
     worldState: (latestSnapshot?.worldState ?? null) as Record<string, number> | null,
@@ -176,6 +211,7 @@ export const load: PageServerLoad = async ({ parent, url }) => {
     currentDayOfSeason,
     dayInWeek,
     daysRemaining: dayInWeek === 0 ? 7 : 7 - dayInWeek,
+    haltAtDayOfWeek,
     messages: recentMessages,
     nextFixtures: nextFixtures.map((f) => {
       const isHome = f.homeClubId === activePlaythrough.clubId;
