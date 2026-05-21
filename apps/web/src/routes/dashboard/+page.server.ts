@@ -200,6 +200,12 @@ export const load: PageServerLoad = async ({ parent, url }) => {
     pendingEvents: pendingEvents.map((e) => ({ ...e, date: weekToDate(e.week) })),
     position,
     standingsCount,
+    // Bug B4 (playtest 2026-05-21 Pablo): consumers (headlines) use this flag
+    // to suppress position-based copy until at least one league match has
+    // been played — pre-kickoff the standings sort alphabetically/seed-order
+    // and any position-based headline ('Real Madrid (1º) demuestra...') breaks
+    // immersion.
+    hasPlayedFixture: lastResult.length > 0,
     lastResult: lastResult[0]
       ? (() => {
           const f = lastResult[0]!;

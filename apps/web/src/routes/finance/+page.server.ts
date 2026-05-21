@@ -20,6 +20,7 @@ import {
   and,
   desc,
   asc,
+  sql,
 } from '@smt/db';
 import { LEAGUE_KICKOFF_WEEK } from '@smt/shared';
 
@@ -315,26 +316,63 @@ export const actions: Actions = {
           endsWeek: active.currentWeek + metadata.contractWeeks,
         });
 
-        // Auto-expire competing offers for the SAME SLOT and same week
-        // (so accepting a kit sponsor doesn't kill stadium-board offers).
-        const competing = await tx
-          .select()
-          .from(calendarEvents)
+        // Auto-expire competing offers ONLY if the slot is now full.
+        //
+        // Per-slot capacities:
+        //   kit: 1 (single active jersey sponsor)
+        //   press_room: 1 (single backdrop sponsor)
+        //   stadium_boards: club.boardsCapacity (default 4 for Quinta-División stadium)
+        //
+        // Bug B1 (playtest 2026-05-21 Pablo): previously this loop expired ALL
+        // competing offers in the same slot after ANY accept, even when the
+        // slot had room for more (4-slot stadium_boards with 3 offers → accept
+        // 1 → other 2 expired prematurely). Fix: count active sponsors AFTER
+        // the new insert, only expire if at capacity.
+        const [clubRow] = await tx
+          .select({ boardsCapacity: clubs.boardsCapacity })
+          .from(clubs)
+          .where(eq(clubs.id, active.clubId))
+          .limit(1);
+        const slotCapacity =
+          slot === 'kit' ? 1 :
+          slot === 'press_room' ? 1 :
+          slot === 'stadium_boards' ? (clubRow?.boardsCapacity ?? 4) :
+          1;
+
+        const [activeCount] = await tx
+          .select({ n: sql<number>`COUNT(*)::int` })
+          .from(sponsors)
           .where(
             and(
-              eq(calendarEvents.playthroughId, active.id),
-              eq(calendarEvents.type, 'sponsor_offer'),
-              eq(calendarEvents.week, evt.week),
-              eq(calendarEvents.status, 'pending'),
+              eq(sponsors.playthroughId, active.id),
+              eq(sponsors.slot, slot),
+              eq(sponsors.status, 'active'),
             ),
           );
-        for (const e of competing) {
-          const eSlot = (e.metadata as { slot?: string } | null)?.slot ?? 'kit';
-          if (eSlot !== slot) continue;
-          await tx
-            .update(calendarEvents)
-            .set({ status: 'expired', consumed: true })
-            .where(eq(calendarEvents.id, e.id));
+        const activeInSlot = Number(activeCount?.n ?? 0);
+
+        if (activeInSlot >= slotCapacity) {
+          // Slot full — auto-expire the remaining same-slot pending offers
+          // (player can no longer sign them this season).
+          const competing = await tx
+            .select()
+            .from(calendarEvents)
+            .where(
+              and(
+                eq(calendarEvents.playthroughId, active.id),
+                eq(calendarEvents.type, 'sponsor_offer'),
+                eq(calendarEvents.week, evt.week),
+                eq(calendarEvents.status, 'pending'),
+              ),
+            );
+          for (const e of competing) {
+            const eSlot = (e.metadata as { slot?: string } | null)?.slot ?? 'kit';
+            if (eSlot !== slot) continue;
+            await tx
+              .update(calendarEvents)
+              .set({ status: 'expired', consumed: true })
+              .where(eq(calendarEvents.id, e.id));
+          }
         }
       }
     });

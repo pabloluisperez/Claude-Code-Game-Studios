@@ -34,11 +34,28 @@ export const load: PageServerLoad = async ({ parent }) => {
     return { hasPlaythrough: false as const };
   }
 
-  const events = await db
-    .select()
-    .from(calendarEvents)
-    .where(eq(calendarEvents.playthroughId, activePlaythrough.id))
-    .orderBy(asc(calendarEvents.week));
+  // Bug B3 fix (playtest 2026-05-21 Pablo): hide resolved/expired
+  // decision-type events from the calendar so they don't accumulate as
+  // stale clutter. Pending events (still decidable) and announcements
+  // (consumed=true ones for context) remain. Match fixtures are tracked
+  // separately via the fixtures table.
+  const events = (
+    await db
+      .select()
+      .from(calendarEvents)
+      .where(eq(calendarEvents.playthroughId, activePlaythrough.id))
+      .orderBy(asc(calendarEvents.week))
+  ).filter((e) => {
+    // Decision-type events whose state is no longer actionable: drop them.
+    const isDecisionType =
+      e.type === 'sponsor_offer' ||
+      e.type === 'tv_auction' ||
+      e.type === 'tv_midseason_offer';
+    if (isDecisionType && (e.status === 'resolved' || e.status === 'expired')) {
+      return false;
+    }
+    return true;
+  });
 
   // User's fixtures (so the calendar also pins matchdays).
   const homeClubs = alias(clubs, 'home_clubs');

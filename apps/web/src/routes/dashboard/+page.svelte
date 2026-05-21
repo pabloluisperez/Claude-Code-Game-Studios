@@ -73,8 +73,12 @@
             outcome: data.lastResult.outcome,
           }
         : undefined,
-      position: data.position ?? undefined,
-      totalClubs: data.standingsCount > 0 ? data.standingsCount : undefined,
+      // Bug B4 fix (playtest 2026-05-21 Pablo): suppress position headlines
+      // until at least one league fixture has been played. Before kick-off
+      // the standings sort alphabetically/seed-order, so 'Real Madrid CF (1º)'
+      // could fire pre-season and break immersion.
+      position: data.hasPlayedFixture ? (data.position ?? undefined) : undefined,
+      totalClubs: data.hasPlayedFixture && data.standingsCount > 0 ? data.standingsCount : undefined,
       weeklyCashflow: data.worldState?.weekly_cashflow,
       financialBalance: data.worldState?.financial_balance,
       trainingIntensity: data.worldState?.training_intensity,
