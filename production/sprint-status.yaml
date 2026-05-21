@@ -41,11 +41,11 @@ stories:
     name: "A11y P1 batch (6 hallazgos)"
     file: "production/qa/evidence/a11y-p1-sprint-11.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "accessibility-specialist"
     estimate_days: 1.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "11-4"
     name: "Day-by-day tick implementation"

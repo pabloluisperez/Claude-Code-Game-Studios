@@ -86,9 +86,13 @@
   {:else}
     {@const unreadCount = data.messages.filter((m) => !m.isRead).length}
     <div class="flex items-center justify-between flex-wrap gap-2">
-      <div role="tablist" class="tabs tabs-boxed">
+      <!-- a11y P1-4 (Sprint 11 task 11-3): aria-selected + aria-controls. -->
+      <div role="tablist" class="tabs tabs-boxed" aria-label="Bandeja de entrada">
         <button
           role="tab"
+          id="tab-inbox-all"
+          aria-selected={tab === 'all'}
+          aria-controls="tabpanel-inbox"
           class="tab {tab === 'all' ? 'tab-active' : ''}"
           onclick={() => (tab = 'all')}
         >
@@ -96,6 +100,9 @@
         </button>
         <button
           role="tab"
+          id="tab-inbox-messages"
+          aria-selected={tab === 'messages'}
+          aria-controls="tabpanel-inbox"
           class="tab {tab === 'messages' ? 'tab-active' : ''}"
           onclick={() => (tab = 'messages')}
         >
@@ -103,6 +110,9 @@
         </button>
         <button
           role="tab"
+          id="tab-inbox-events"
+          aria-selected={tab === 'events'}
+          aria-controls="tabpanel-inbox"
           class="tab {tab === 'events' ? 'tab-active' : ''}"
           onclick={() => (tab = 'events')}
         >
@@ -118,7 +128,12 @@
       {/if}
     </div>
 
-    <div class="space-y-1">
+    <div
+      role="tabpanel"
+      id="tabpanel-inbox"
+      aria-labelledby={tab === 'all' ? 'tab-inbox-all' : tab === 'messages' ? 'tab-inbox-messages' : 'tab-inbox-events'}
+      class="space-y-1"
+    >
       <!-- P14 calendar-sheet date display + P15 stable layout (badge space reserved). -->
       {#if (tab === 'all' || tab === 'messages')}
         {#each data.messages as m}

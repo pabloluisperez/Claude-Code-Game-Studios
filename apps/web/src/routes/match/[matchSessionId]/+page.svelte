@@ -445,7 +445,16 @@
       {:else if persistedEvents.length === 0}
         <p class="opacity-60 text-sm">Sin eventos registrados.</p>
       {:else}
-        <div class="space-y-1">
+        <!-- a11y P1-5 (Sprint 11 task 11-3): aria-live="polite" announces
+             goals/cards/subs as they appear during live replay. aria-atomic
+             ="false" so the screen reader only reads the new event, not the
+             entire feed each tick. -->
+        <div
+          class="space-y-1"
+          aria-live="polite"
+          aria-atomic="false"
+          aria-label="Eventos del partido en directo"
+        >
           {#each (isReplaying ? liveEvents : persistedEvents) as e}
             {@const isHome = e.team === 'home'}
             <div

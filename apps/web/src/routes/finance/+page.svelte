@@ -108,9 +108,14 @@
       <span>Esperando primer tick del simulador para calcular el balance.</span>
     </div>
   {:else}
-    <div role="tablist" class="tabs tabs-boxed w-fit">
+    <!-- a11y P1-4 (Sprint 11 task 11-3): each tab declares aria-selected
+         + aria-controls; corresponding tabpanels expose role + id. -->
+    <div role="tablist" class="tabs tabs-boxed w-fit" aria-label="Finanzas">
       <button
         role="tab"
+        id="tab-finance-resumen"
+        aria-selected={activeTab === 'resumen'}
+        aria-controls="tabpanel-finance-resumen"
         class="tab {activeTab === 'resumen' ? 'tab-active' : ''}"
         onclick={() => (activeTab = 'resumen')}
       >
@@ -118,6 +123,9 @@
       </button>
       <button
         role="tab"
+        id="tab-finance-patrocinadores"
+        aria-selected={activeTab === 'patrocinadores'}
+        aria-controls="tabpanel-finance-patrocinadores"
         class="tab {activeTab === 'patrocinadores' ? 'tab-active' : ''}"
         onclick={() => (activeTab = 'patrocinadores')}
       >
@@ -130,6 +138,9 @@
       </button>
       <button
         role="tab"
+        id="tab-finance-abonos"
+        aria-selected={activeTab === 'abonos'}
+        aria-controls="tabpanel-finance-abonos"
         class="tab {activeTab === 'abonos' ? 'tab-active' : ''}"
         onclick={() => (activeTab = 'abonos')}
       >
@@ -152,7 +163,12 @@
 
     <!-- Season tickets card -->
     {#if activeTab === 'abonos' && data.club}
-      <section class="card bg-base-100 shadow border-2 border-info/30">
+      <div
+        role="tabpanel"
+        id="tabpanel-finance-abonos"
+        aria-labelledby="tab-finance-abonos"
+        class="card bg-base-100 shadow border-2 border-info/30"
+      >
         <div class="card-body">
           <h2 class="card-title">Abonos de temporada</h2>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
@@ -252,11 +268,16 @@
             </div>
           {/if}
         </div>
-      </section>
+      </div>
     {/if}
 
     {#if activeTab === 'resumen'}
-    <div class="alert {statusClass[financialStatus] ?? 'alert-info'}">
+    <div
+      role="tabpanel"
+      id="tabpanel-finance-resumen"
+      aria-labelledby="tab-finance-resumen"
+      class="alert {statusClass[financialStatus] ?? 'alert-info'}"
+    >
       <div>
         <div class="text-xs uppercase opacity-70">Estado financiero</div>
         <div class="text-lg font-bold">{statusName[financialStatus] ?? 'Desconocido'}</div>
@@ -461,7 +482,12 @@
       return acc;
     }, {} as Record<string, typeof data.pendingSponsorOffers>)}
 
-    <div class="space-y-3">
+    <div
+      role="tabpanel"
+      id="tabpanel-finance-patrocinadores"
+      aria-labelledby="tab-finance-patrocinadores"
+      class="space-y-3"
+    >
       {#each slotsOrder as slotKey}
         {@const slotInfo = SLOT_META[slotKey]}
         {@const active = sponsorsBySlot[slotKey] ?? []}

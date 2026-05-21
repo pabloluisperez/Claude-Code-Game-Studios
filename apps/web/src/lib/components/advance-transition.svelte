@@ -317,10 +317,73 @@
       default: return tag ?? '';
     }
   }
+
+  // ── a11y (Sprint 11 task 11-3 P1-3): focus management ───────────────────
+  // Capture opener element on open; restore on close. Trap focus inside the
+  // modal so Tab doesn't leak into the page behind. The modal contains a
+  // variable number of buttons (pause/resume/skip/cancel/match choices), so
+  // we discover the focusable set on each Tab press rather than hard-coding it.
+  let openerEl: HTMLElement | null = null;
+  let modalRootEl = $state<HTMLDivElement | null>(null);
+
+  $effect(() => {
+    if (open) {
+      if (typeof document !== 'undefined') {
+        openerEl = document.activeElement as HTMLElement | null;
+      }
+      queueMicrotask(() => {
+        const first = modalRootEl?.querySelector<HTMLElement>(
+          'button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+        );
+        first?.focus();
+      });
+    } else if (openerEl) {
+      const restore = openerEl;
+      queueMicrotask(() => restore?.focus());
+      openerEl = null;
+    }
+  });
+
+  function getFocusables(): HTMLElement[] {
+    if (!modalRootEl) return [];
+    return Array.from(
+      modalRootEl.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href]:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ),
+    );
+  }
+
+  function handleKeyDown(e: KeyboardEvent): void {
+    if (e.key !== 'Tab') return;
+    const focusables = getFocusables();
+    if (focusables.length === 0) return;
+    const first = focusables[0]!;
+    const last = focusables[focusables.length - 1]!;
+    const focused = document.activeElement;
+    if (e.shiftKey) {
+      if (focused === first || !modalRootEl?.contains(focused)) {
+        e.preventDefault();
+        last.focus();
+      }
+    } else {
+      if (focused === last || !modalRootEl?.contains(focused)) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  }
 </script>
 
 {#if open}
-  <div class="advance-modal" role="dialog" aria-modal="true" aria-label="Avanzando una semana">
+  <div
+    bind:this={modalRootEl}
+    class="advance-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Avanzando una semana"
+    tabindex="-1"
+    onkeydown={handleKeyDown}
+  >
     <div
       class="advance-sky"
       style="background: linear-gradient(180deg, {skyTop} 0%, {skyBottom} 100%);"

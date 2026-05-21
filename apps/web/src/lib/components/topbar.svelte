@@ -33,6 +33,23 @@
     if (balanceEurK < 50) return 'text-warning';
     return '';
   });
+
+  // a11y P1-6 (Sprint 11 task 11-3): non-color signal for distress states.
+  // Reduced-color or screen-reader users get an icon prefix + explicit ARIA
+  // label so the "negative balance" semantic survives without color.
+  //   < 0  → ⚠ + "Balance crítico"  (negative balance, immediate attention)
+  //   0–50 → ⚠ + "Balance bajo"     (warning tier)
+  //   > 50 → no icon                (healthy)
+  const balanceIcon = $derived.by(() => {
+    if (balanceEurK === null || balanceEurK > 50) return '';
+    return '⚠';
+  });
+  const balanceAriaLabel = $derived.by(() => {
+    if (balanceEurK === null) return 'Ver finanzas';
+    if (balanceEurK < 0) return `Balance crítico: ${balanceEurK} mil euros. Ver finanzas.`;
+    if (balanceEurK < 50) return `Balance bajo: ${balanceEurK} mil euros. Ver finanzas.`;
+    return 'Ver finanzas';
+  });
 </script>
 
 <nav class="navbar bg-base-200 px-4 sticky top-0 z-10 border-b border-base-300">
@@ -65,11 +82,11 @@
       <a
         href="/finance"
         class="hidden sm:flex flex-col items-end text-xs leading-tight no-underline hover:opacity-80"
-        aria-label="Ver finanzas"
+        aria-label={balanceAriaLabel}
       >
         <span class="opacity-50">Balance</span>
         <span class="font-mono font-semibold {balanceClass}">
-          {formatEurK(balanceEurK)}
+          {#if balanceIcon}<span aria-hidden="true" class="mr-0.5">{balanceIcon}</span>{/if}{formatEurK(balanceEurK)}
         </span>
       </a>
     {/if}

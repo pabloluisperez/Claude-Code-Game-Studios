@@ -221,9 +221,13 @@
       <div class="card-body">
         <div class="flex items-center justify-between flex-wrap gap-2">
           <h2 class="card-title">Calendario</h2>
-          <div role="tablist" class="tabs tabs-boxed w-fit">
+          <!-- a11y P1-4 (Sprint 11 task 11-3): aria-selected + aria-controls. -->
+          <div role="tablist" class="tabs tabs-boxed w-fit" aria-label="Vista del calendario">
             <button
               role="tab"
+              id="tab-league-upcoming3"
+              aria-selected={view === 'upcoming3'}
+              aria-controls="tabpanel-league-fixtures"
               class="tab {view === 'upcoming3' ? 'tab-active' : ''}"
               onclick={() => (view = 'upcoming3')}
             >
@@ -231,6 +235,9 @@
             </button>
             <button
               role="tab"
+              id="tab-league-all"
+              aria-selected={view === 'all'}
+              aria-controls="tabpanel-league-fixtures"
               class="tab {view === 'all' ? 'tab-active' : ''}"
               onclick={() => (view = 'all')}
             >
@@ -238,6 +245,9 @@
             </button>
             <button
               role="tab"
+              id="tab-league-past"
+              aria-selected={view === 'past'}
+              aria-controls="tabpanel-league-fixtures"
               class="tab {view === 'past' ? 'tab-active' : ''}"
               onclick={() => (view = 'past')}
             >
@@ -246,6 +256,11 @@
           </div>
         </div>
 
+        <div
+          role="tabpanel"
+          id="tabpanel-league-fixtures"
+          aria-labelledby={view === 'past' ? 'tab-league-past' : view === 'all' ? 'tab-league-all' : 'tab-league-upcoming3'}
+        >
         {#if view === 'past' && pastByMatchday.size === 0}
           <p class="opacity-60 text-sm mt-3">Todavía no se ha jugado ninguna jornada.</p>
         {:else if view === 'upcoming3' && next3MatchdayKeys.length === 0}
@@ -295,6 +310,7 @@
             {/each}
           </div>
         {/if}
+        </div>
       </div>
     </section>
   {/if}
