@@ -594,3 +594,65 @@ Per TD: open two design-review tickets in the cascade-engine tuning backlog for 
 ### Total overnight commits to push
 
 13 commits since `4ed19ff` (the previous final-log commit). Will be pushed in the final task.
+
+---
+
+## 2026-05-21 — Sprint 7 CLOSED (Production-phase kickoff)
+
+Pablo woke briefly, advanced `production/stage.txt` to `Production`, said
+"continua con lo siguiente", then "si no necesitas nada urgente de mi termina
+el sprint 7 sin molestarme". Sprint 7 closed end-to-end without further input.
+
+### 7/7 tasks delivered
+
+| ID | Task | Type | Commit |
+|---|---|---|---|
+| 7-3 | Init `production/playtests/` + slice REPORT migration | Should-have | `1ff7a8a` |
+| 7-4 | TD-001 svelte-check Hono+Node 26 fix (widen createSocketServer) | Should-have | `3f088bd` |
+| 7-1 | CASCADE-015 persistence-recovery wrap (9 unit + 4 live-DB integration tests) | Must-have | `2d2f5d9` |
+| 7-2 | E2E Playwright happy-path smoke (signup→club→season→match→finance, 2.4s passing) | Must-have | `aadf5d5` |
+| 7-5 | Cross-epic integration smoke (economy↔tv-rights F-TV4 + manager-rpg↔staff gate) | Should-have | `3744ebd` |
+| 7-6 | Design-review: EQL [68,72] side-channel resolution → cascade-engine.md §C0 amendment | Nice-to-have | `46d68f2` |
+| 7-7 | Design-review: C1b magnitude inequality decision → cascade-engine.md §C1b amendment | Nice-to-have | `46d68f2` |
+
+Plus sprint plan + final closeout = 9 Sprint 7 commits in total.
+
+### Test growth this sprint
+
+| Suite | Pre-Sprint-7 | Post-Sprint-7 | Net |
+|---|---|---|---|
+| `@smt/shared` unit | 944 | 953 | +9 (world-state-serde) |
+| `@smt/api` unit/integration | 32 | 42 | +10 (4 cascade-015 + 6 cross-epic) |
+| `@smt/web` unit | 1 | 1 | — |
+| **Total unit/integration** | **977** | **996** | **+19** |
+| `apps/web` E2E (Playwright) | 0 in sprint-7 scope | 1 happy-path (verified passing) | +1 |
+
+`tsc --noEmit` clean across all 3 workspace packages. `svelte-check --threshold error` 0 errors.
+
+### Cascade-engine epic NOW 100% Complete
+
+17/17 stories. Final 3 (015, 016, 017) all closed in this autonomous overnight.
+
+### Tech debt status
+
+TD-001 ✅ Resolved (svelte-check Hono+Node 26 typing). No open items in `docs/tech-debt-register.md`.
+
+### Design-review findings deferred to Pablo's call
+
+1. **§C0 amendment** (task 7-6): "equilibrium en 70" unreachable under passive play due to side-channels (C1b→C2→C9b→C13 SP-creep). 3 options listed (retune K_fit_decay / add dampening edge / accept-and-document). Test files align with option 3 (default operativo).
+2. **§C1b amendment** (task 7-7): magnitude inequality `|F_q=40| > |F_q=10|` is FALSE with current constants. Direction counterintuitive preserved. 3 options listed (retune K_danger / rephrase spec to direction-only / accept-and-document). Test files align with option 3.
+
+Both amendments add explicit text + 3-option lists to `design/gdd/cascade-engine.md` so the decision context is preserved when Pablo reviews.
+
+### Recommended Sprint 8
+
+Sprint 7 was validation + cleanup. Sprint 8 is the first feature-development sprint of Production. Open scope candidates:
+- Begin advance-loop epic (ADR-008) — wire saveTickResult / loadCurrentWorldState into a real BullMQ orchestrator. This is the gate to multi-week play.
+- Implement the schema additions deferred from CASCADE-015 (`cascade_log`, `threshold_crossings`, `seed_state` columns in `world_snapshots`) — needed by event-system epic.
+- Resolve 7-6 + 7-7 design-review tickets (Pablo's call on retune vs document).
+- Add 2 more playtest sessions (fresh-player + economy-tuning) to satisfy Production → Polish gate's 3-playtest requirement.
+- Consider running `/qa-plan sprint` before sprint-8 kickoff (Sprint 7 skipped this; Sprint 8 should not).
+
+### Total session commits
+
+19+ commits across the full overnight session (sleep cycle 2026-05-20→2026-05-21). All pushed.

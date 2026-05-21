@@ -21,68 +21,68 @@ stories:
     name: "CASCADE-015: Persistence-recovery wrap (Integration → Complete)"
     file: "production/epics/cascade-engine/stories/cascade-engine-015-persistence-recovery.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 2.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "7-2"
     name: "E2E smoke: signup → club → season → match → finance"
-    file: "tests/e2e/happy-path.spec.ts"
+    file: "apps/web/tests/e2e/happy-path.spec.ts"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 3
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "7-3"
     name: "Initialize production/playtests/ directory + migrate slice REPORT"
     file: "production/playtests/README.md"
     priority: should-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "7-4"
     name: "TD-001 fix: svelte-check apps/api/src/server.ts:47 (Hono+Node 26)"
     file: "docs/tech-debt-register.md#TD-001"
     priority: should-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 1
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "7-5"
     name: "Cross-epic integration smoke: economy↔tv-rights + manager-rpg↔staff"
-    file: "tests/integration/cross-epic/"
+    file: "apps/api/tests/cross-epic/integration-smoke.test.ts"
     priority: should-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 2
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "7-6"
     name: "Design-review: EQL [68,72] side-channel resolution (cascade-engine.md §C0)"
     file: "design/gdd/cascade-engine.md"
     priority: nice-to-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 1
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "7-7"
     name: "Design-review: C1b magnitude inequality decision"
     file: "design/gdd/cascade-engine.md"
     priority: nice-to-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
