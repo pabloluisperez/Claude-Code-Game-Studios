@@ -159,11 +159,23 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 
   const week = latestSnapshot?.week ?? activePlaythrough.currentWeek;
 
+  // Sprint 12 task 12-2: expose the day cursor inside the current week so
+  // the AdvanceTransition modal can resume from the day a STOP halted at.
+  // `currentDayOfSeason % 7` gives the day-in-week (0=Mon..6=Sun). When the
+  // player is at a clean week boundary it's 0 and the modal starts from
+  // scratch; mid-week (post-STOP) it's >0 and the modal jumps ahead.
+  const currentDayOfSeason =
+    activePlaythrough.currentDayOfSeason ?? activePlaythrough.currentWeek * 7;
+  const dayInWeek = currentDayOfSeason % 7;
+
   return {
     hasPlaythrough: true as const,
     worldState: (latestSnapshot?.worldState ?? null) as Record<string, number> | null,
     week,
     weekDate: weekToDate(week),
+    currentDayOfSeason,
+    dayInWeek,
+    daysRemaining: dayInWeek === 0 ? 7 : 7 - dayInWeek,
     messages: recentMessages,
     nextFixtures: nextFixtures.map((f) => {
       const isHome = f.homeClubId === activePlaythrough.clubId;

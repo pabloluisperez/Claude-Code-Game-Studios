@@ -23,6 +23,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
       id: playthroughs.id,
       clubId: playthroughs.clubId,
       currentWeek: playthroughs.currentWeek,
+      currentDayOfSeason: playthroughs.currentDayOfSeason,
       clubName: clubs.name,
     })
     .from(playthroughs)

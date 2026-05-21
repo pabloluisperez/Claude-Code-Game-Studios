@@ -253,6 +253,7 @@
 <AdvanceTransition
   open={showTransition}
   fromWeek={data.hasPlaythrough ? data.week : 0}
+  startDayOfWeek={data.hasPlaythrough ? data.dayInWeek : 0}
   headlines={transitionHeadlines}
   msPerDay={5000}
   matchPendingThisAdvance={userMatchNextAdvance !== null}

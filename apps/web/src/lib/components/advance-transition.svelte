@@ -29,6 +29,13 @@
   interface Props {
     open: boolean;
     fromWeek: number;
+    /**
+     * Sprint 12 task 12-2: day-of-week the modal should resume from.
+     * 0 = Monday (clean week start); 1..6 = mid-week resume after a STOP
+     * event halted the previous advance. The modal animates from this day
+     * to day 7. Default 0 preserves Sprint 11 behavior.
+     */
+    startDayOfWeek?: number;
     headlines: readonly Headline[];
     /** Wall-clock duration of one in-game day (default 5s). */
     msPerDay?: number;
@@ -51,6 +58,7 @@
   let {
     open,
     fromWeek,
+    startDayOfWeek = 0,
     headlines,
     msPerDay = 5000,
     matchPendingThisAdvance = false,
@@ -214,10 +222,17 @@
   }
 
   function startCycle(): void {
-    // Resume from a saved day if the user previously cancelled mid-week.
+    // Sprint 12 task 12-2: resume priority order:
+    //   1. localStorage resume key (user explicitly paused via "Cancelar y
+    //      actuar" — preserved for backward compat with Sprint 9 modal).
+    //   2. Server-driven `startDayOfWeek` (player resumed after a STOP
+    //      event halt — currentDayOfSeason % 7 > 0).
+    //   3. Default 0 (clean week start).
     const resume = readResume();
     if (resume && resume.fromWeek === fromWeek && resume.dayIndex >= 0 && resume.dayIndex < 7) {
       dayIndex = resume.dayIndex;
+    } else if (startDayOfWeek > 0 && startDayOfWeek < 7) {
+      dayIndex = startDayOfWeek;
     } else {
       dayIndex = 0;
     }
