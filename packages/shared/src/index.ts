@@ -54,6 +54,18 @@ export {
 export { runTick } from './sim/cascade-engine.js';
 export { CASCADA_FC_GRAPH, type CascadeEdgeDef } from './sim/cascade-graph.js';
 export type { DelayedEffectsBuffer } from './sim/delayed-effects.js';
+export { DelayedEffectsJsonSchema } from './sim/delayed-effects.js';
+
+// WorldState + DelayedEffectsBuffer JSON serialization (ADR-005 boundary).
+export {
+  WorldStateJsonSchema,
+  SnapshotPayloadJsonSchema,
+  serializeWorldState,
+  deserializeWorldState,
+  serializeDelayedEffectsBuffer,
+  deserializeDelayedEffectsBuffer,
+  type SnapshotPayload,
+} from './sim/world-state-serde.js';
 
 // League content generators (AI clubs + double round-robin fixtures).
 export {

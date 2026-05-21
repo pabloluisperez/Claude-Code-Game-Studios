@@ -12,7 +12,7 @@ Strict layer order (Foundation → Core → Feature → Presentation). **10/10 C
 
 | # | Epic | Layer | System | GDD | Stories | Status |
 |---|---|---|---|---|---|---|
-| 1 | [cascade-engine](cascade-engine/EPIC.md) | Foundation | cascade-engine | `design/gdd/cascade-engine.md` | 14 done | ✅ **Complete** (Sprint 03, 2026-05-19) |
+| 1 | [cascade-engine](cascade-engine/EPIC.md) | Foundation | cascade-engine | `design/gdd/cascade-engine.md` | 17/17 done | ✅ **Complete** (Sprint 7, 2026-05-21) — 14 chain stories (Sprint 3) + 015 persistence-recovery (Sprint 7) + 016 perf + 017 determinism (Sprint 7 Path B). Total: 989 tests across @smt/shared + @smt/api. |
 | 2 | [match-simulation](match-simulation/EPIC.md) | Foundation | match-simulation | `design/gdd/match-simulation.md` | 18/18 done | ✅ **Complete** (2026-05-19) — 15 fully tested + 3 code-complete (integration tests deferred to live BullMQ/Redis/Socket.IO env) |
 | 3 | [economy](economy/EPIC.md) | Foundation | economy | `design/gdd/economy.md` | 8/8 done | ✅ **Complete** (2026-05-19) — 38 unit tests; integration code complete |
 | 4 | [manager-rpg](manager-rpg/EPIC.md) | Core | manager-rpg | `design/gdd/manager-rpg.md` | 6/6 done | ✅ **Complete** (2026-05-19) — 32 unit tests; ADR-010 canonical impl |
