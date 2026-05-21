@@ -24,7 +24,7 @@ import {
   desc,
   alias,
 } from '@smt/db';
-import { weekToDate } from '@smt/shared';
+import { weekToDate, dayOfSeasonToDate } from '@smt/shared';
 
 export const load: PageServerLoad = async ({ parent }) => {
   const { user, activePlaythrough } = await parent();
@@ -85,11 +85,26 @@ export const load: PageServerLoad = async ({ parent }) => {
     )
     .orderBy(asc(fixtures.week));
 
+  // Sprint 12 walkthrough fix (Pablo Part B): day-precise cursor.
+  const currentDayOfSeason =
+    activePlaythrough.currentDayOfSeason ?? activePlaythrough.currentWeek * 7;
+  const dayInWeek = currentDayOfSeason % 7;
+
   return {
     hasPlaythrough: true as const,
     currentWeek: activePlaythrough.currentWeek,
+    currentDayOfSeason,
+    dayInWeek,
     today: weekToDate(activePlaythrough.currentWeek),
-    events: events.map((e) => ({ ...e, date: weekToDate(e.week) })),
+    todayPrecise: dayOfSeasonToDate(currentDayOfSeason),
+    // Each event carries a date computed from scheduledDayOfSeason when
+    // present (Sprint 12+ STOP events with mid-week semantics); legacy
+    // events without it fall back to week*7 (start of their week).
+    events: events.map((e) => ({
+      ...e,
+      date: weekToDate(e.week),
+      datePrecise: dayOfSeasonToDate(e.scheduledDayOfSeason ?? e.week * 7),
+    })),
     fixtures: userFixtures.map((f) => ({
       ...f,
       date: weekToDate(f.week),

@@ -52,7 +52,24 @@
 
   function eventsForWeek(week: number): EventRow[] {
     if (!data.hasPlaythrough) return [];
-    return data.events.filter((e) => e.week === week);
+    // Sprint 12 walkthrough fix (Pablo Part B): events whose precise day
+    // equals the current cursor are surfaced in the mid-week marker row
+    // instead of the week row — they happen TODAY, not on Sunday.
+    return data.events.filter((e) => {
+      if (e.week !== week) return false;
+      if (!data.hasPlaythrough || data.dayInWeek === 0) return true;
+      if (week !== data.currentWeek) return true;
+      const eventDay = e.scheduledDayOfSeason ?? e.week * 7;
+      return eventDay !== data.currentDayOfSeason;
+    });
+  }
+
+  function eventsForToday(): EventRow[] {
+    if (!data.hasPlaythrough) return [];
+    return data.events.filter((e) => {
+      const eventDay = e.scheduledDayOfSeason ?? e.week * 7;
+      return eventDay === data.currentDayOfSeason;
+    });
   }
   function fixtureForWeek(week: number): FixtureRow | null {
     if (!data.hasPlaythrough) return null;
@@ -87,8 +104,11 @@
     <h1 class="text-2xl font-bold">Calendario</h1>
     {#if data.hasPlaythrough}
       <p class="opacity-60">
-        Hoy: <span class="font-mono">{data.today.display}</span>
+        Hoy: <span>{data.todayPrecise.displayLong}</span>
         · semana <span class="font-mono">{data.currentWeek}</span>
+        {#if data.dayInWeek > 0}
+          · <span class="badge badge-warning badge-sm">Mid-week (día {data.dayInWeek + 1} / 7)</span>
+        {/if}
       </p>
     {/if}
   </header>
@@ -107,13 +127,52 @@
             {@const dayEvents = eventsForWeek(week)}
             {@const fixture = fixtureForWeek(week)}
             {@const date = dayEvents[0]?.date ?? fixture?.date ?? null}
-            {@const isToday = week === data.currentWeek}
+            {@const isMidWeek = data.dayInWeek > 0}
+            {@const isCurrentWeek = week === data.currentWeek}
+            {@const isToday = isCurrentWeek && !isMidWeek}
             {@const isPast = week < data.currentWeek}
+            <!-- Sprint 12 walkthrough fix (Pablo Part B): when mid-week,
+                 inject a precise-day marker row BEFORE the next week row
+                 (so it sits between week 33 and week 34) showing the
+                 actual day + events scheduled for today. -->
+            {#if isMidWeek && week === data.currentWeek + 1}
+              {@const todayEvents = eventsForToday()}
+              <div class="flex items-stretch gap-3 p-3 rounded bg-primary/15 border-2 border-primary ring-2 ring-primary/30">
+                <div class="flex-shrink-0 w-32 text-center border-r border-base-300 pr-3">
+                  <div class="font-mono text-xs opacity-60">📍 HOY</div>
+                  <div class="text-sm font-semibold">{data.todayPrecise.displayLong}</div>
+                  <div class="badge badge-primary badge-sm mt-1">Mid-week</div>
+                </div>
+                <div class="flex-1 space-y-1">
+                  {#if todayEvents.length === 0}
+                    <p class="text-xs opacity-60 italic p-2">Estás en mitad de la semana {data.currentWeek}. No hay eventos hoy mismo, pero quedan {7 - data.dayInWeek} día(s) por terminar.</p>
+                  {:else}
+                    {#each todayEvents as e}
+                      <button
+                        class="w-full flex items-center justify-between p-2 rounded text-left
+                               {e.priority === 'STOP' && e.status === 'pending' ? 'bg-error/15 border border-error/40 hover:bg-error/25' : 'bg-base-100'}"
+                        onclick={() => (openEventId = e.id)}
+                        type="button"
+                      >
+                        <div>
+                          <div class="text-xs opacity-60">{eventIcon(e.type)} {eventLabel(e.type)}</div>
+                          <div class="text-sm font-semibold">
+                            {e.status === 'pending' ? 'Pendiente — Decisión hoy' : e.status === 'resolved' ? 'Resuelto' : e.status}
+                          </div>
+                        </div>
+                        <span class="badge {priorityColor(e.priority)}">{e.priority}</span>
+                      </button>
+                    {/each}
+                  {/if}
+                </div>
+              </div>
+            {/if}
             <div
               class="flex items-stretch gap-3 p-3 rounded transition-all
                      {isToday ? 'bg-primary/15 border-2 border-primary ring-2 ring-primary/30' : ''}
+                     {isCurrentWeek && isMidWeek ? 'opacity-60 bg-base-200 border border-dashed border-primary/40' : ''}
                      {isPast ? 'opacity-50 bg-base-200' : ''}
-                     {!isToday && !isPast ? 'bg-base-200' : ''}"
+                     {!isCurrentWeek && !isPast ? 'bg-base-200' : ''}"
             >
               <div class="flex-shrink-0 w-32 text-center border-r border-base-300 pr-3">
                 <div class="font-mono text-xs opacity-60">Sem {week}</div>
@@ -122,6 +181,8 @@
                 {/if}
                 {#if isToday}
                   <div class="badge badge-primary badge-sm mt-1">HOY</div>
+                {:else if isCurrentWeek && isMidWeek}
+                  <div class="badge badge-ghost badge-sm mt-1">En curso</div>
                 {/if}
               </div>
 

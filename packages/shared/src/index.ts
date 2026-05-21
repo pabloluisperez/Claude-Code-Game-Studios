@@ -23,6 +23,7 @@ export { createSeededRng } from './sim/rng.js';
 // In-game calendar (week → real date).
 export {
   weekToDate,
+  dayOfSeasonToDate,
   weekPhase,
   CALENDAR_ANCHOR_ISO,
   LEAGUE_KICKOFF_WEEK,

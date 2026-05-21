@@ -20,7 +20,7 @@ import {
   alias,
   loadAdvanceContext,
 } from '@smt/db';
-import { weekToDate } from '@smt/shared';
+import { weekToDate, dayOfSeasonToDate } from '@smt/shared';
 import {
   advanceDays,
   daysUntilNextBoundary,
@@ -203,11 +203,17 @@ export const load: PageServerLoad = async ({ parent, url }) => {
     }
   }
 
+  // Sprint 12 walkthrough fix (Pablo Part B): today-precise date for the
+  // hero + STOP banner. When at a clean week boundary, equals weekDate;
+  // mid-week (post-STOP) it advances to the actual day-of-week date.
+  const todayPrecise = dayOfSeasonToDate(currentDayOfSeason);
+
   return {
     hasPlaythrough: true as const,
     worldState: (latestSnapshot?.worldState ?? null) as Record<string, number> | null,
     week,
     weekDate: weekToDate(week),
+    todayPrecise,
     currentDayOfSeason,
     dayInWeek,
     daysRemaining: dayInWeek === 0 ? 7 : 7 - dayInWeek,

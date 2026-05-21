@@ -11,6 +11,12 @@
     user: { username: string } | null;
     week?: number;
     dateDisplay?: string | undefined;
+    /**
+     * Sprint 12 walkthrough (Pablo Part B): long-form date for the topbar,
+     * e.g. "Miércoles 24 de marzo de 2027". Falls back to `dateDisplay`
+     * (short form) when undefined for backward compat.
+     */
+    dateDisplayLong?: string | undefined;
     balanceEurK?: number | null;
     inboxUnread?: number;
     showSidebarToggle?: boolean;
@@ -20,6 +26,7 @@
     user,
     week = 0,
     dateDisplay,
+    dateDisplayLong,
     balanceEurK = null,
     inboxUnread = 0,
     showSidebarToggle = true,
@@ -76,7 +83,7 @@
     {#if dateDisplay}
       <div class="hidden sm:flex flex-col items-end text-xs leading-tight">
         <span class="opacity-50">Hoy</span>
-        <span class="font-mono font-semibold">{dateDisplay}</span>
+        <span class="font-semibold">{dateDisplayLong ?? dateDisplay}</span>
       </div>
     {/if}
     <div class="hidden md:flex flex-col items-end text-xs leading-tight">

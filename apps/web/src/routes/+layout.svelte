@@ -46,6 +46,7 @@
       user={data.user}
       week={data.activePlaythrough?.currentWeek ?? 0}
       dateDisplay={data.activePlaythrough?.date?.display}
+      dateDisplayLong={data.activePlaythrough?.date?.displayLong}
       balanceEurK={data.activePlaythrough?.balanceEurK ?? null}
       inboxUnread={data.badges?.inboxUnread ?? 0}
       showSidebarToggle={showSidebar}

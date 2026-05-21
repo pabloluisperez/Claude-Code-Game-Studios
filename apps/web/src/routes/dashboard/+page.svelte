@@ -286,8 +286,11 @@
           <div>
             <h1 class="card-title text-2xl">{data.activePlaythrough?.clubName ?? 'Mi club'}</h1>
             <p class="opacity-70 text-sm">
-              <span class="font-mono">{data.weekDate.display}</span>
+              <span>{data.todayPrecise.displayLong}</span>
               · semana <span class="font-mono">{data.week}</span>
+              {#if data.dayInWeek > 0}
+                · <span class="badge badge-warning badge-sm">Mid-week (día {data.dayInWeek + 1} / 7)</span>
+              {/if}
               {#if data.position !== null && data.standingsCount > 0}
                 · <span class="badge badge-info">Pos {data.position}º / {data.standingsCount}</span>
               {/if}
@@ -330,20 +333,20 @@
          the halt happened so the player can act. -->
     {#if $page.url.searchParams.get('stop_event')}
       {@const stopId = $page.url.searchParams.get('stop_event')}
-      {@const stopDay = $page.url.searchParams.get('day')}
       {@const stopEvent = pendingEvents.find((e) => e.id === stopId)}
       <section class="alert alert-warning shadow">
         <div class="flex flex-col gap-1 flex-1">
-          <span class="font-semibold">⚠ Evento mid-week detectado · Día {stopDay}</span>
+          <span class="font-semibold">⚠ Evento detectado · {data.todayPrecise.displayLong}</span>
           {#if stopEvent}
             {@const meta = stopEvent.metadata as { label?: string } | null}
             <span class="text-sm opacity-90">
               {meta?.label ?? stopEvent.type} — Resuélvelo antes de seguir avanzando.
             </span>
-            <div class="mt-1">
+            <div class="mt-1 flex gap-2">
               <a href={eventDestination(stopEvent.type)} class="btn btn-sm btn-primary">
                 Resolver ahora
               </a>
+              <a href="/calendar" class="btn btn-sm btn-ghost">Ver en calendario</a>
             </div>
           {:else}
             <span class="text-sm opacity-90">

@@ -25,6 +25,12 @@ export interface InGameDate {
   readonly iso: string;
   /** Localised Spanish display string, e.g. "Sáb 5 sep 2026". */
   readonly display: string;
+  /**
+   * Full Spanish display string with day-of-week + ordinal + full month name,
+   * e.g. "Miércoles 24 de marzo de 2027". Used in the topbar and any "you
+   * are here" markers where space allows.
+   */
+  readonly displayLong: string;
   /** Year, month (1-12), day (1-31). */
   readonly year: number;
   readonly month: number;
@@ -36,10 +42,26 @@ const MONTH_NAMES_ES_SHORT = [
   'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
 ] as const;
 
+const MONTH_NAMES_ES_LONG = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+] as const;
+
 const DAY_NAMES_ES_SHORT = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'] as const;
 
+const DAY_NAMES_ES_LONG = [
+  'Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado',
+] as const;
+
 /**
- * Convert in-game week (0-based) to the calendar Saturday it represents.
+ * Convert in-game week (0-based, fractional accepted) to the calendar date
+ * it represents. Fractional weeks are interpreted as `anchor + week * 7 days`.
+ *
+ * Examples:
+ *   weekToDate(0)        → anchor day
+ *   weekToDate(33)       → 33 weeks after anchor (Sunday of week 33)
+ *   weekToDate(33 + 3/7) → 3 days into week 33 (Wednesday)
+ *   weekToDate(234/7)    → equivalent to currentDayOfSeason=234
  */
 export function weekToDate(week: number): InGameDate {
   const anchor = new Date(`${CALENDAR_ANCHOR_ISO}T00:00:00Z`);
@@ -49,9 +71,20 @@ export function weekToDate(week: number): InGameDate {
   const day = target.getUTCDate();
   const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   const monthName = MONTH_NAMES_ES_SHORT[month - 1] ?? '';
+  const monthLong = MONTH_NAMES_ES_LONG[month - 1] ?? '';
   const dow = DAY_NAMES_ES_SHORT[target.getUTCDay()] ?? '';
+  const dowLong = DAY_NAMES_ES_LONG[target.getUTCDay()] ?? '';
   const display = `${dow} ${day} ${monthName} ${year}`;
-  return { iso, display, year, month, day };
+  const displayLong = `${dowLong} ${day} de ${monthLong} de ${year}`;
+  return { iso, display, displayLong, year, month, day };
+}
+
+/**
+ * Convert an absolute day-of-season cursor (0..265+) to the calendar date.
+ * Convenience wrapper that internally calls `weekToDate(day / 7)`.
+ */
+export function dayOfSeasonToDate(currentDayOfSeason: number): InGameDate {
+  return weekToDate(currentDayOfSeason / 7);
 }
 
 /**
