@@ -124,11 +124,11 @@
         </div>
         <div class="text-xs opacity-80 mt-1">
           {#if reputationLevel < 3}
-            Sube a nivel 3 para fichar staff Experimentado (perciben cambios con ×1.5).
+            Con más reputación llamarías la atención de staff Experimentado, que lee el vestuario con más finura que un Novato.
           {:else if reputationLevel < 4}
-            Sube a nivel 4 para fichar staff Élite (los mejores — perciben cambios con ×3.0).
+            Un escalón más arriba y podrás fichar staff Élite — los que mejor leen los problemas antes de que estallen.
           {:else}
-            Acceso completo al pool de staff. Tu reputación es de élite.
+            Tu reputación abre las puertas a todo el mercado. Hasta el staff Élite acepta trabajar contigo.
           {/if}
         </div>
       </div>

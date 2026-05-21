@@ -415,11 +415,11 @@
                 {#if active.length === 0}
                   <div class="alert alert-info text-xs mb-2 py-2">
                     <div class="flex flex-col gap-0.5">
-                      <span class="font-semibold">💡 Tu primer patrocinador en este slot</span>
+                      <span class="font-semibold">💡 Aún no tienes patrocinador aquí</span>
                       <span class="opacity-90">
-                        Aceptar firma un contrato semanal por las semanas indicadas. Rechazar
-                        cierra esa oferta pero deja las otras del mismo slot abiertas. Los
-                        ingresos por sponsor entran cada semana al balance.
+                        Aceptar firma un acuerdo semanal por las jornadas indicadas. Rechazar
+                        descarta esa oferta pero las demás siguen sobre la mesa. El ingreso
+                        del patrocinador entra cada semana en caja.
                       </span>
                     </div>
                   </div>

@@ -130,9 +130,9 @@
         </div>
         <div class="text-xs opacity-80">
           {#if data.maxHirableTier < 3}
-            Sube tu reputación a 4+ para acceder a staff tier 3 (perciben ×3 las cascadas).
+            Sube tu reputación a 4 para fichar staff Élite — son los que mejor leen el vestuario y avisan antes de los problemas.
           {:else}
-            Acceso completo al pool de staff.
+            Tu reputación te abre todo el mercado de fichajes: puedes traer staff Élite a cualquier puesto.
           {/if}
         </div>
       </div>
@@ -230,7 +230,7 @@
                         () => hireForms[`${r.role}:${tier}`]?.requestSubmit(),
                       )}
                   >
-                    {experienceLabel(tier).slice(0, 4)} · {data.wagesByTier[tier as 1 | 2 | 3]}€
+                    Nivel {tier} · {data.wagesByTier[tier as 1 | 2 | 3]}€
                   </button>
                 </form>
               {/each}

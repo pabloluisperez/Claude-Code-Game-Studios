@@ -10,6 +10,7 @@
   import { enhance } from '$app/forms';
   import { generateHeadlines, weekToDate } from '@smt/shared';
   import AdvanceTransition from '$lib/components/advance-transition.svelte';
+  import { formatEurK } from '$lib/format';
 
   let { data }: { data: PageData } = $props();
 
@@ -123,7 +124,7 @@
       {
         nodeId: 'financial_balance',
         label: 'Balance',
-        display: balance < 0 ? `-${Math.abs(balance)} k€` : `${balance} k€`,
+        display: formatEurK(balance),
         progressValue: Math.max(0, Math.min(100, balance / 10)),
         isNegative: balance < 0,
       },
@@ -161,20 +162,19 @@
   }
 
   /**
-   * Per-node tooltip: what does this node measure + how player decisions affect it.
-   * Surfaced on hover via DaisyUI's `tooltip` class on the card. Friction #2 fix
-   * from the 2026-05-21 agent fresh-player walkthrough.
+   * Per-node tooltip: what does this indicator measure + what moves it.
+   * Surfaced on hover via DaisyUI's `tooltip` class on the card.
    */
   function nodeTooltip(nodeId: string): string {
     switch (nodeId) {
       case 'financial_balance':
-        return 'Tu balance bancario en €K. Sube con ingresos (taquilla, sponsor, TV) y baja con gastos (salarios, scouting). Negativo = deuda.';
+        return 'La caja del club. Sube con taquilla, patrocinadores y derechos de TV. Baja con salarios, scouting y multas. En negativo significa deuda.';
       case 'fan_momentum':
-        return 'Ánimo de la afición. Sube con victorias, baja con derrotas. Las derrotas duelen más que las victorias suben — fenómeno asimétrico de C6.';
+        return 'El ánimo de la afición. Las victorias lo levantan poco a poco; las derrotas lo hunden rápido. Recuperarlo cuesta más que perderlo.';
       case 'team_fitness':
-        return 'Forma física del equipo. Equilibrio en 70. Baja con entrenamiento extremo, partidos consecutivos sin descanso. Sube con buena alimentación + plantilla sana.';
+        return 'La forma física del equipo. Una mala alimentación, entrenamientos extremos o jornadas sin descanso lo machacan. La plantilla sana y el descanso lo recuperan.';
       case 'squad_available_pct':
-        return 'Porcentaje de jugadores disponibles (sanos + sin sanción). Baja con lesiones (más probables con campo en mal estado) y tarjetas. Sube con scouting + descanso.';
+        return 'Porcentaje de jugadores disponibles para jugar (sin lesiones ni sanciones). Un campo en mal estado o tarjetas de más lo bajan; ojeadores y descanso lo recuperan.';
       default:
         return '';
     }
@@ -290,17 +290,18 @@
       </div>
     </section>
 
-    <!-- First-advance onboarding callout (Sprint 9 task 9-4 friction #4) -->
+    <!-- First-advance onboarding callout — first real week of management. -->
     {#if data.justAdvanced && data.week === 1}
       <div class="alert alert-success">
         <div class="flex flex-col gap-1">
-          <span class="font-semibold">¡Tu primera semana ha pasado!</span>
+          <span class="font-semibold">¡Acaba tu primera semana al frente del club!</span>
           <span class="text-sm opacity-90">
-            Mira los nodos cascada arriba (Afición, Estado físico, Plantilla disponible) —
-            han cambiado con tu primera tick. Pasa el ratón sobre cada tarjeta para saber
-            qué los afecta. Ahora explora <a href="/squad" class="link">tu plantilla</a>,
-            <a href="/finance" class="link">tus finanzas</a> o
-            <a href="/manager" class="link">tu perfil de mánager</a> antes de seguir avanzando.
+            Echa un vistazo a los indicadores de arriba — el ánimo de la afición, la forma
+            física, la disponibilidad de plantilla — porque ahora ya tienen historia. Pasa el
+            ratón sobre cada uno para entender qué los mueve. Antes de avanzar otra semana,
+            asómate a <a href="/squad" class="link">tu plantilla</a>,
+            <a href="/finance" class="link">la caja del club</a> o
+            <a href="/manager" class="link">tu despacho</a>.
           </span>
         </div>
       </div>

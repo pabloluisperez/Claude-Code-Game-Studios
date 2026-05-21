@@ -5,6 +5,8 @@
   Control Manifest: 2026-05-19
 -->
 <script lang="ts">
+  import { formatEurK } from '$lib/format';
+
   interface Props {
     user: { username: string } | null;
     week?: number;
@@ -56,8 +58,8 @@
       </div>
     {/if}
     <div class="hidden md:flex flex-col items-end text-xs leading-tight">
-      <span class="opacity-50">Semana</span>
-      <span class="font-mono font-semibold">{week}</span>
+      <span class="opacity-50">{week === 0 ? '' : 'Semana'}</span>
+      <span class="font-mono font-semibold">{week === 0 ? 'Pretemporada' : week}</span>
     </div>
     {#if balanceEurK !== null}
       <a
@@ -67,7 +69,7 @@
       >
         <span class="opacity-50">Balance</span>
         <span class="font-mono font-semibold {balanceClass}">
-          {Math.round(balanceEurK)} €K
+          {formatEurK(balanceEurK)}
         </span>
       </a>
     {/if}
