@@ -582,6 +582,7 @@
                           <button
                             type="button"
                             class="btn btn-xs btn-primary"
+                            aria-label="Aceptar oferta de {meta?.brand ?? 'patrocinador'}"
                             onclick={() =>
                               askSponsorConfirm(
                                 `Aceptar ${meta?.brand ?? 'patrocinador'}`,
@@ -600,6 +601,7 @@
                           <button
                             type="button"
                             class="btn btn-xs btn-ghost"
+                            aria-label="Rechazar oferta de {meta?.brand ?? 'patrocinador'}"
                             onclick={() =>
                               askSponsorConfirm(
                                 `Rechazar ${meta?.brand ?? 'oferta'}`,

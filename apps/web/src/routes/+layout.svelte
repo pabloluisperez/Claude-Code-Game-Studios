@@ -38,6 +38,10 @@
 
 {#if showChrome}
   <div class="min-h-screen flex flex-col">
+    <!-- a11y P2-1 (Sprint 12 task 12-3): skip-link al main content.
+         Visualmente oculto hasta recibir focus; con Tab desde el inicio
+         de la página se ve y permite saltar la navegación. -->
+    <a href="#main-content" class="skip-link">Saltar al contenido</a>
     <Topbar
       user={data.user}
       week={data.activePlaythrough?.currentWeek ?? 0}
@@ -51,12 +55,13 @@
       {#if showSidebar}
         <Sidebar bind:open={sidebarOpen} badges={data.badges} />
       {/if}
-      <main class="flex-1 container mx-auto px-4 py-8 max-w-7xl">
+      <main id="main-content" class="flex-1 container mx-auto px-4 py-8 max-w-7xl">
         {@render children()}
       </main>
     </div>
   </div>
 {:else}
+  <a href="#main-content" class="skip-link">Saltar al contenido</a>
   <nav class="navbar bg-base-200 px-4">
     <div class="flex-1">
       <a href="/" class="btn btn-ghost text-xl font-bold">Total Soccer Manager</a>
@@ -73,7 +78,30 @@
       {/if}
     </div>
   </nav>
-  <main class="container mx-auto px-4 py-8">
+  <main id="main-content" class="container mx-auto px-4 py-8">
     {@render children()}
   </main>
 {/if}
+
+<style>
+  /* a11y P2-1: skip-link visualmente oculto hasta recibir focus.
+     Standard sr-only pattern: posicionado fuera del viewport (top: -40px)
+     y traído al foco con :focus-visible. */
+  :global(.skip-link) {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: hsl(var(--p));
+    color: hsl(var(--pc));
+    padding: 0.5rem 1rem;
+    z-index: 100;
+    text-decoration: none;
+    font-weight: 600;
+    border-radius: 0 0 0.5rem 0;
+    transition: top 0.15s ease-out;
+  }
+  :global(.skip-link:focus),
+  :global(.skip-link:focus-visible) {
+    top: 0;
+  }
+</style>

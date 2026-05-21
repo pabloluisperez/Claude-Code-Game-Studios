@@ -154,9 +154,9 @@
                 class="tooltip tooltip-right cursor-help flex-1"
                 data-tip={ROLE_TOOLTIP[r.role] ?? ''}
               >
-                <h3 class="font-bold text-sm leading-tight underline decoration-dotted text-left">
+                <h2 class="font-bold text-sm leading-tight underline decoration-dotted text-left">
                   {r.label}
-                </h3>
+                </h2>
               </div>
               {#if current}
                 <span class="badge badge-success badge-sm">Activo</span>
