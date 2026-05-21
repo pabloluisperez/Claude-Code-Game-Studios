@@ -27,6 +27,7 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, join, dirname } from 'node:path';
 import { ComfyUIClient } from './comfyui-client.js';
 import { buildTxt2ImgWorkflow, type WorkflowParams } from './workflow-builder.js';
+import { buildHiResFixWorkflow, type HiResFixParams } from './workflow-hires-fix.js';
 
 const COMFYUI_URL = process.env['COMFYUI_URL'] ?? 'http://localhost:8188';
 const OUTPUT_DIR = process.env['COMFYUI_OUTPUT_DIR'] ?? 'assets/sprites/_raw';
@@ -111,6 +112,68 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
               },
             },
             description: 'Optional list of LoRAs to apply in order. Each with model + clip strength 0..1 typically.',
+          },
+        },
+      },
+    },
+    {
+      name: 'comfyui_hires_fix',
+      description:
+        'Hi-res fix 2-pass workflow for high-quality pixel art and general SDXL output. Pass 1 generates composition at base resolution (e.g., 1024²) with full LoRA. Latent is upscaled (nearest-exact preserves pixel grid). Pass 2 refines at higher resolution with low denoise (0.3-0.5). Result: larger image with original composition + extra detail. Use for production assets; use comfyui_generate_image for fast iteration.',
+      inputSchema: {
+        type: 'object',
+        required: [
+          'checkpoint',
+          'positivePrompt',
+          'negativePrompt',
+          'baseWidth',
+          'baseHeight',
+          'upscaleBy',
+          'secondPassDenoise',
+          'seed',
+          'filenamePrefix',
+        ],
+        properties: {
+          checkpoint: { type: 'string', description: 'Checkpoint filename (from comfyui_list_checkpoints).' },
+          positivePrompt: { type: 'string', description: 'Positive prompt text (shared by both passes).' },
+          negativePrompt: { type: 'string', description: 'Negative prompt text (shared by both passes).' },
+          baseWidth: { type: 'integer', minimum: 64, maximum: 2048, description: 'First-pass width. SDXL native: 1024.' },
+          baseHeight: { type: 'integer', minimum: 64, maximum: 2048, description: 'First-pass height. SDXL native: 1024.' },
+          upscaleBy: { type: 'number', minimum: 1.0, maximum: 4.0, default: 1.5, description: 'Latent upscale multiplier. 1.5 is safe; 2.0 is aggressive.' },
+          upscaleMethod: { type: 'string', enum: ['nearest-exact', 'bilinear', 'area', 'bicubic', 'bislerp'], default: 'nearest-exact', description: 'Latent upscale method. nearest-exact preserves pixel grid (recommended for pixel art).' },
+          steps: { type: 'integer', minimum: 1, maximum: 200, default: 25, description: 'Steps for first pass (composition).' },
+          secondPassSteps: { type: 'integer', minimum: 1, maximum: 200, description: 'Steps for second pass (detail). Defaults to `steps`.' },
+          cfg: { type: 'number', minimum: 0, maximum: 30, default: 7.0, description: 'CFG scale (both passes).' },
+          sampler: { type: 'string', default: 'euler', description: 'Sampler name (both passes).' },
+          scheduler: { type: 'string', default: 'karras', description: 'Scheduler (both passes).' },
+          seed: { type: 'integer', description: 'Deterministic seed. Pass 2 uses seed+1.' },
+          secondPassDenoise: { type: 'number', minimum: 0.1, maximum: 1.0, default: 0.4, description: 'Denoise for second pass. 0.3-0.5 preserves composition; 0.6+ risks drift.' },
+          filenamePrefix: { type: 'string', description: 'Filename prefix for the saved PNG (kebab-case).' },
+          loraStack: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['name', 'strengthModel', 'strengthClip'],
+              properties: {
+                name: { type: 'string' },
+                strengthModel: { type: 'number' },
+                strengthClip: { type: 'number' },
+              },
+            },
+            description: 'LoRA stack for first pass (also used for second pass if secondPassLoraStack is omitted).',
+          },
+          secondPassLoraStack: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['name', 'strengthModel', 'strengthClip'],
+              properties: {
+                name: { type: 'string' },
+                strengthModel: { type: 'number' },
+                strengthClip: { type: 'number' },
+              },
+            },
+            description: 'Optional second-pass LoRA stack with different strengths. For pixel art, lowering to 0.5-0.7 in pass 2 gives more detail while keeping pixel character.',
           },
         },
       },
@@ -206,6 +269,44 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
           ),
         );
       }
+      case 'comfyui_hires_fix': {
+        const params = parseHiResFixParams(args);
+        const wf = buildHiResFixWorkflow(params);
+        // Hi-res fix is 2-pass = roughly 2x slower than single pass. Bump timeout.
+        const queued = await client.queueWorkflow(wf);
+        const entry = await client.waitForComplete(queued.prompt_id, { totalTimeoutMs: 10 * 60_000 });
+
+        let firstImg: { filename: string; subfolder: string; type: string } | undefined;
+        for (const out of Object.values(entry.outputs)) {
+          if (out.images && out.images.length > 0) {
+            firstImg = out.images[0];
+            break;
+          }
+        }
+        if (!firstImg) {
+          throw new Error(`Hi-res fix completed but no image output found in ${queued.prompt_id}`);
+        }
+
+        const bytes = await client.fetchImage(firstImg.filename, firstImg.subfolder, firstImg.type as 'output');
+        const localPath = saveImageToDisk(bytes, firstImg.filename);
+
+        return ok(
+          JSON.stringify(
+            {
+              promptId: queued.prompt_id,
+              comfyuiFilename: firstImg.filename,
+              localPath,
+              sizeBytes: bytes.length,
+              finalResolution: {
+                width: Math.round(params.baseWidth * params.upscaleBy),
+                height: Math.round(params.baseHeight * params.upscaleBy),
+              },
+            },
+            null,
+            2,
+          ),
+        );
+      }
       case 'comfyui_fetch_image': {
         const filename = mustString(args, 'filename');
         const subfolder = typeof args['subfolder'] === 'string' ? args['subfolder'] : '';
@@ -265,6 +366,39 @@ function parseGenerateParams(args: Record<string, unknown>): WorkflowParams {
       strengthModel: typeof l['strengthModel'] === 'number' ? (l['strengthModel'] as number) : 1.0,
       strengthClip: typeof l['strengthClip'] === 'number' ? (l['strengthClip'] as number) : 1.0,
     })),
+  };
+}
+
+function parseHiResFixParams(args: Record<string, unknown>): HiResFixParams {
+  const parseLoraStack = (raw: unknown): HiResFixParams['loraStack'] => {
+    if (!Array.isArray(raw)) return undefined;
+    return (raw as Array<Record<string, unknown>>).map((l) => ({
+      name: String(l['name']),
+      strengthModel: typeof l['strengthModel'] === 'number' ? (l['strengthModel'] as number) : 1.0,
+      strengthClip: typeof l['strengthClip'] === 'number' ? (l['strengthClip'] as number) : 1.0,
+    }));
+  };
+
+  return {
+    checkpoint: mustString(args, 'checkpoint'),
+    positivePrompt: mustString(args, 'positivePrompt'),
+    negativePrompt: mustString(args, 'negativePrompt'),
+    baseWidth: mustNumber(args, 'baseWidth'),
+    baseHeight: mustNumber(args, 'baseHeight'),
+    upscaleBy: mustNumber(args, 'upscaleBy'),
+    upscaleMethod: typeof args['upscaleMethod'] === 'string'
+      ? (args['upscaleMethod'] as HiResFixParams['upscaleMethod'])
+      : 'nearest-exact',
+    steps: typeof args['steps'] === 'number' ? (args['steps'] as number) : 25,
+    secondPassSteps: typeof args['secondPassSteps'] === 'number' ? (args['secondPassSteps'] as number) : undefined,
+    cfg: typeof args['cfg'] === 'number' ? (args['cfg'] as number) : 7.0,
+    sampler: typeof args['sampler'] === 'string' ? (args['sampler'] as string) : 'euler',
+    scheduler: typeof args['scheduler'] === 'string' ? (args['scheduler'] as string) : 'karras',
+    seed: mustNumber(args, 'seed'),
+    secondPassDenoise: mustNumber(args, 'secondPassDenoise'),
+    filenamePrefix: mustString(args, 'filenamePrefix'),
+    loraStack: parseLoraStack(args['loraStack']),
+    secondPassLoraStack: parseLoraStack(args['secondPassLoraStack']),
   };
 }
 
