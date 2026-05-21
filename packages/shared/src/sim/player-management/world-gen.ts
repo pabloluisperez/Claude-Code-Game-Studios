@@ -17,12 +17,29 @@ import type { SimContext } from '../cascade-types.js';
 import { computeSkill, type Position, type PositionStats, SKILL_MAX, SKILL_MIN } from './skill.js';
 import { pickName } from './name-pool.js';
 
-export const DEFAULT_ROSTER_SIZE = 40;
+/**
+ * Default roster size. Retuned 2026-05-21 (Sprint 9 economy-tuning playtest)
+ * 40 → 25 — a Quinta División club typically carries ~25 players (12 starters
+ * + 6 subs + ~7 backup), not 40. Combined with SALARY_BASE drop 6 → 3, the
+ * economy becomes sustainable for the MVP D5 start.
+ *
+ * Pre-retune: 40 × ~2 €K avg = 80 €K/wk wages → unsustainable vs ~22 €K/wk
+ * income. Post-retune: 25 × ~1 €K = 25 €K/wk → matchable.
+ */
+export const DEFAULT_ROSTER_SIZE = 25;
+/**
+ * Retuned 2026-05-21 with DEFAULT_ROSTER_SIZE 40 → 25.
+ * Quotas sum to 25 to keep the scaling math consistent.
+ *   GK: 3 (1 starter + 2 backup)
+ *   DEF: 8 (4 starters + 4 backup)
+ *   MID: 8 (4 starters + 4 backup)
+ *   FWD: 6 (3 starters + 3 backup)
+ */
 export const POSITION_QUOTAS: Readonly<Record<Position, number>> = Object.freeze({
-  GK: 4,
-  DEF: 12,
-  MID: 12,
-  FWD: 12,
+  GK: 3,
+  DEF: 8,
+  MID: 8,
+  FWD: 6,
 });
 export const WEEKS_PER_SEASON = 52;
 export const INITIAL_CONTRACT_WEEKS = 104;
@@ -157,10 +174,20 @@ function pickAge(rng: () => number): number {
 /**
  * Salary calculation per ADR-016 simplified:
  *   salaryEurK = SALARY_BASE × (skill/50) × ageBias × jitter
- * Base = 6 €K/wk (Segunda); ageBias peaks 1.2× at age 27.
+ *
+ * Retuned 2026-05-21 (Sprint 9 economy-tuning playtest finding): base
+ * dropped 6 → 3. At D5/Quinta default skill (~25-30) the previous 6 €K
+ * produced ~2 €K/wk avg per player; the new 3 €K produces ~1 €K/wk avg.
+ * Combined with DEFAULT_ROSTER_SIZE drop 40→25, total wage bill goes
+ * from 80 €K/wk (unsustainable) to 25 €K/wk (matchable vs ~22 €K/wk
+ * income avg). Higher divisions still get realistic raises through the
+ * skill multiplier — a D1 star (skill 90) earns ~5.4 €K/wk under the
+ * new formula, vs ~11 €K under the old one.
+ *
+ * ageBias peaks 1.2× at age 27.
  */
 function computeSalary(rng: () => number, skill: number, age: number): number {
-  const SALARY_BASE = 6;
+  const SALARY_BASE = 3;
   const ageBias =
     age >= 25 && age <= 29 ? 1.2 :
     age >= 22 && age <= 24 ? 1.0 :
