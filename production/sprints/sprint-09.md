@@ -1,12 +1,19 @@
 ---
 Sprint: 09
 Name: "Advance-loop orchestrator extraction + playtest enablement + UX polish"
-Status: Planned
-Window: 2026-08-26 → 2026-09-08 (autonomous session pattern)
-Capacity: ~10 productive days (with 20% / 2-day buffer)
+Status: Complete (autonomous portion) — 6/8 tasks delivered same-day; 2 blocked on human playtester recruitment by Pablo
+Window: 2026-08-26 → 2026-09-08 (autonomous session pattern; actually delivered 2026-05-21)
+Capacity: ~10 productive days (used ~5 productive across autonomous execution)
 Review Mode: lean
 Phase: Production
 ---
+
+> **Closeout 2026-05-21**: Sprint 9 executed end-to-end autonomously after Pablo's
+> "todo ok, continua" approval. 6 of 8 tasks delivered (9-1 partial, 9-2, 9-3, 9-4,
+> 9-7, 9-8). 2 tasks blocked on human playtester recruitment (9-5 fresh-player,
+> 9-6 economy-tuning) — protocols and fixture loader are ready; Pablo runs when
+> he can. 7 sprint-9 commits. Tests: 998 unit/integration + 1 E2E + dev viewer
+> route added. svelte-check 0 errors.
 
 # Sprint 09 — Orchestrator Extraction + Playtest Enablement
 

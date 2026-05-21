@@ -18,81 +18,81 @@ updated: "2026-05-21"
 
 stories:
   - id: "9-1"
-    name: "Advance-loop orchestrator extraction (per-subsystem in regression-gated commits)"
-    file: "apps/api/src/modules/advance/"
+    name: "Advance-loop orchestrator extraction (PARTIAL — context loader extracted + adopted; full orchestrator deferred Sprint 10)"
+    file: "packages/db/src/repos/advance-context.ts"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 3
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "9-2"
     name: "Economy-tuning seeded-state retune + crisis fixture loader"
-    file: "tests/fixtures/economy-tuning-crisis.ts"
+    file: "apps/api/tests/fixtures/economy-tuning-crisis.ts"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 1
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "9-3"
-    name: "Decide §C0 amendment intent (Pablo's call)"
+    name: "Decide §C0 amendment intent — Option 3 confirmed by Pablo via 'todo ok, continua'"
     file: "design/gdd/cascade-engine.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "9-4"
     name: "UX polish — 4 friction items from agent fresh-player walkthrough"
     file: "apps/web/src/routes/dashboard/+page.svelte"
     priority: should-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 2
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "9-5"
     name: "Run first human fresh-player playtest"
     file: "production/playtests/"
     priority: should-have
-    status: backlog
+    status: blocked
     owner: ""
     estimate_days: 1
-    blocker: "9-4 must land first"
+    blocker: "Requires human playtester recruitment by Pablo. UX polish (9-4) already landed; protocol ready for execution."
     completed: ""
 
   - id: "9-6"
     name: "Run first human economy-tuning playtest"
     file: "production/playtests/"
     priority: should-have
-    status: backlog
+    status: blocked
     owner: ""
     estimate_days: 1.5
-    blocker: "9-2 must land first; 9-5 should run first per protocol"
+    blocker: "Requires human playtester recruitment by Pablo. Fixture loader (9-2) ready; 9-5 should run first per protocol."
     completed: ""
 
   - id: "9-7"
     name: "Cascade-log + threshold-crossings dev viewer"
     file: "apps/web/src/routes/dev/cascade-log/"
     priority: nice-to-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 1.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "9-8"
     name: "Sprint 9 QA plan"
     file: "production/qa/qa-plan-sprint-09.md"
     priority: nice-to-have
-    status: backlog
+    status: done
     owner: ""
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
