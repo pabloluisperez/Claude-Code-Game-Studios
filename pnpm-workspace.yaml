@@ -1,6 +1,7 @@
 packages:
   - 'apps/*'
   - 'packages/*'
+  - 'tools/comfyui-mcp'
 allowBuilds:
   esbuild: true
   msgpackr-extract: true
