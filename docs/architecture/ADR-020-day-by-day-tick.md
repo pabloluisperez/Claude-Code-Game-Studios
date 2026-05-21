@@ -1,10 +1,10 @@
 # ADR-020: Day-by-Day Tick Model
 
 ## Status
-Proposed
+Accepted
 
 ## Date
-2026-05-21 (Proposed)
+2026-05-21 (Proposed) · 2026-05-21 (Accepted)
 
 ## Engine Compatibility
 
@@ -295,3 +295,9 @@ Implementation sequence (future sprint):
 
 - 2026-05-21: Proposed by technical-director (autopilot session). Awaiting Pablo's
   acceptance before any implementation work begins.
+- 2026-05-21: **Accepted** (Sprint 11 task 11-1). Pablo authorized via blanket
+  "dale a todo hasta el final" — acceptance stamped in autopilot session. ADR
+  governs Sprint 11 task 11-4 (day-by-day tick implementation). Cascade decay
+  Option B locked in. Backwards-compatible weekly `advance()` wrapper preserved.
+  Schema column `current_day_of_season` lands as additive migration with
+  deterministic backfill (`current_day_of_season = current_week * 7`).

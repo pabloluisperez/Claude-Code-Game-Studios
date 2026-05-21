@@ -4,7 +4,7 @@
 Stage: Polish
 Epic: Sprint 11 planning
 Feature: Orchestrator full extraction + ADR-020 acceptance + a11y P1 cleanup
-Task: Awaiting Pablo's next instruction
+Task: Sprint 11 plan + QA plan escritos — listo para implementar
 <!-- /STATUS -->
 
 ## Active workstream
@@ -41,8 +41,13 @@ Production → Polish gate addressed at least partially.
 
 ### Recommended next user action
 
-- `/sprint-plan new` to scope Sprint 11 around the carry-forward list.
-- Or spawn a focused playtest if Pablo wants to validate the recovery-levers panel first.
+- Aceptar ADR-020 (11-1) — Pablo lee §§3-6 y estampa Accepted.
+- Implementar 11-2 (orchestrator DB-write): `/dev-story` o instrucción directa al web-backend-specialist.
+- Implementar 11-3 (A11y P1): `/dev-story` o instrucción al accessibility-specialist.
+- Sprint 11 plan: `production/sprints/sprint-11.md`
+- QA plan Sprint 11: `production/qa/qa-plan-sprint-11-2026-05-21.md`
+
+<!-- QA-PLAN: 2026-05-21 | System: sprint-11 | Plan written: production/qa/qa-plan-sprint-11-2026-05-21.md -->
 
 ---
 

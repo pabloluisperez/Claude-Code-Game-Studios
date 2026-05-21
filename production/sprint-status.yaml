@@ -9,70 +9,60 @@
 #   done           ↔  Complete
 #   blocked        ↔  Blocked
 
-sprint: 10
-goal: "Polish carry-forward — tick model + difficulty curve + recovery levers + a11y + orchestrator"
-start: "2026-09-09"
-end: "2026-09-22"
+sprint: 11
+goal: "Polish — orchestrator completo + tick diario + A11y P1"
+start: "2026-09-23"
+end: "2026-10-06"
 generated: "2026-05-21"
 updated: "2026-05-21"
 
 stories:
-  - id: "10-1"
-    name: "Day-by-day tick model ADR"
+  - id: "11-1"
+    name: "Aceptar ADR-020 (tick diario)"
     file: "docs/architecture/ADR-020-day-by-day-tick.md"
     priority: must-have
-    status: done
+    status: ready-for-dev
     owner: "technical-director"
     estimate_days: 0.5
     blocker: ""
-    completed: "2026-05-21"
+    completed: ""
 
-  - id: "10-2"
-    name: "Difficulty curve synthesis"
-    file: "design/difficulty-curve.md"
+  - id: "11-2"
+    name: "Orchestrator extraction — DB-write completo"
+    file: "apps/api/src/modules/advance/orchestrator.ts"
     priority: must-have
-    status: done
-    owner: "game-designer"
-    estimate_days: 0.5
+    status: ready-for-dev
+    owner: "web-backend-specialist"
+    estimate_days: 2.5
     blocker: ""
-    completed: "2026-05-21"
+    completed: ""
 
-  - id: "10-3"
-    name: "Recovery levers coaching panel"
-    file: "apps/web/src/lib/components/recovery-levers-panel.svelte"
+  - id: "11-3"
+    name: "A11y P1 batch (6 hallazgos)"
+    file: "production/qa/evidence/a11y-p1-sprint-11.md"
     priority: must-have
-    status: done
-    owner: "gameplay-programmer"
+    status: ready-for-dev
+    owner: "accessibility-specialist"
     estimate_days: 1.5
     blocker: ""
-    completed: "2026-05-21"
+    completed: ""
 
-  - id: "10-4"
-    name: "Accessibility audit + fixes"
-    file: "production/qa/a11y-audit-2026-05-21.md"
-    priority: must-have
-    status: done
-    owner: "accessibility-specialist"
-    estimate_days: 1.0
-    blocker: ""
-    completed: "2026-05-21"
-
-  - id: "10-5"
-    name: "Advance-loop orchestrator extraction (partial — pure compute)"
-    file: "apps/web/src/lib/server/advance-orchestrator.ts"
+  - id: "11-4"
+    name: "Day-by-day tick implementation"
+    file: "apps/api/src/modules/advance/orchestrator.ts"
     priority: should-have
-    status: done
+    status: backlog
     owner: "web-backend-specialist"
-    estimate_days: 2.0
-    blocker: ""
-    completed: "2026-05-21"
+    estimate_days: 2.5
+    blocker: "11-1 + 11-2 must complete first"
+    completed: ""
 
-  - id: "10-6"
-    name: "Polish-phase playtest #1 (deferred — Pablo runs solo)"
-    file: "production/playtests/TBD-polish-sprint-10.md"
+  - id: "11-5"
+    name: "Playtest Polish #1 (diferido de 10-6)"
+    file: "production/playtests/TBD-polish-sprint-11.md"
     priority: nice-to-have
     status: blocked
     owner: "Pablo"
     estimate_days: 0.5
-    blocker: "Pablo's availability"
+    blocker: "Disponibilidad Pablo"
     completed: ""
