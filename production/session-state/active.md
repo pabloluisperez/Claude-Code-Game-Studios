@@ -2,12 +2,72 @@
 
 <!-- STATUS -->
 Stage: Polish
-Epic: Sprint 11 — CLOSED
-Feature: Orchestrator full + ADR-020 + tick diario foundation + A11y P1
-Task: Sprint 11 closed — APPROVED WITH CONDITIONS · awaiting Pablo's next instruction
+Epic: Sprint 12 — CLOSED
+Feature: Mid-week pause (ADR-020 §6) + A11y P2 + soak protocol + Pablo validation pending
+Task: Sprint 12 closed — APPROVED WITH CONDITIONS · 12-4 manual pass pendiente (Pablo ~1h)
 <!-- /STATUS -->
 
 ## Active workstream
+
+**🎯 SPRINT 12 — ✅ CLOSED** (2026-05-21)
+
+Third Polish-phase sprint complete. 4 of 5 stories closed (1 blocked on
+Pablo's manual validation pass). Mid-week pause feature shipped — the long-
+deferred ADR-020 §"Enables" debt. A11y audit fully closed (P0+P1+P2 = 13/13).
+
+- Sprint plan: `production/sprints/sprint-12.md`
+- QA plan: `production/qa/qa-plan-sprint-12-2026-05-21.md`
+- QA sign-off: `production/qa/qa-signoff-sprint-12-2026-05-21.md` — APPROVED WITH CONDITIONS
+- Smoke: `production/qa/smoke-sprint-12-2026-05-21.md` — PASS, 1091/1091 + 5 todo
+- A11y P2 evidence: `production/qa/evidence/a11y-p2-sprint-12.md` (3/3 P2 closed)
+- Soak protocol: `production/qa/soak-test-protocol.md` (runner deferred Sprint 13)
+
+### Sprint 12 deliverables (chronological)
+
+| Commit | Story | Done |
+|---|---|---|
+| `11e5b21` | Plan | Sprint 12 plan + QA plan |
+| `7a56387` | 12-1 | STOP event scheduledDayOfSeason + per-day halt loop + 22 tests + migration 0022 |
+| `f8a0ebe` | 12-2 | AdvanceTransition `startDayOfWeek` prop + server-driven resume + 13 tests |
+| `ff5dbbf` | 12-3 | A11y P2 batch (skip-link + heading levels + sponsor labels) + 12 tests |
+| `6c0cc09` | 12-5 | Soak test protocol scaffolding |
+| (this commit) | 12-end | Sprint 12 smoke + QA sign-off + session-state refresh |
+
+### Carry-forward to Sprint 13
+
+1. **Polish→Release gate-check** (`/gate-check polish`) — needs 12-4 done first.
+2. **Soak test runner** — protocol exists; CLI + nightly CI lands Sprint 13.
+3. **Live DB integration tests** for STOP halt (5 `it.todo` flags ready).
+4. **Browser e2e expansion** — Playwright happy-path test for mid-week pause flow.
+5. **Manual validation pass 12-4** (Pablo) — blocking item:
+   - Part A: A11y P1+P2 keyboard walkthrough (~10 min)
+   - Part B: Browser e2e advance flow incl. STOP halt (~10 min)
+   - Part C: Playtest Polish #1 ~45 min
+   - Reporte en `production/playtests/YYYY-MM-DD-polish-sprint-12.md`
+
+### Recommended next user action
+
+**Pablo: ejecutar manual validation pass (12-4) cuando puedas ~1h continuo.**
+
+Cuando esté listo, voy a guiarte paso a paso por:
+- Part A keyboard pass (skip-link, dialogs, tabs, balance icon, dropdown)
+- Part B browser e2e con synthetic STOP event mid-week
+- Part C playtest ~45 min con foco en mid-week pause feel
+
+Otra alternativa: arrancar `/sprint-plan new` para Sprint 13 (soak runner +
+Polish→Release gate prep) ANTES del playtest, así Sprint 13 está scoped y
+sólo falta correr el playtest cuando tengas tiempo.
+
+### Cumulative session commits (Sprint 12)
+
+6 commits this session, todos en `project/SoccerManagerTotal`:
+`11e5b21` → `7a56387` → `f8a0ebe` → `ff5dbbf` → `6c0cc09` → (closeout).
+
+Test growth: 1046 baseline (Sprint 11) → **1091 passing** + 5 todo. Net +45.
+
+---
+
+## Earlier workstreams (historical context, do not act on)
 
 **🎯 SPRINT 11 — ✅ CLOSED** (2026-05-21)
 

@@ -21,31 +21,31 @@ stories:
     name: "STOP event scheduledDayOfSeason + per-day loop con halt"
     file: "apps/web/src/lib/server/advance-orchestrator.ts"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "web-backend-specialist"
     estimate_days: 2.0
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "12-2"
     name: "Advance-transition modal resume-from-day"
     file: "apps/web/src/lib/components/advance-transition.svelte"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "gameplay-programmer"
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "12-3"
     name: "A11y P2 batch (skip-link + heading levels + sponsor labels)"
     file: "production/qa/evidence/a11y-p2-sprint-12.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "accessibility-specialist"
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "12-4"
     name: "Manual validation pass (Pablo) — walkthrough + e2e + Playtest #1"
@@ -58,11 +58,11 @@ stories:
     completed: ""
 
   - id: "12-5"
-    name: "Soak test protocol scaffolding"
+    name: "Soak test protocol scaffolding (runner deferred to Sprint 13)"
     file: "production/qa/soak-test-protocol.md"
     priority: nice-to-have
-    status: backlog
+    status: done
     owner: "qa-lead"
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
