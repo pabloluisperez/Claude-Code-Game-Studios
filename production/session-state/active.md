@@ -7,12 +7,24 @@ Feature: Overnight 2026-05-22 — 11 new HD sprites + /stadium visual upgrade + 
 Task: Awaiting Pablo return — review overnight batch (assets, route change, launch post)
 <!-- /STATUS -->
 
-## 🌙 Overnight 2026-05-22 — Asset pipeline + visual integration
+## 🌙 Overnight 2026-05-22 — Asset pipeline + visual integration + launch comms
 
 **Pablo authorization**: "puedes continuar implementando sin parar, me voy a
 dormir. si terminas con assets con otras cosas, funcionalidades, etc."
 
-### What landed (5 commits on `project/SoccerManagerTotal`)
+### Final smoke gate
+
+```
+packages/shared:   996/996  ✅
+apps/api:           72/72   ✅
+apps/web:          220/220  ✅ (+5 todo)
+                  ─────────
+TOTAL:           1288/1288  ✅
+```
+
+0 regressions. Overnight didn't break anything.
+
+### What landed (7 commits on `project/SoccerManagerTotal`)
 
 | Commit | Subject |
 |---|---|
@@ -20,7 +32,9 @@ dormir. si terminas con assets con otras cosas, funcionalidades, etc."
 | `29a7edd` | feat(assets): add 9 HD prop sheets + character sheets |
 | `8cd69aa` | docs(assets): add HD sprite MANIFEST.md + raw workspace README |
 | `e4d2c7a` | feat(stadium): replace 🏟 placeholder with HD tier-aware sprite |
-| (this) | docs(overnight): session-state + changelog + launch post drafts |
+| `f1d0422` | docs(overnight): session-state + changelog + launch post drafts |
+| `a9e9b43` | feat(web): full icon set + PWA manifest + favicon wiring |
+| `f38f8a6` | docs(marketing): press kit + trailer storyboard for v1.0 launch |
 
 ### Assets pipeline (19 canonical HD sprites in `assets/sprites/city-hd/`)
 
@@ -77,31 +91,99 @@ tu progreso visible" documenting the HD tier visual evolution.
 - Notas de canal con priorización + reglas por subreddit
 - Screenshot recommendations
 
+### Web app changes (deployed via apps/web/static + src/app.html)
+
+- **`/stadium` route**: HD sprite tier-aware (T0-T3) replaces 🏟 placeholder
+- **Favicon set**: 16/32/64/128/192/256/512 + apple-touch + site.webmanifest
+- **App shell**: html lang="es", meta description, theme-color, PWA-ready
+
+### Release-checklist progress (release-checklist.md)
+
+Auto-closed lines (no human needed):
+- §2 Logo + iconos ✅ (overnight artifact)
+- §3 License (MIT verified) ✅
+- §7 Launch post draft ✅
+- §7 Trailer storyboard ✅
+- §7 Press kit ✅
+
+Still needs human (unchanged):
+- §1 Playwright e2e (manual run)
+- §1 Lighthouse perf score (browser)
+- §2 Real screenshots (production build)
+- §3 GDPR data-export endpoint (backlog v1.1)
+- §4 Performance benchmarks (autocannon, EXPLAIN ANALYZE, Chrome throttling)
+- §5 Migration smoke + backup restore practice
+- §8 Go/No-Go decision
+
+### Marketing artifacts (production/marketing/)
+
+- `launch-post-v1.0.md` — 2 versiones (short socials, long blog/Reddit/HN)
+- `press-kit-v1.0.md` — boilerplate, asset listing, streamer policy, tech info
+- `trailer-storyboard-v1.0.md` — 45s storyboard text, 30s vertical edit
+
 ### Open questions for Pablo
 
-1. **Launch post — channels + timing**: el draft sugiere Twitter/Bluesky/
-   Mastodon/Reddit/HN/itch.io. ¿Cuáles te interesan publicar y cuándo? El
-   link `tusoccermanager.example.com` está como TBD — necesito el dominio real.
+1. **Launch post — channels + timing + dominio**: el draft sugiere Twitter/
+   Bluesky/Mastodon/Reddit/HN/itch.io. ¿Cuáles te interesan publicar y cuándo?
+   El link `tusoccermanager.example.com` es TBD — necesito el dominio real
+   para los CTAs en launch post + trailer + press kit.
 
 2. **`/city` canvas HD integration**: ¿lo hacemos ahora supervisado, lo
-   dejamos para v1.1, o nunca (HD sólo en /stadium close-up)?
+   dejamos para v1.1, o nunca (HD sólo en /stadium close-up)? Mi recomendación
+   = nunca. La separación funciona bien: /city isométrica programática para
+   vista general, /stadium HD close-up. El estadio HD en el isométrico haría
+   inconsistente la escala con el resto de tiles.
 
-3. **Manual validation pendiente** (mantenida desde antes del overnight):
-   - GDPR endpoints (~30 min)
+3. **GDPR data-export endpoint** (§3 unchecked): backlog v1.1 actualmente,
+   pero Privacy Policy §7 lo promete. Si quieres lo implemento en una sesión
+   supervisada (~30 min de código + tests).
+
+4. **Trailer video production**: storyboard listo. ¿Lo produces post-launch
+   (recomendado, ~6-8h)? Si tocas guitarra acústica, el soundtrack DIY
+   queda perfecto para el tono buscado.
+
+5. **Manual validation pendiente** (sin cambios overnight):
    - Sprint 12-4 keyboard walkthrough (~10 min)
    - Sprint 12-4 STOP halt e2e (~10 min)
    - Playtest Polish #1 (~45 min)
+   - Build verification §1: Playwright e2e (~30 min)
+   - Performance §4: autocannon + EXPLAIN ANALYZE + Chrome throttling (~45 min)
+   - Backup restore practice (~30 min)
 
 ### Recommended next user action
 
-Cuando despiertes:
-1. Abre `/stadium` en dev local — debería mostrar el sprite HD del tier
-   actual de tu club. Si te gusta, esto cierra el feedback loop del art-bible.
-2. Lee `production/marketing/launch-post-v1.0.md` y decide canales/dominio.
-3. Si querés ver todos los assets nuevos en un grid: `open assets/sprites/city-hd/`
+Cuando despiertes (en orden de impacto):
 
-Total tiempo overnight: ~3h. Total tokens: high — asset generation es token-light
-(las imágenes vienen de ComfyUI local, no del LLM).
+1. **Abre `/stadium` en dev local** (`turbo dev` y luego http://localhost:5173/stadium)
+   — deberías ver el sprite HD del tier actual del club. Si te gusta, cierra
+   el feedback loop del art-bible §3.4 ("crecimiento visible").
+
+2. **Abre cualquier ruta en el browser** y mirá la pestaña — el favicon nuevo
+   (balón con verde-grass) debería estar visible.
+
+3. **Lee los 3 docs de marketing** (~15 min total):
+   - `production/marketing/launch-post-v1.0.md`
+   - `production/marketing/press-kit-v1.0.md`
+   - `production/marketing/trailer-storyboard-v1.0.md`
+   Decide: dominio real, canales de publicación, timing.
+
+4. **Visual review del batch de assets** (~10 min):
+   `open assets/sprites/city-hd/` — 19 sprites HD. Cualquiera que no te
+   guste, lo regeneramos en una sesión supervisada.
+
+5. **Resolve open questions** §1-5 arriba para destrabar v1.0.0 tag.
+
+### Stats overnight
+
+- Total tiempo: ~3h
+- Commits: 7
+- Tests verdes: 1288/1288 (sin regresión)
+- Assets nuevos generados: 11 HD sprites + 8 icon sizes + webmanifest
+- Docs nuevos: 5 (manifest, _raw/README, press kit, launch post, trailer SB)
+- Docs actualizados: 3 (release-checklist, changelog-v1.0, this active.md)
+- Líneas de código modificadas: ~50 (app.html + /stadium svelte)
+- Release-checklist lines auto-cerradas: 5 (§2 iconos, §3 license, §7 launch
+  post, §7 trailer, §7 press kit)
 
 ---
 
