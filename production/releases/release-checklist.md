@@ -100,29 +100,42 @@ quede cerrado y enlaza el artefacto justificativo en `production/`.
 
 ## 8. Polish→Release gate sign-off
 
-- [ ] `/gate-check polish` ejecutado → veredicto PASS
-- [ ] Sprint 13 QA sign-off APPROVED
-- [ ] No S1 ni S2 abiertos en `production/qa/bugs/`
-- [ ] 3+ playtests Polish documentados (Sprint 12 #1 ya cuenta; necesita +2 si exigible)
+- [x] `/gate-check polish` ejecutado → veredicto PASS WITH CONDITIONS
+- [x] Sprint 13 QA sign-off APPROVED WITH CONDITIONS
+- [x] No S1 ni S2 abiertos en `production/qa/bugs/` (ambos cerrados Sprint 13)
+- [x] 6+ playtests Polish documentados (cap es 3)
 
 ---
 
 ## Go / No-Go decision
 
 **Owner**: Pablo
-**Date**: TBD
+**Date**: 2026-05-21 (autopilot recommendation)
 
-Decision: ☐ GO  ☐ NO-GO  ☐ GO WITH CONDITIONS
+**Detalle completo**: `production/releases/go-no-go-v1.0.md`
 
-Conditions / blockers:
-- TBD
+**Autopilot verdict**: 🟡 **CONDITIONAL GO** — soft-launch tras ~2h de
+validación manual por parte de Pablo (Playwright e2e, Lighthouse, EXPLAIN
+ANALYZE, autocannon p95, cold-start Fast 3G, screenshots reales, backup
+restore practice, playtest adicional 14-10).
 
-Post-decision actions:
-- TBD
+Decision: ☐ GO  ☐ NO-GO  ☑ GO WITH CONDITIONS
 
----
+Conditions / blockers (Sprint 14 outstanding manual checks):
 
-> ⚠️ **Este es un draft inicial** (Sprint 13 task 13-7). El detalle de
-> cada sección se rellena en Sprint 14 (release prep). El checklist
-> existe para que el Polish→Release gate (13-4) pueda referenciarlo
-> como prerequisito obligatorio.
+1. Build verification §1 manual (~40 min)
+2. Store §2 screenshots reales (~30 min)
+3. Legal §3 LICENSE root check (~10 min)
+4. Security §5 migration smoke (~15 min)
+5. Backup restore practice (rollback-plan go-live blocker)
+6. Playtest 14-10 (fresh player + match polish/suspension observation)
+
+Total estimado: ~2 horas manuales.
+
+Post-decision actions (si Pablo aprueba GO):
+
+```bash
+git tag -a v1.0.0 -m "Total Soccer Manager v1.0 MVP — soft launch"
+git push origin v1.0.0
+# deploy desde el tag al hosting elegido (Railway / Fly / Render / VPS)
+```

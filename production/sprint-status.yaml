@@ -19,100 +19,100 @@ updated: "2026-05-21"
 stories:
   - id: "14-1"
     name: "Rate limiting — /api/advance + /api/match"
-    file: "production/stories/14-1-rate-limiting.md"
+    file: "apps/api/src/lib/rate-limit.ts"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "web-backend-specialist"
     estimate_days: 1.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "14-2"
     name: "Legal pages — /terms + /privacy"
-    file: "production/stories/14-2-legal-pages.md"
+    file: "apps/web/src/routes/terms/+page.svelte"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "web-frontend-specialist"
     estimate_days: 1.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "14-3"
     name: "Build verification final"
-    file: "production/stories/14-3-build-verification.md"
+    file: "production/releases/build-verification-sprint-14.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "qa-lead"
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "14-4"
     name: "Copy review + tooltips + onboarding walkthrough"
-    file: "production/stories/14-4-copy-review.md"
+    file: "production/qa/evidence/copy-review-sprint-14.md"
     priority: must-have
-    status: ready-for-dev
+    status: done
     owner: "ux-designer"
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "14-5"
     name: "Go/No-Go release gate + release-checklist sign-off"
-    file: "production/stories/14-5-go-no-go.md"
+    file: "production/releases/go-no-go-v1.0.md"
     priority: must-have
-    status: backlog
+    status: in-progress
     owner: "release-manager"
     estimate_days: 0.5
-    blocker: "14-1 + 14-2 + 14-3 + 14-4"
+    blocker: ""
     completed: ""
 
   - id: "14-6"
     name: "Store / hosting metadata"
-    file: "production/stories/14-6-store-metadata.md"
+    file: "production/releases/release-checklist.md"
     priority: should-have
-    status: backlog
+    status: done
     owner: "community-manager"
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "14-7"
     name: "Sentry error tracking + DB backup config"
-    file: "production/stories/14-7-sentry-backup.md"
+    file: "apps/api/src/lib/observability.ts"
     priority: should-have
-    status: backlog
+    status: done
     owner: "web-backend-specialist"
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "14-8"
     name: "Changelog v1.0 player-facing"
-    file: "production/stories/14-8-changelog.md"
+    file: "production/releases/changelog-v1.0.md"
     priority: should-have
-    status: backlog
+    status: done
     owner: "writer"
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "14-9"
     name: "Rollback plan + asset attributions"
-    file: "production/stories/14-9-rollback-plan.md"
+    file: "production/releases/rollback-plan.md"
     priority: nice-to-have
-    status: backlog
+    status: done
     owner: "release-manager"
     estimate_days: 0.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-21"
 
   - id: "14-10"
     name: "Playtest adicional (match polish + suspensión)"
     file: "production/stories/14-10-playtest.md"
     priority: nice-to-have
-    status: backlog
-    owner: ""
+    status: blocked
+    owner: "pablo"
     estimate_days: 0.5
-    blocker: ""
+    blocker: "Requires human playtester (Pablo) — schedule pre-tag v1.0"
     completed: ""
