@@ -12,6 +12,7 @@ import { createMatchRoutes } from './modules/match/routes.js';
 import { createManagerRpgRoutes } from './modules/manager-rpg/routes.js';
 import { createStaffRoutes } from './modules/staff/routes.js';
 import { createTVRightsRoutes } from './modules/tv-rights/routes.js';
+import { createMeRoutes } from './modules/me/routes.js';
 import { createSocketServer } from './socket/index.js';
 import { registerScheduledJobs, matchQueue } from './jobs/queues.js';
 
@@ -40,6 +41,7 @@ const app = new Hono()
   .route('/manager-rpg', createManagerRpgRoutes())
   .route('/staff', createStaffRoutes())
   .route('/tv', createTVRightsRoutes())
+  .route('/me', createMeRoutes())
   .get('/health', (c) => c.json({ status: 'ok' }));
 
 export type AppType = typeof app;

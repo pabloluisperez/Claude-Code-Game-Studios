@@ -176,6 +176,13 @@
       "when": 1779370900000,
       "tag": "0024_player_suspension_matches",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1779375900000,
+      "tag": "0025_gdpr_deletion_request",
+      "breakpoints": true
     }
   ]
 }
