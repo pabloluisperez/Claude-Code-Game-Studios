@@ -22,30 +22,21 @@ import {
   loadAdvanceContext,
 } from '@smt/db';
 import {
-  CASCADA_FC_GRAPH,
-  createSeededRng,
   defaultWorldState,
   generateStaffMessages,
-  runTick,
   weekToDate,
-  type DelayedEffectsBuffer,
   type StaffRole,
   type StaffQualityTier,
   type WorldState,
 } from '@smt/shared';
-import { popEffectsDueAt } from '@smt/shared/sim/delayed-effects';
 import { runMatchDay } from '$lib/server/match-day-runner';
 import { applyEconomyTick } from '$lib/server/economy-tick';
-import {
-  persistTVTickEffects,
-  runTVPostPhase,
-  runTVPrePhase,
-} from '$lib/server/tv-rights-tick';
+import { persistTVTickEffects } from '$lib/server/tv-rights-tick';
 import { checkAndRolloverSeason } from '$lib/server/season-rollover';
 import { detectAndPersistMilestones } from '$lib/server/milestones';
 import { grantWeeklyManagerXp } from '$lib/server/manager-xp';
-import { maybeDripSeasonTickets } from '$lib/server/season-tickets';
 import { generateAmbientStaffMessages } from '$lib/server/ambient-staff';
+import { runAdvanceTickCore } from '$lib/server/advance-orchestrator';
 
 export const load: PageServerLoad = async ({ parent, url }) => {
   const { user, activePlaythrough } = await parent();
@@ -258,89 +249,36 @@ export const actions: Actions = {
     if (!ctx) return fail(400, { error: 'No hay carrera activa.' });
 
     const active = ctx.playthrough;
-    const basePrevState = ctx.prevState;
-    const prevBuffer = ctx.prevBuffer;
-
-    // Inject the user-chosen training intensity into the prevState so the
-    // cascade reads it as the manager decision for this tick.
-    const prevState: Readonly<WorldState> = {
-      ...(basePrevState as Record<string, number>),
-      training_intensity: active.trainingIntensity ?? 50,
-    } as unknown as WorldState;
 
     const nextWeek = ctx.latestWeek + 1;
     const currentDivision = ctx.currentDivision;
     const tvCurrentSeason = ctx.currentSeason;
 
-    // ── TV PRE-PHASE (Tick Order pasos 1-5) — runs BEFORE cascade ──────────
-    const prevCorruption =
-      (prevState as Record<string, number>)['corruption_exposure'] ?? 0;
-    const tvPre = await runTVPrePhase({
-      playthroughId: active.id,
-      week: nextWeek,
-      season: tvCurrentSeason,
-      currentDivision,
-      prevCorruption,
+    // Sprint 10 task 10-5: pure-compute pipeline (TV pre + cascade + TV post +
+    // ticket drip + delayed-effects buffer) extracted into a single orchestrator
+    // function. Persistence (snapshot insert, currentWeek bump, match-day,
+    // staff messages, season rollover) stays inline in this action. See
+    // apps/web/src/lib/server/advance-orchestrator.ts for the full rationale.
+    const orchestrated = await runAdvanceTickCore({
+      ctx,
+      nextWeek,
+      trainingIntensity: active.trainingIntensity ?? 50,
+      tvCurrentSeason,
     });
 
-    // Inject TV-adjusted corruption into cascade prevState so the cascade
-    // sees the post-F-TV3 value when it computes its own deltas.
-    const prevStateForCascade: Readonly<WorldState> = {
-      ...(prevState as Record<string, number>),
-      corruption_exposure: tvPre.corruptionAfterTV,
+    // Destructure into the existing variable names used downstream so the rest
+    // of the action keeps its current shape (zero behavioral change).
+    const result = orchestrated.tickResult;
+    const tvPre = orchestrated.tvPre;
+    const tvPost = orchestrated.tvPost;
+    const ticketDrip = orchestrated.ticketDrip;
+    const stateAfterTickets = orchestrated.stateAfterTickets;
+    const nextBuffer = orchestrated.nextBuffer;
+    const prevCorruption = orchestrated.prevCorruption;
+    const prevState: Readonly<WorldState> = {
+      ...(ctx.prevState as Record<string, number>),
+      training_intensity: active.trainingIntensity ?? 50,
     } as unknown as WorldState;
-
-    // 1. Cascade tick
-    const result = runTick(
-      {
-        rng: createSeededRng(`${active.id}:${nextWeek}`),
-        currentWeek: nextWeek,
-        hasMatchThisWeek: false,
-        prevState: prevStateForCascade,
-      },
-      CASCADA_FC_GRAPH,
-      prevStateForCascade,
-      [],
-      prevBuffer,
-    );
-
-    // ── TV POST-PHASE (Tick Order pasos 6-8) — runs AFTER cascade ──────────
-    // Cascade's effect on corruption = nextState.corruption_exposure - corruptionAfterTV
-    const corruptionAfterCascade =
-      (result.nextState as Record<string, number>)['corruption_exposure'] ?? tvPre.corruptionAfterTV;
-    const externalDelta = corruptionAfterCascade - tvPre.corruptionAfterTV;
-    const tvPost = runTVPostPhase(
-      {
-        playthroughId: active.id,
-        week: nextWeek,
-        season: tvCurrentSeason,
-        currentDivision,
-        prevCorruption,
-      },
-      tvPre,
-      externalDelta,
-    );
-
-    // Patch the cascade's nextState with the post-phase final corruption value
-    // (paso 6 clamping + roundCorruption may differ slightly from cascade's
-    // free-running value).
-    (result.nextState as Record<string, number>)['corruption_exposure'] = tvPost.finalCorruption;
-
-    // 1b. Season-ticket weekly drip. New abonados sign up each week from
-    // the price-lock week through jornada 3 with a declining curve.
-    const ticketDrip = await maybeDripSeasonTickets({
-      playthroughId: active.id,
-      clubId: active.clubId,
-      currentWeek: nextWeek,
-    });
-    const stateAfterTickets = ticketDrip.paid
-      ? ({
-          ...(result.nextState as Record<string, number>),
-          financial_balance:
-            ((result.nextState as Record<string, number>)['financial_balance'] ?? 0) +
-            (ticketDrip.weeklyEurK ?? 0),
-        } as typeof result.nextState)
-      : result.nextState;
 
     // If new abonados arrived this week, drop a finance/fan headline as a
     // staff message so the user sees the signup wave.
@@ -400,9 +338,6 @@ export const actions: Actions = {
       tvWeeklyEurK: tvPre.revenue,
       fanLoyalty: tvPre.fanLoyalty,
     });
-
-    const { remaining } = popEffectsDueAt(prevBuffer, nextWeek);
-    const nextBuffer: DelayedEffectsBuffer = [...remaining, ...result.newDelayedEffects];
 
     // 4. Persist new snapshot + bump currentWeek + TV side-effects
     // Sprint 8 task 8-8: include cascade_log + threshold_crossings audit trail
