@@ -5,7 +5,7 @@
 
 | ID | Date | Category | Severity | File / Area | Title | Status |
 |----|------|----------|----------|-------------|-------|--------|
-| TD-001 | 2026-05-21 | Dependency / Type | Low | `apps/api/src/server.ts:47` | Hono+Node 26 Http2Server vs Server typing mismatch | Open |
+| TD-001 | 2026-05-21 | Dependency / Type | Low | `apps/api/src/server.ts:47` | Hono+Node 26 Http2Server vs Server typing mismatch | ✅ Resolved 2026-05-21 (Sprint 7) |
 
 ---
 
@@ -72,3 +72,14 @@ which transitively imports api types.
 - `cd apps/web && npx svelte-check --threshold error` returns 0 errors.
 - No new error introduced in any other consumer of the api package's exports.
 - Runtime smoke (`pnpm dev` + manual HTTP request) still works.
+
+### Resolution (2026-05-21 — Sprint 7 task 7-4)
+
+**Fix**: Widened the `createSocketServer` parameter type in `apps/api/src/socket/index.ts:14` from `httpServer: HttpServer` to `httpServer: HttpServer | Http2Server`. Socket.IO 4.x natively supports both server types, so no runtime change was needed — only the TypeScript signature.
+
+**Verification**:
+- `cd apps/web && npx svelte-check --threshold error` → 0 errors (was 1).
+- `@smt/api` vitest: 32 tests passing (4 files, no regression).
+- No call-site cast at `apps/api/src/server.ts:47` required — the widening at the consumer is the cleanest possible fix.
+
+**Commit**: see Sprint 7 commit log for the resolution change.
