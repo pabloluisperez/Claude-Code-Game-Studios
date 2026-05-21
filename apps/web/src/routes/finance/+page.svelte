@@ -43,17 +43,17 @@
     pendingSponsorAction = null;
   }
 
-  // RangeSlider is loaded client-only (the library touches window at
-  // module init which crashes SSR). On the server we render a fallback
-  // number input.
-  let RangeSlider = $state<typeof import('svelte-range-slider-pips').default | null>(null);
-  onMount(async () => {
-    if (browser) {
-      const mod = await import('svelte-range-slider-pips');
-      await import('svelte-range-slider-pips/dist/range-slider-pips.css');
-      RangeSlider = mod.default;
-    }
-  });
+  // Bug B2 fix (playtest 2026-05-21 Pablo): svelte-range-slider-pips v4.1.1
+  // is compiled against Svelte 4 (class-based components) and Svelte 5
+  // rejects it with 'Class constructor RangeSlider cannot be invoked
+  // without new'. The fallback native `<input type="range">` works fine
+  // for the Abonos price selector — we leave RangeSlider permanently null
+  // so the {:else} branch renders. If a Svelte 5-native slider library
+  // becomes available, swap this back in.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const RangeSlider: any = null;
+  void onMount;
+  void browser;
 
   let priceValues = $state<[number]>([data.club?.seasonTicketPriceEur ?? 35]);
   $effect(() => {
