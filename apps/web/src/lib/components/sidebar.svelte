@@ -28,6 +28,7 @@
     { href: '/finance',    icon: '💰', label: 'Finanzas' },
     { href: '/league',     icon: '🏆', label: 'Liga' },
     { href: '/calendar',   icon: '📅', label: 'Calendario' },
+    { href: '/city',       icon: '🗺', label: 'Ciudad' },
     { href: '/stadium',    icon: '🏟', label: 'Estadio' },
     { href: '/manager',    icon: '🧠', label: 'Mánager' },
   ] as const;

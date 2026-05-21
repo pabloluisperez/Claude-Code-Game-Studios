@@ -165,10 +165,18 @@ City progression NO se renderiza siempre — sólo en rutas específicas:
 
 | Ruta | Render |
 |------|--------|
-| `/stadium` | Full city + stadium |
-| `/match` (live) | Cámara dolly al estadio durante el partido |
+| `/city` | **Vista principal isométrica**: ciudad completa con estadio dentro + vida ambient (world-life.md) |
+| `/stadium` | **Close-up del estadio**: edificio en grande + UI de reformas. NO renderiza la ciudad — sólo el estadio aislado. |
+| `/match` (live) | Cámara dolly al estadio durante el partido (variante de `/city`) |
 | `/manager-office` | Despacho del manager (interior, un edificio del city) |
 | Resto (dashboard, finance, squad…) | NO canvas, sólo DOM (perf saving) |
+
+**Navegación entre /city y /stadium** *(Pablo decision 2026-05-21)*:
+
+- Desde `/city`, click en el cluster de tiles del estadio (4×4 centrado en
+  el tile 32,32 por defecto) → navega a `/stadium`.
+- Desde `/stadium`, botón "🗺 Ver ciudad completa" → vuelve a `/city`.
+- Sidebar muestra ambas entradas separadas (🗺 Ciudad / 🏟 Estadio).
 
 ---
 

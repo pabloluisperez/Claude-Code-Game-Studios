@@ -1,49 +1,84 @@
 <!--
-  /stadium — v1.1 Sprint 20-22.
+  /stadium — close-up del estadio con UI de reformas (v1.1 Sprint 22+).
 
-  Two render modes (per ADR-024):
-    - Default: <PixiCanvas> isometric view (data.useTextFallback === false)
-    - Fallback: DOM-only descriptive view (data.useTextFallback === true)
+  Pablo decision 2026-05-21: la sección Estadio muestra el edificio en grande.
+  El catálogo concreto de reformas (capacity upgrade, pitch upgrade, training
+  facility, etc.) se especifica en `design/gdd/stadium-upgrades.md` (TBD
+  Sprint 23) y se renderiza aquí como cards de compra.
 
-  Both modes read the same `data.worldView` — they are visual variants of
-  the same underlying state.
+  Para v1.1 launch sólo mostramos:
+    - Métricas actuales del estadio (capacidad, césped, infrastructure)
+    - Vista placeholder grande del estadio (centered)
+    - Lista de reformas posibles (UI lock — disabled hasta que el sistema
+      de upgrades esté implementado server-side)
 -->
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import PixiCanvas from '$lib/components/pixi-canvas.svelte';
   import { goto } from '$app/navigation';
   import type { PageData } from './$types';
-  import { pitchSurface } from '$lib/canvas/tier-derivation';
-  import { timeToDayNightBucket } from '@smt/shared';
 
   let { data }: { data: PageData } = $props();
-
-  // ADR-024 §D2: prefers-reduced-motion → default to text view.
-  // Only the client knows this preference, so we redirect once mounted.
-  onMount(() => {
-    if (typeof window === 'undefined') return;
-    if (data.useTextFallback) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      goto('/stadium?view=text', { replaceState: true });
-    }
-  });
 
   function tierLabel(t: 1 | 2 | 3 | 4): string {
     return ['', 'Pueblo Olvidado', 'Club Emergente', 'Club Establecido', 'Imperio Local'][t];
   }
 
-  function weatherLabel(w: 'clear' | 'rain'): string {
-    return w === 'rain' ? '🌧 Lluvia' : '☀ Despejado';
+  function pitchLabel(p: string): string {
+    return {
+      dry: 'Tierra seca',
+      patchy: 'Parches de césped',
+      healthy: 'Césped completo',
+      pristine: 'Césped premium',
+    }[p] ?? p;
   }
 
-  function dayNightLabel(t: number): string {
-    const bucket = timeToDayNightBucket(t);
-    return {
-      dawn: '🌅 Amanecer',
-      day: '☀ Día',
-      dusk: '🌆 Atardecer',
-      night: '🌙 Noche',
-    }[bucket];
+  // Placeholder catalog — replaced by stadium-upgrades.md schema in Sprint 23.
+  const upgrades = [
+    {
+      id: 'pitch-upgrade',
+      icon: '🌱',
+      title: 'Mejorar el césped',
+      description: 'Aumenta infrastructure_level +10. El estado del campo influye en partidos en casa.',
+      cost: 75_000,
+      enabled: false,
+    },
+    {
+      id: 'stand-upgrade',
+      icon: '🏟',
+      title: 'Ampliar gradas',
+      description: 'Aumenta capacidad +50%. Más ingresos por entradas en partidos llenos.',
+      cost: 250_000,
+      enabled: false,
+    },
+    {
+      id: 'training-facility',
+      icon: '💪',
+      title: 'Centro de entrenamiento',
+      description: 'Mejora el desarrollo de jugadores jóvenes y la recuperación física tras partidos.',
+      cost: 180_000,
+      enabled: false,
+    },
+    {
+      id: 'youth-academy',
+      icon: '🎓',
+      title: 'Cantera juvenil',
+      description: 'Aumenta la probabilidad de producir un canterano cada temporada.',
+      cost: 200_000,
+      enabled: false,
+    },
+    {
+      id: 'lighting',
+      icon: '💡',
+      title: 'Iluminación nocturna',
+      description: 'Permite jugar partidos nocturnos. Ingreso TV ligeramente mayor.',
+      cost: 120_000,
+      enabled: false,
+    },
+  ];
+
+  function formatEur(amount: number): string {
+    if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(1)} M€`;
+    if (amount >= 1_000) return `${Math.round(amount / 1_000)} k€`;
+    return `${amount} €`;
   }
 </script>
 
@@ -51,19 +86,19 @@
   <title>Estadio · Total Soccer Manager</title>
 </svelte:head>
 
-<article class="prose max-w-5xl mx-auto py-6">
-  <header class="flex items-baseline justify-between flex-wrap gap-4 mb-6 not-prose">
+<article class="max-w-5xl mx-auto py-6">
+  <header class="flex items-baseline justify-between flex-wrap gap-4 mb-6">
     <div>
-      <h1 class="text-2xl font-bold">{data.derived?.clubName ?? 'Mi estadio'}</h1>
-      {#if data.derived}
+      <h1 class="text-2xl font-bold">Estadio de {data.club?.name ?? 'mi club'}</h1>
+      {#if data.stadium}
         <p class="opacity-70 text-sm">
-          {data.derived.clubCity} · Semana <span class="font-mono">{data.derived.week}</span> ·
-          Día <span class="font-mono">{data.derived.dayOfSeason}</span>
+          Tier {data.stadium.tier} — {tierLabel(data.stadium.tier)} · Capacidad
+          <span class="font-mono">{data.stadium.capacity.toLocaleString('es-ES')}</span>
         </p>
       {/if}
     </div>
-    <a href={data.meta?.alternateView} class="btn btn-ghost btn-sm">
-      {data.useTextFallback ? '🖼 Vista isométrica' : '📄 Vista en texto (accesible)'}
+    <a href="/city" class="btn btn-ghost btn-sm">
+      🗺 Ver ciudad completa
     </a>
   </header>
 
@@ -71,58 +106,78 @@
     <div class="alert alert-info">
       No tienes una carrera activa. <a href="/game" class="link">Crea una</a> para ver el estadio.
     </div>
-  {:else if data.useTextFallback || !data.worldView}
-    <!-- ADR-024 DOM fallback view -->
-    <section aria-labelledby="tier-h" class="not-prose mb-6">
-      <h2 id="tier-h" class="text-xl font-bold mb-2">
-        Nivel actual: Tier {data.worldView?.tier} — {tierLabel(data.worldView?.tier ?? 1)}
-      </h2>
-      <ul class="list-disc list-inside opacity-80">
-        <li>
-          Estado del campo:
-          <strong>{pitchSurface(data.worldView?.infrastructureLevel ?? 0)}</strong>
-        </li>
-        <li>Iluminación: {(data.worldView?.tier ?? 1) >= 2 ? 'instalada' : 'sin iluminación'}</li>
-        <li>
-          Tiempo: {dayNightLabel(data.worldView?.currentTimeOfDay ?? 0)} ·
-          {weatherLabel(data.worldView?.weather ?? 'clear')}
-        </li>
-      </ul>
-    </section>
+  {:else if data.stadium}
+    <!-- Stadium hero card -->
+    <section class="card bg-base-100 shadow mb-6">
+      <div class="card-body">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <h2 class="text-sm uppercase opacity-60 mb-1">Capacidad</h2>
+            <p class="text-2xl font-bold font-mono">
+              {data.stadium.capacity.toLocaleString('es-ES')}
+            </p>
+            <p class="text-xs opacity-50">asientos</p>
+          </div>
+          <div>
+            <h2 class="text-sm uppercase opacity-60 mb-1">Estado del campo</h2>
+            <p class="text-lg font-semibold">{pitchLabel(data.stadium.pitchSurface)}</p>
+            <p class="text-xs opacity-50">
+              Infrastructure level: <span class="font-mono">{data.stadium.infrastructureLevel}/100</span>
+            </p>
+          </div>
+          <div>
+            <h2 class="text-sm uppercase opacity-60 mb-1">Presupuesto disponible</h2>
+            <p class="text-2xl font-bold font-mono">{formatEur(data.stadium.budget)}</p>
+            <p class="text-xs opacity-50">para reformas</p>
+          </div>
+        </div>
 
-    <section aria-labelledby="actions-h" class="not-prose">
-      <h2 id="actions-h" class="text-xl font-bold mb-2">Acciones</h2>
-      <ul class="list-disc list-inside">
-        <li><a href="/dashboard" class="link">Volver al dashboard</a></li>
-        <li><a href="/squad" class="link">Ver plantilla</a></li>
-      </ul>
-    </section>
-  {:else}
-    <!-- ADR-021 canvas view -->
-    <section class="not-prose">
-      <div class="flex gap-4 flex-wrap items-center mb-3 text-sm">
-        <span class="badge badge-info">Tier {data.worldView.tier} — {tierLabel(data.worldView.tier)}</span>
-        <span class="badge">{dayNightLabel(data.worldView.currentTimeOfDay)}</span>
-        <span class="badge">{weatherLabel(data.worldView.weather)}</span>
-        <span class="opacity-60 text-xs">
-          Campo: {pitchSurface(data.worldView.infrastructureLevel)}
-        </span>
+        <!-- Placeholder visual del estadio en grande -->
+        <div class="mt-6 rounded bg-gradient-to-b from-base-200 to-base-300 p-12 text-center">
+          <div class="text-9xl mb-2" aria-hidden="true">🏟</div>
+          <p class="text-sm opacity-60">
+            Vista isométrica del estadio en grande (Sprint 23 — placeholder).
+            <br />
+            Aquí se renderizará el close-up con el modelo completo de tu estadio.
+          </p>
+        </div>
       </div>
+    </section>
 
-      <PixiCanvas
-        worldView={data.worldView}
-        width={960}
-        height={540}
-        onTileClick={(coord) => {
-          // Placeholder — Sprint 21 wires this to actual destinations
-          console.log('Tile clicked:', coord);
-        }}
-      />
-
-      <p class="text-xs opacity-60 mt-2">
-        Vista en desarrollo (v1.1). ¿Problemas para verla?
-        <a href="/stadium?view=text" class="link">Cambia a vista en texto</a>.
+    <!-- Reformas catalog -->
+    <section aria-labelledby="upgrades-h">
+      <h2 id="upgrades-h" class="text-xl font-bold mb-3">Reformas disponibles</h2>
+      <p class="text-sm opacity-70 mb-4">
+        Cada reforma cuesta tiempo y dinero. El sistema completo se desbloquea en
+        próximas versiones. Por ahora puedes ver el catálogo.
       </p>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {#each upgrades as upgrade (upgrade.id)}
+          <article class="card bg-base-100 shadow border border-base-300">
+            <div class="card-body">
+              <div class="flex items-start gap-3">
+                <span class="text-3xl" aria-hidden="true">{upgrade.icon}</span>
+                <div class="flex-1">
+                  <h3 class="card-title text-base">{upgrade.title}</h3>
+                  <p class="text-sm opacity-80 mt-1">{upgrade.description}</p>
+                </div>
+              </div>
+              <div class="card-actions justify-between items-center mt-4">
+                <span class="font-mono text-sm">{formatEur(upgrade.cost)}</span>
+                <button
+                  class="btn btn-primary btn-sm"
+                  disabled={!upgrade.enabled || data.stadium.budget < upgrade.cost}
+                  aria-disabled={!upgrade.enabled || data.stadium.budget < upgrade.cost}
+                  title={!upgrade.enabled ? 'Próximamente — Sprint 23' : ''}
+                >
+                  {upgrade.enabled ? 'Comprar' : 'Próximamente'}
+                </button>
+              </div>
+            </div>
+          </article>
+        {/each}
+      </div>
     </section>
   {/if}
 </article>
