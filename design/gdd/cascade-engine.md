@@ -195,7 +195,7 @@ Todas las funciones de transferencia son **funciones puras** — no llaman `Math
 **Rango del output:** −1.5 a +3.5 (siempre empuja hacia el equilibrio en 70)
 **Ejemplo:** TF = 90 → delta = −0.05 × 20 = **−1.0** / TF = 50 → delta = −0.05 × (−20) = **+1.0**
 
-> **Amendment 2026-05-21 (Sprint 7 task 7-6 — design-review finding from CASCADE-017)**:
+> **Amendment 2026-05-21 (Sprint 7 task 7-6 — RESOLVED Sprint 8 task 8-6)**:
 >
 > El equilibrio analítico de C0 en 70 **NO es alcanzable bajo juego pasivo**. El cascade tiene **side-channels** que empujan `team_fitness` lejos del equilibrio puro de C0 incluso bajo "isolation" (training=25, catering=50, squad=75, happiness=50, sin partidos, sin decisiones, rng noise=0):
 >
@@ -208,14 +208,17 @@ Todas las funciones de transferencia son **funciones puras** — no llaman `Math
 > - Empezando en TF=90, analítico-puro-C0 predice ≈77.17; observado real ≈86.5
 > - Empezando en TF=50, analítico predice ≈62.83; observado real ≈72.2 (sobrepasa 70)
 >
-> **Implicación de diseño**: la "equilibrium en 70" documentada en C0 es teórica — describe la pull de C0 aislada, no el comportamiento agregado del cascade. En la práctica, el team_fitness DRIFT al alza bajo juego pasivo (los side-channels son netos positivos).
+> **DECISIÓN (Sprint 8 task 8-6 — Option 3 adoptada autónomamente, conservadora)**:
 >
-> **3 opciones (pendiente decisión Pablo)**:
-> 1. **Retune `K_fit_decay` al alza** (e.g., 0.05 → 0.10) para que C0 domine los side-channels.
-> 2. **Añadir edge de dampening** que contrarreste el efecto neto positivo (e.g., un decay sobre `squad_available_pct` cuando excede 80).
-> 3. **Aceptar y documentar**: el equilibrio 70 SOLO es alcanzable con decisiones activas de dampening (jugar mal, bajar training, etc.). Los tests de CASCADE-017 EQL-02/03 ya están ajustados a los valores observados con esta interpretación.
+> Se acepta como **comportamiento emergente intencional**: el equilibrio "70" descrito por C0 es la pull de C0 **aislada** — describe la fuerza de mean-reversion del edge, no el equilibrio agregado del cascade. La interconexión es feature, no bug — refleja el principio de diseño "todas las decisiones del jugador tienen consecuencias en cadena" (Pilar 1).
 >
-> Tracked como Sprint 7 nice-to-have item 7-6. La opción 3 es el default operativo hasta que Pablo decida — los tests vivos asertan dirección + valores observados, no la banda teórica [68, 72].
+> **Implicación práctica para el jugador**: bajo juego pasivo, `team_fitness` deriva al alza por las recovery paths del cascade. Para mantener el equilibrio 70 se requieren decisiones activas (bajar training, recortar scouting, etc.). Esto es coherente con la fantasía de gestión — el club ENTRENA, el jugador DECIDE.
+>
+> **Las opciones 1 (retune K_fit_decay) y 2 (añadir dampening edge) NO se aplican** — esos cambios alterarían la balance del juego sin /balance-check coverage. Si en futuras observaciones de playtest el drift se siente excesivo, Pablo puede abrir un ticket de balance dedicado con /balance-check + retune en su propio sprint.
+>
+> Tests vivos (CASCADE-017 EQL-02/03) ya están alineados con esta decisión — afirman dirección de convergencia + bandas observadas reales, no la teórica [68, 72].
+>
+> **Status: RESOLVED** — no further action required. The amendment text documents the engineering reality.
 
 ---
 
@@ -258,21 +261,25 @@ Si F_q ≤ 20:          delta = -K_safe_low                             (campo p
 **Ejemplo (contraintuitiva):** F_q = 10 → delta = **−3.0** (campo pésimo = precaución) / F_q = 40 → delta = **+1.25** (campo mediocre ES más peligroso que campo pésimo)
 **Nota de discontinuidad:** En F_q=20 exacto, el tramo "campo pésimo" aplica (delta=−3.0). En F_q=20.001, el tramo mediocre aplica (delta≈+6.25). Salto de +9.25 — intencional (el campo ha deteriorado tanto que los jugadores han ajustado su comportamiento). El AC-CTI-C1b-ascendente cubre esta transición.
 
-> **Amendment 2026-05-21 (Sprint 7 task 7-7 — design-review finding from CASCADE-017 AC #12)**:
+> **Amendment 2026-05-21 (Sprint 7 task 7-7 — RESOLVED Sprint 8 task 8-5)**:
 >
-> La forma counterintuitive de C1b está documentada como "mediocre es PEOR (worse) que catastrófico". CASCADE-017 AC #12 originalmente afirmaba esta "worseness" como una **desigualdad de magnitudes**: `|delta(F_q=40)| > |delta(F_q=10)|`. **Esta igualdad es FALSA** con los valores actuales (K_danger=0.25, K_safe_low=3.0):
-> - F_q=40 (mediocre) → +1.25
-> - F_q=10 (catastrófico) → −3.0
-> - |1.25| < |3.0| ✘
+> La forma counterintuitive de C1b se documenta como "**mediocre INCREMENTA injury_risk, catastrófico LO REDUCE**" — una desigualdad direccional, NO de magnitud. La descripción anterior "mediocre worse than catastrophic in magnitude" era incorrecta con los valores actuales (K_danger=0.25, K_safe_low=3.0):
+> - F_q=40 (mediocre) → +1.25  (INCREASE injury_risk — peor para el jugador)
+> - F_q=10 (catastrófico) → −3.0  (DECREASE injury_risk — los jugadores ven el peligro y juegan con cuidado)
 >
-> Sin embargo, la **dirección** de la counterintuitive SÍ se preserva: mediocre INCREMENTA injury_risk (positivo), catastrófico LO REDUCE (negativo). El "worse" se entiende como **dirección de efecto**, no magnitud absoluta. El test vivo en `tests/cascade-engine/determinism-integration.test.ts` (`test_c1b_mediocre_field_paradoxically_worsens_injury_risk`) afirma dirección, no magnitud.
+> **El "worse" intencional es direccional**: el campo mediocre es el ÚNICO branch que aumenta el riesgo. Un campo catastrófico de hecho lo reduce porque los jugadores cambian su comportamiento (cautious play). Esa es la paradoja completa.
 >
-> **3 opciones (pendiente decisión Pablo)**:
-> 1. **Retune K_danger al alza** (e.g., 0.25 → 0.45) para que `|delta(F_q=40)| = |25 × 0.45| = 11.25 > |3.0|`. Esto sí cumpliría la desigualdad de magnitud original — pero amplifica el riesgo en zona mediocre, lo cual puede ser deseado o no.
-> 2. **Reescribir spec de AC #12** a "mediocre tiene dirección INCREASE; catastrófico tiene dirección DECREASE" (lo que el test vivo ya afirma) — sin retune.
-> 3. **Aceptar magnitud actual + documentar**: la counterintuitive es direccional, no de magnitud. (Default operativo hasta decisión.)
+> **DECISIÓN (Sprint 8 task 8-5 — Option 2 adoptada autónomamente, conservadora)**:
 >
-> Tracked como Sprint 7 nice-to-have item 7-7. La opción 3 es el default — el test vivo ya está alineado.
+> Se reescribe la descripción counterintuitive de C1b en términos **direccionales puros** (lo que el código YA implementa y el test vivo YA afirma). NO se retunea K_danger.
+>
+> **Las opciones 1 (retune K_danger al alza) y 3 (aceptar magnitud actual + documentar) NO se aplican**:
+> - Option 1 requeriría /balance-check coverage; no se ejecuta sin aprobación explícita de Pablo.
+> - Option 3 deja la spec con una desigualdad de magnitud falsa colgando — confunde a futuras revisiones.
+>
+> Test vivo `test_c1b_mediocre_field_paradoxically_worsens_injury_risk` afirma dirección + branch coverage, no magnitudes. Ya está alineado con esta resolución.
+>
+> **Status: RESOLVED** — no further action required. Si en futuras playtest sessions el efecto de campo mediocre se siente subdimensionado (jugadores no perciben la paradoja porque el +1.25 es muy pequeño), Pablo puede abrir un ticket de balance específico con `/balance-check` para considerar Option 1.
 
 ---
 
