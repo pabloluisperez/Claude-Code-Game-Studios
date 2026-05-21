@@ -287,12 +287,22 @@
             <h1 class="card-title text-2xl">{data.activePlaythrough?.clubName ?? 'Mi club'}</h1>
             <p class="opacity-70 text-sm">
               <span>{data.todayPrecise.displayLong}</span>
-              · semana <span class="font-mono">{data.week}</span>
+              ·
+              <span
+                class="tooltip tooltip-bottom font-mono"
+                data-tip="Semana actual de la temporada (38 jornadas + descanso). Pulsa “Avanzar semana” para llegar a la siguiente."
+              >semana {data.week}</span>
               {#if data.dayInWeek > 0}
-                · <span class="badge badge-warning badge-sm">Mid-week (día {data.dayInWeek + 1} / 7)</span>
+                · <span
+                  class="tooltip tooltip-bottom badge badge-warning badge-sm"
+                  data-tip="Tienes un evento por resolver en mitad de la semana. Vuelve a pulsar “Avanzar semana” para continuar al día siguiente."
+                >Mid-week (día {data.dayInWeek + 1} / 7)</span>
               {/if}
               {#if data.position !== null && data.standingsCount > 0}
-                · <span class="badge badge-info">Pos {data.position}º / {data.standingsCount}</span>
+                · <span
+                  class="tooltip tooltip-bottom badge badge-info"
+                  data-tip="Tu posición en la liga ({data.standingsCount} equipos). La clasificación se actualiza tras cada jornada."
+                >Pos {data.position}º / {data.standingsCount}</span>
               {/if}
             </p>
           </div>

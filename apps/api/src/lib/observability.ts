@@ -95,7 +95,7 @@ function redactEmail(email: string): string {
 function sanitizeEvent(event: Sentry.ErrorEvent): Sentry.ErrorEvent | null {
   // Recursive scrub on extra + request data.
   if (event.extra) {
-    event.extra = sanitizeContext(event.extra) as Sentry.Extras;
+    event.extra = sanitizeContext(event.extra) as Record<string, unknown>;
   }
   if (event.request?.headers) {
     const safeHeaders: Record<string, string> = {};

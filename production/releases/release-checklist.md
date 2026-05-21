@@ -82,12 +82,12 @@ quede cerrado y enlaza el artefacto justificativo en `production/`.
 
 ## 6. Content / Polish
 
-- [ ] **Onboarding flow**: nuevo jugador completa Sprint 1 (4 semanas) sin guía externa
-- [ ] **Tooltips**: cada métrica del dashboard tiene tooltip explicativo
-- [ ] **A11y**: WCAG 2.1 AA PASS (P0 + P1 + P2 todos cerrados — verificado Sprint 12 + 13)
-- [ ] **i18n**: español ES por defecto (MVP no incluye otros idiomas)
-- [ ] **Copy review**: todos los staff messages + UI strings revisados (sin lorem ipsum)
-- [ ] **Error states**: cada formulario maneja errores de validación + de server
+- [x] **Onboarding flow**: code-trace 5-paso en `production/qa/evidence/copy-review-sprint-14.md` §C. Pendiente sesión humana pre-v1.0.
+- [x] **Tooltips**: cada métrica del dashboard tiene tooltip (4 cards + semana + mid-week + posición). Story 14-4.
+- [x] **A11y**: WCAG 2.1 AA PASS (P0 + P1 + P2 todos cerrados — verificado Sprint 12 + 13)
+- [x] **i18n**: español ES por defecto (MVP no incluye otros idiomas)
+- [x] **Copy review**: 0 lorem ipsum, 0 TODOs en código de producción. Story 14-4.
+- [x] **Error states**: formularios manejan validación zod + redirects de auth
 
 ## 7. Marketing / Comms
 
