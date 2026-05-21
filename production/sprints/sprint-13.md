@@ -75,12 +75,50 @@ da el visto bueno al último sprint de producción antes de publicar.
 ## Definition of Done for Sprint 13
 
 - [ ] 13-1 BUG-PT-5 cerrado: schema + match-day + squad + staff msg + tests
-- [ ] 13-2 BUG-FIN-1 cerrado: financial status correcto en todos los casos (balance negativo → quiebra)
+- [ ] 13-2 BUG-FIN-1 cerrado ✅ (commit 16b42bc) + test de regresión añadido
 - [ ] 13-3 Soak test runner: `pnpm soak-test` sin abort en 5 temporadas; summary.md producido
 - [ ] 13-4 Polish→Release gate-check ejecutado: PASS o CONCERNS con action-plan
-- [ ] QA plan existe (`production/qa/qa-plan-sprint-13.md`)
+- [ ] QA plan existe (`production/qa/qa-plan-sprint-13-2026-05-21.md`)
 - [ ] Todos los AC verificados
 - [ ] Smoke check pasado
 - [ ] QA sign-off APPROVED o APPROVED WITH CONDITIONS
 - [ ] Sin S1 o S2 nuevos introducidos
 - [ ] Design documents actualizados para cualquier desviación
+
+---
+
+## QA Test Cases
+
+> Back-filled by /qa-plan 2026-05-21. Full plan: `production/qa/qa-plan-sprint-13-2026-05-21.md`
+
+### 13-1: Suspensión roja — Integration + Logic
+
+**Test files**: `packages/shared/tests/match-sim/suspension.test.ts` + `apps/api/tests/advance/suspension-integration.test.ts`
+
+Unit (fórmula): `suspensionWeeks` → (direct_red_violent=3, direct_red=2, double_yellow=1, yellow=0); MatchOutcome contiene `{ playerId, suspensionWeeks, teamSide }`; `suspended_until_week = currentWeek + weeks`; bloqueado si `currentWeek ≤ suspended_until_week`; libre cuando `currentWeek > suspended_until_week`
+
+Integration: columna `players.suspended_until_week` existe (INTEGER NULL); match-day persiste roja; lineup filtra suspendidos; staff message generado
+
+Edge: roja visitante → su club; roja sem 38 → week 40; sin roja → NULL, sin badge
+
+~8 unit + ~4 integration
+
+### 13-2: BUG-FIN-1 Financial status — Logic (regresión test)
+
+**Test file**: `apps/web/tests/economy-tick-financial-status.test.ts`
+
+Thresholds (constants.ts): QUIEBRA (balance<-200 AND cashflow<-20), CRISIS (balance<-50 AND cashflow<-10), EN_RIESGO (balance<50 OR cashflow<-15)
+
+Casos: grep positivo en economy-tick.ts para `computeFinancialStatus`; (-1000,-64)→3; (100,5)→0; (-30,-12)→2; (40,-5)→1. ~5 tests
+
+### 13-5: Match live polish — Visual/Feel
+
+**Test file**: `apps/web/tests/match-live-polish.test.ts`
+
+Grep: pre-event pause branch; confeti trigger on goal+userSide; VAR ~8% branch; confeti excluido en VAR-revertidos. Evidence: `production/qa/evidence/match-live-polish-sprint-13.md`
+
+### 13-6: STOP DB integration — Integration
+
+**Test file**: `apps/api/tests/advance/scheduled-day-integration.test.ts`
+
+3 casos: STOP día 3 → halt (currentDayOfSeason=day3, currentWeek no cambia, sin snapshot); resume → completa (currentWeek+1, snapshot insertado); STOP legacy null → week*7 fallback
