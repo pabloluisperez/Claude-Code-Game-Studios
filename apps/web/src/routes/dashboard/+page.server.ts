@@ -19,6 +19,7 @@ import {
   desc,
   asc,
   alias,
+  loadAdvanceContext,
 } from '@smt/db';
 import {
   CASCADA_FC_GRAPH,
@@ -244,26 +245,15 @@ export const actions: Actions = {
     const form = await request.formData();
     const redirectMode = String(form.get('redirectMode') ?? 'dashboard');
 
-    const [active] = await db
-      .select()
-      .from(playthroughs)
-      .where(eq(playthroughs.userId, locals.user.id))
-      .orderBy(desc(playthroughs.updatedAt))
-      .limit(1);
+    // Sprint 9 task 9-1 (partial): consolidated context loader from @smt/db.
+    // Replaces the 4 sequential SELECTs that used to live here. Same behavior;
+    // single helper call.
+    const ctx = await loadAdvanceContext(db, locals.user.id);
+    if (!ctx) return fail(400, { error: 'No hay carrera activa.' });
 
-    if (!active) return fail(400, { error: 'No hay carrera activa.' });
-
-    const [latest] = await db
-      .select()
-      .from(worldSnapshots)
-      .where(eq(worldSnapshots.playthroughId, active.id))
-      .orderBy(desc(worldSnapshots.week))
-      .limit(1);
-
-    const basePrevState: Readonly<WorldState> =
-      (latest?.worldState as WorldState) ?? defaultWorldState();
-    const prevBuffer: DelayedEffectsBuffer = (latest?.delayedEffectsBuffer ??
-      []) as DelayedEffectsBuffer;
+    const active = ctx.playthrough;
+    const basePrevState = ctx.prevState;
+    const prevBuffer = ctx.prevBuffer;
 
     // Inject the user-chosen training intensity into the prevState so the
     // cascade reads it as the manager decision for this tick.
@@ -272,32 +262,9 @@ export const actions: Actions = {
       training_intensity: active.trainingIntensity ?? 50,
     } as unknown as WorldState;
 
-    const nextWeek = (latest?.week ?? -1) + 1;
-
-    // ── Determine current division + season (used by TV pre-phase) ──────────
-    const [tvClubRow] = await db
-      .select({ division: clubs.division })
-      .from(clubs)
-      .where(eq(clubs.id, active.clubId))
-      .limit(1);
-    const currentDivision: 'D1' | 'D2' = tvClubRow?.division === 'first' ? 'D1' : 'D2';
-
-    // Compute current season — use league-system if available; default to 1.
-    const [tvLeagueRow] = await db
-      .select({ id: leagues.id })
-      .from(leagues)
-      .where(eq(leagues.playthroughId, active.id))
-      .limit(1);
-    let tvCurrentSeason = 1;
-    if (tvLeagueRow) {
-      const [tvSeasonRow] = await db
-        .select({ seasonNumber: seasons.seasonNumber })
-        .from(seasons)
-        .where(and(eq(seasons.leagueId, tvLeagueRow.id), eq(seasons.status, 'active')))
-        .orderBy(desc(seasons.seasonNumber))
-        .limit(1);
-      if (tvSeasonRow) tvCurrentSeason = tvSeasonRow.seasonNumber;
-    }
+    const nextWeek = ctx.latestWeek + 1;
+    const currentDivision = ctx.currentDivision;
+    const tvCurrentSeason = ctx.currentSeason;
 
     // ── TV PRE-PHASE (Tick Order pasos 1-5) — runs BEFORE cascade ──────────
     const prevCorruption =

@@ -1,12 +1,18 @@
 # advance module
 
 Sprint 8 task 8-4 created this module as the **seam** for the full advance-loop
-extraction planned for Sprint 9+. As of 2026-05-21 the module contains:
+extraction planned for Sprint 9+. **Sprint 9 task 9-1 (partial)** moved the
+`loadAdvanceContext` helper from this module to `packages/db/src/repos/advance-context.ts`
+because `apps/web` (which contains the current dashboard form action) cannot
+depend on `apps/api` directly — workspace deps don't connect those two apps.
+The helper now lives in `@smt/db` where both apps can import it.
+
+As of 2026-05-21 (post Sprint 9 task 9-1 partial) this module contains:
 
 | File | Purpose | Status |
 |---|---|---|
-| `load-context.ts` | `loadAdvanceContext(handle, userId)` — single helper consolidating the 4 context SELECTs the dashboard form action runs serially | ✅ Implemented Sprint 8 task 8-4 |
-| `orchestrator.ts` | `runAdvanceTick(playthroughId, decisions)` — full orchestrator (TV pre-phase + cascade + economy + match + staff + persist) | 🚧 **Deferred to Sprint 9** — full extraction is too risky for an autonomous overnight refactor; needs human verification of each step's behavior preservation |
+| `load-context.ts` | **MOVED** to `packages/db/src/repos/advance-context.ts` and exported from `@smt/db` | ✅ Migrated Sprint 9 task 9-1 partial |
+| `orchestrator.ts` | `runAdvanceTick(playthroughId, decisions)` — full orchestrator (TV pre-phase + cascade + economy + match + staff + persist) | 🚧 **Deferred to Sprint 10** — full extraction requires moving the dashboard form action to a Hono route (`POST /api/advance`); cross-app refactor needs its own scoped sprint |
 
 ## Why was the orchestrator extraction deferred?
 
