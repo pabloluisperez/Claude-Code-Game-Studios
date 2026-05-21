@@ -44,6 +44,7 @@ import {
   clubs,
   seasons,
   leagues,
+  calendarEvents,
   eq,
   and,
   or,
@@ -233,7 +234,14 @@ export interface AdvanceTickFullOptions {
 export type AdvanceTickFullNext =
   | { type: 'season-end'; fromSeason: number }
   | { type: 'match'; matchId: string; mode: 'autoplay' | 'skip' }
-  | { type: 'dashboard' };
+  | { type: 'dashboard' }
+  | {
+      type: 'stop-event';
+      eventId: string;
+      eventType: string;
+      day: number;
+      week: number;
+    };
 
 export interface AdvanceTickFullResult {
   /** Decision for the SvelteKit form action: which redirect to issue. */
@@ -611,64 +619,184 @@ export interface AdvanceDaysOptions {
 }
 
 /**
- * Advance the playthrough by N days (currently must be a multiple of 7).
+ * Advance the playthrough by N days, halting on STOP events.
  *
- * Public API for callers that want to think in days. Today this is a thin
- * wrapper over `runAdvanceTickFull` because Sprint 11 task 11-4 locks
- * Option B (weekly batching) — the daily decomposition lands in Sprint 12+.
+ * Sprint 12 task 12-1 implementation of ADR-020 §6. The function:
  *
- * Determinism guarantee (ADR-020 Verification Required #1):
- *   `advanceDays({ daysToAdvance: 7 })` produces a WorldState identical to
- *   the legacy weekly `advance()` path. This invariant is locked by the
- *   shared call to `runAdvanceTickFull` — both paths run the same code.
+ *   1. Scans pending STOP events whose `scheduledDayOfSeason` falls inside
+ *      the range `(startDay, startDay + daysToAdvance]`.
+ *   2. If a STOP exists: persists `currentDayOfSeason = stopDay` and
+ *      returns `{ type: 'stop-event' }` WITHOUT running the weekly
+ *      pipeline. The caller surfaces the event; the player resolves it;
+ *      the next form submission calls `advanceDays(remainingDays)` to
+ *      continue.
+ *   3. If no STOP and the range ends EXACTLY on a week boundary
+ *      (`(startDay + daysToAdvance) % 7 === 0`): calls
+ *      `runAdvanceTickFull` to run the full weekly pipeline (cascade,
+ *      economy, snapshot, match-day, staff messages, season rollover).
+ *   4. If no STOP and the range stops mid-week: persists the day cursor
+ *      only. Caller is expected to call again with the remaining days
+ *      to complete the week.
  *
- * Idempotency guarantee (ADR-020 Verification Required #2):
+ * Option B (ADR-020 §"Decision"): the cascade decay + end-of-week side
+ * effects run ONCE per week when crossing the day-6→day-7 boundary.
+ * Mid-week halts persist only the day cursor — no cascade tick, no
+ * economy update, no snapshot write. This preserves the 1046 existing
+ * test fixtures.
+ *
+ * Backward compat: events created before Sprint 12 have
+ * `scheduledDayOfSeason = NULL` — those use the legacy `week * 7`
+ * semantics (halt at the START of the event's week).
+ *
+ * Idempotency (ADR-020 Verification #2):
  *   `advanceDays({ daysToAdvance: 0 })` is a no-op — no DB writes, no
- *   redirect change, returns the current-week dashboard target.
+ *   redirect change.
  */
 export async function advanceDays(
   opts: AdvanceDaysOptions,
 ): Promise<AdvanceTickFullResult> {
   const { ctx, daysToAdvance, redirectMode } = opts;
 
+  if (daysToAdvance < 0) {
+    throw new Error(`advanceDays: daysToAdvance must be non-negative (got ${daysToAdvance}).`);
+  }
+
+  const startDay =
+    ctx.playthrough.currentDayOfSeason ?? ctx.playthrough.currentWeek * 7;
+
   // Idempotency: 0 days = no-op.
   if (daysToAdvance === 0) {
-    const currentWeek = deriveWeekFromDayOfSeason(
-      ctx.playthrough.currentDayOfSeason ?? ctx.playthrough.currentWeek * 7,
-    );
     return {
       next: { type: 'dashboard' },
-      nextWeek: currentWeek,
+      nextWeek: deriveWeekFromDayOfSeason(startDay),
       financialBalance:
         (ctx.prevState as Record<string, number>)['financial_balance'] ?? 0,
       thresholdCrossings: [],
     };
   }
 
-  // Sprint 11 task 11-4 constraint: weekly batches only.
-  // The day-by-day decomposition is deferred to Sprint 12+ (per ADR-020
-  // "Implementation Plan (deliberately deferred)" — Option B preserves all
-  // existing test fixtures by batching weekly).
-  if (daysToAdvance % 7 !== 0) {
+  const targetDay = startDay + daysToAdvance;
+
+  // ── Scan for STOP events in the range (startDay, targetDay] ─────────────
+  // Use scheduledDayOfSeason if present (Sprint 12+ events); otherwise fall
+  // back to week*7 (legacy events fire at the start of their week).
+  const pendingStops = await db
+    .select({
+      id: calendarEvents.id,
+      type: calendarEvents.type,
+      week: calendarEvents.week,
+      scheduledDayOfSeason: calendarEvents.scheduledDayOfSeason,
+    })
+    .from(calendarEvents)
+    .where(
+      and(
+        eq(calendarEvents.playthroughId, ctx.playthrough.id),
+        eq(calendarEvents.status, 'pending'),
+        eq(calendarEvents.priority, 'STOP'),
+      ),
+    );
+
+  let earliestStop:
+    | { id: string; type: string; day: number; week: number }
+    | null = null;
+  for (const ev of pendingStops) {
+    const eventDay = ev.scheduledDayOfSeason ?? ev.week * 7;
+    if (eventDay > startDay && eventDay <= targetDay) {
+      if (!earliestStop || eventDay < earliestStop.day) {
+        earliestStop = {
+          id: ev.id,
+          type: ev.type,
+          day: eventDay,
+          week: ev.week,
+        };
+      }
+    }
+  }
+
+  // ── Halt path: STOP event found ─────────────────────────────────────────
+  if (earliestStop) {
+    // Persist the day cursor only — NO weekly pipeline runs mid-week.
+    // currentWeek stays at its pre-advance value; the cascade tick is
+    // deferred until the player completes the week.
+    await db
+      .update(playthroughs)
+      .set({
+        currentDayOfSeason: earliestStop.day,
+        updatedAt: new Date(),
+      })
+      .where(eq(playthroughs.id, ctx.playthrough.id));
+
+    return {
+      next: {
+        type: 'stop-event',
+        eventId: earliestStop.id,
+        eventType: earliestStop.type,
+        day: earliestStop.day,
+        week: earliestStop.week,
+      },
+      nextWeek: deriveWeekFromDayOfSeason(earliestStop.day),
+      financialBalance:
+        (ctx.prevState as Record<string, number>)['financial_balance'] ?? 0,
+      thresholdCrossings: [],
+    };
+  }
+
+  // ── No halt: check whether we cross a week boundary ─────────────────────
+  const crossesBoundary = targetDay % 7 === 0 && targetDay > startDay;
+  const weeksCrossed = Math.floor(targetDay / 7) - Math.floor(startDay / 7);
+
+  if (crossesBoundary && weeksCrossed === 1) {
+    // Clean weekly commit — run the full pipeline. runAdvanceTickFull
+    // updates currentWeek + currentDayOfSeason in the same transaction.
+    return runAdvanceTickFull({ ctx, redirectMode });
+  }
+
+  if (weeksCrossed > 1) {
+    // Multi-week batches are still unsupported in Sprint 12. The dashboard
+    // form action computes daysToAdvance = daysToBoundary so it never
+    // crosses more than one boundary per click.
     throw new Error(
-      `advanceDays: only multiples of 7 supported in Sprint 11 ` +
-        `(got ${daysToAdvance}). Sub-week granularity lands in Sprint 12+ ` +
-        `alongside mid-week pause. See ADR-020 §"Implementation Plan".`,
+      `advanceDays: multi-week batches not yet supported (would cross ` +
+        `${weeksCrossed} week boundaries). Sprint 13+ adds calendar-driven ` +
+        `"advance to next STOP" across boundaries.`,
     );
   }
 
-  // For N=7: one call to the full pipeline. For N>7: loop, but Sprint 11
-  // currently has no caller that needs N>7 — leave the loop dormant until
-  // a use case arrives.
-  const weeks = daysToAdvance / 7;
-  if (weeks !== 1) {
-    throw new Error(
-      `advanceDays: multi-week batches not yet supported (got ${weeks} weeks). ` +
-        `Sprint 12+ will add support when the calendar UI allows "advance to ` +
-        `next STOP event" across week boundaries.`,
-    );
-  }
+  // ── Partial-week advance: persist day cursor, no pipeline ───────────────
+  // Reached when daysToAdvance is small enough to stay within the same
+  // week (or land exactly on a non-boundary day). The caller follows up
+  // with another advanceDays call to complete the week.
+  await db
+    .update(playthroughs)
+    .set({
+      currentDayOfSeason: targetDay,
+      updatedAt: new Date(),
+    })
+    .where(eq(playthroughs.id, ctx.playthrough.id));
 
-  return runAdvanceTickFull({ ctx, redirectMode });
+  return {
+    next: { type: 'dashboard' },
+    nextWeek: deriveWeekFromDayOfSeason(targetDay),
+    financialBalance:
+      (ctx.prevState as Record<string, number>)['financial_balance'] ?? 0,
+    thresholdCrossings: [],
+  };
+}
+
+/**
+ * Compute how many days remain until the next week boundary for a given
+ * day-of-season cursor. Useful for the dashboard form action: it calls
+ * `advanceDays({ daysToAdvance: daysUntilNextBoundary(currentDayOfSeason) })`
+ * so each click commits at most one week at a time.
+ *
+ * Examples:
+ *   daysUntilNextBoundary(0)  → 7   (full week ahead)
+ *   daysUntilNextBoundary(3)  → 4   (mid-week, 4 days to Sunday)
+ *   daysUntilNextBoundary(7)  → 7   (boundary itself → full next week)
+ *   daysUntilNextBoundary(35) → 7   (clean week boundary)
+ */
+export function daysUntilNextBoundary(currentDayOfSeason: number): number {
+  const remainder = currentDayOfSeason % 7;
+  return remainder === 0 ? 7 : 7 - remainder;
 }
 

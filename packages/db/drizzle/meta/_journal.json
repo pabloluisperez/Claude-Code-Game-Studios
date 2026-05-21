@@ -155,6 +155,13 @@
       "when": 1779358078968,
       "tag": "0021_confused_next_avengers",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1779362271398,
+      "tag": "0022_dapper_valkyrie",
+      "breakpoints": true
     }
   ]
 }

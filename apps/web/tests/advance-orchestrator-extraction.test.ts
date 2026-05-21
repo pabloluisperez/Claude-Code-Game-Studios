@@ -96,8 +96,12 @@ describe('Sprint 11 task 11-2 — orchestrator extraction', () => {
       expect(dashboardSource).not.toMatch(/grantWeeklyManagerXp\(/);
     });
 
-    it('test_dashboard_delegates_to_runAdvanceTickFull', () => {
-      expect(dashboardSource).toMatch(/runAdvanceTickFull\(/);
+    it('test_dashboard_delegates_to_orchestrator', () => {
+      // Sprint 11 had this calling runAdvanceTickFull directly. Sprint 12
+      // task 12-1 routes through advanceDays so STOP-event scanning happens
+      // before any pipeline work. Either name is acceptable as evidence
+      // the form action does not inline pipeline logic.
+      expect(dashboardSource).toMatch(/runAdvanceTickFull\(|advanceDays\(/);
     });
 
     it('test_dashboard_advance_action_is_under_400_lines', () => {

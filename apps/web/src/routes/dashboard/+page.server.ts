@@ -21,7 +21,10 @@ import {
   loadAdvanceContext,
 } from '@smt/db';
 import { weekToDate } from '@smt/shared';
-import { runAdvanceTickFull } from '$lib/server/advance-orchestrator';
+import {
+  advanceDays,
+  daysUntilNextBoundary,
+} from '$lib/server/advance-orchestrator';
 
 export const load: PageServerLoad = async ({ parent, url }) => {
   const { user, activePlaythrough } = await parent();
@@ -211,11 +214,15 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 
 export const actions: Actions = {
   /**
-   * Advance one in-game week. Delegates the full pipeline to
-   * `runAdvanceTickFull` (Sprint 11 task 11-2 extraction) and only handles
-   * the SvelteKit redirect based on the orchestrator's `next` decision.
+   * Advance one in-game week (or stop mid-week on a STOP event).
    *
-   * The pipeline orchestrated by `runAdvanceTickFull`:
+   * Sprint 12 task 12-1: delegates to `advanceDays` instead of
+   * `runAdvanceTickFull` directly. The function computes
+   * `daysUntilNextBoundary` from the current day-of-season cursor so
+   * each click commits at most one week — supporting the resume-after-
+   * STOP-event flow without requiring multi-week orchestration.
+   *
+   * The pipeline (when no STOP fires):
    *   1. TV pre-phase + cascade tick + TV post-phase + season-ticket drip
    *   2. Economy tick (sponsors, wages, gate receipts, TV revenue)
    *   3. Atomic persist: snapshot + currentWeek + TV side-effects
@@ -225,28 +232,43 @@ export const actions: Actions = {
    *   7. Career milestone detection
    *   8. Season rollover (if endWeek crossed)
    *
-   * See apps/web/src/lib/server/advance-orchestrator.ts for the full
-   * rationale, including the deviation from the Sprint 11 plan (HTTP
-   * route + cross-app refactor deferred to Sprint 12+).
+   * On STOP halt mid-week: only the day cursor advances; cascade/economy
+   * stay frozen until the player resolves the event and clicks again.
+   *
+   * See apps/web/src/lib/server/advance-orchestrator.ts.
    */
   advance: async ({ locals, request }) => {
     if (!locals.user) throw redirect(303, '/login');
 
     const form = await request.formData();
-    const redirectMode = String(form.get('redirectMode') ?? 'dashboard');
+    const redirectModeRaw = String(form.get('redirectMode') ?? 'dashboard');
+    const redirectMode: 'dashboard' | 'autoplay' | 'skip' =
+      redirectModeRaw === 'autoplay' || redirectModeRaw === 'skip'
+        ? redirectModeRaw
+        : 'dashboard';
 
     const ctx = await loadAdvanceContext(db, locals.user.id);
     if (!ctx) return fail(400, { error: 'No hay carrera activa.' });
 
-    const result = await runAdvanceTickFull({
-      ctx,
-      redirectMode:
-        redirectMode === 'autoplay' || redirectMode === 'skip'
-          ? redirectMode
-          : 'dashboard',
-    });
+    // Compute days remaining until the next week boundary. If the player
+    // is mid-week (resumed after a STOP event), this is < 7. If they're
+    // at a clean boundary, it's 7.
+    const cursorDay =
+      ctx.playthrough.currentDayOfSeason ?? ctx.playthrough.currentWeek * 7;
+    const daysToAdvance = daysUntilNextBoundary(cursorDay);
+
+    const result = await advanceDays({ ctx, daysToAdvance, redirectMode });
 
     switch (result.next.type) {
+      case 'stop-event':
+        // The orchestrator halted mid-week on a STOP event. Redirect back
+        // to the dashboard so the calendar/inbox panel surfaces the event
+        // and the player can decide. The next "Avanzar semana" click will
+        // resume from the halted day.
+        throw redirect(
+          303,
+          `/dashboard?stop_event=${result.next.eventId}&day=${result.next.day}`,
+        );
       case 'season-end':
         throw redirect(303, `/season-end?from=${result.next.fromSeason}`);
       case 'match': {

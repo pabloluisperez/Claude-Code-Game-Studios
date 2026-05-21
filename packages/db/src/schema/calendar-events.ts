@@ -33,6 +33,18 @@ export const calendarEvents = pgTable(
       .notNull()
       .references(() => playthroughs.id, { onDelete: 'cascade' }),
     week: integer('week').notNull(),
+    /**
+     * Day-of-season when this event fires (0..265). ADR-020 §6.
+     *
+     * Sprint 12 task 12-1: NEW column. Nullable so legacy events (which
+     * only had week granularity) continue to work — the orchestrator falls
+     * back to `week * 7` (start of the event's week) when this is NULL.
+     *
+     * Events created on or after Sprint 12 that want mid-week semantics
+     * MUST populate this column. The advance loop reads this to decide
+     * whether to halt mid-week.
+     */
+    scheduledDayOfSeason: integer('scheduled_day_of_season'),
     season: integer('season').notNull(),
     /** CalendarEventType per ADR-008 (extensible string). */
     type: text('type').notNull(),
