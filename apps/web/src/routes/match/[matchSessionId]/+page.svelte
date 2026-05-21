@@ -372,6 +372,25 @@
         {/if}
       </div>
 
+      <!-- Polish walkthrough fix #2 (Pablo, post-Sprint-12 12-4): recaudación
+           compacta dentro del scoreboard para que sea visible nada más
+           entrar (antes estaba debajo de la crónica, fuera del fold). -->
+      {#if data.homeMatchEconomics && !resultHidden}
+        <div class="flex items-center justify-center gap-4 mt-3 text-sm border-t border-base-300 pt-2 flex-wrap">
+          <span class="opacity-70">
+            🎟 <span class="font-mono">{data.homeMatchEconomics.attendance.toLocaleString('es-ES')}</span> espectadores
+          </span>
+          <span class="opacity-40">·</span>
+          <span class="opacity-70">
+            <span class="font-mono">{data.homeMatchEconomics.ticketPriceEur} €</span>/entrada
+          </span>
+          <span class="opacity-40">·</span>
+          <span class="font-semibold text-success">
+            <span class="font-mono">+{data.homeMatchEconomics.gateReceiptsEur.toLocaleString('es-ES')} €</span> taquilla
+          </span>
+        </div>
+      {/if}
+
       {#if data.fixture.status === 'played' && persistedEvents.length > 0}
         <!-- Polish walkthrough fix (Pablo, post-Sprint-11): replay buttons
              only make sense when the result is hidden (today's match, not
@@ -425,42 +444,6 @@
     <div class="alert alert-success shadow">
       <span>⏱ Final del partido. Vuelve al dashboard cuando quieras.</span>
     </div>
-  {/if}
-
-  <!-- Polish walkthrough fix (Pablo, post-Sprint-11): recaudación + asistencia
-       cuando el usuario juega en casa. Card only renders when:
-         - the user's club is home
-         - the fixture is played (revenue is meaningful)
-         - the result is not hidden (we don't spoil a hidden result with
-           "won X euros at the gate")
-  -->
-  {#if data.homeMatchEconomics && !resultHidden}
-    <section class="card bg-base-100 shadow border border-success/30">
-      <div class="card-body py-4">
-        <h3 class="card-title text-base">🎟 Recaudación del partido</h3>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-1">
-          <div>
-            <div class="text-xs opacity-60 uppercase">Asistencia</div>
-            <div class="font-mono text-2xl">
-              {data.homeMatchEconomics.attendance.toLocaleString('es-ES')}
-            </div>
-            <div class="text-xs opacity-60">espectadores</div>
-          </div>
-          <div>
-            <div class="text-xs opacity-60 uppercase">Precio entrada</div>
-            <div class="font-mono text-2xl">
-              {data.homeMatchEconomics.ticketPriceEur} €
-            </div>
-          </div>
-          <div>
-            <div class="text-xs opacity-60 uppercase">Ingresos por taquilla</div>
-            <div class="font-mono text-2xl text-success">
-              +{data.homeMatchEconomics.gateReceiptsEur.toLocaleString('es-ES')} €
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
   {/if}
 
   <!-- Match recap (newspaper-style) — hidden while replay is in progress
