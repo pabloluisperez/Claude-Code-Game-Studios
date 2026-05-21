@@ -37,18 +37,21 @@ This is the canonical **mid-game systems** validation. Specifically targets:
 
 - Production main branch (commit hash documented).
 - DOM-only MVP.
-- DB seeded with a **scripted crisis-prone starting state**:
-  - `corruption_exposure = 65` (above F-TV3 threshold of 60 — TV cancellation
-    will fire within ~1-2 ticks on REGIONAL/NACIONAL contracts).
-  - `financial_balance = 80` €K (close to CRITICAL_BUFFER_WEEKS threshold).
-  - Active REGIONAL TV contract (3yr) signed last season.
+- DB seeded with a **scripted crisis-prone starting state** (retuned Sprint 9 task 9-2 after agent paper-trace at `production/playtests/2026-05-21-economy-tuning-agent-paper-trace.md` showed the original seed had a permanently-false F-TV3 threshold predicate):
+  - `corruption_exposure = 59` (just BELOW F-TV3 threshold of 60 — REGIONAL drift +0.5/wk crosses the threshold at W2, firing the TV-cancellation crisis within session bounds).
+  - `financial_balance = 80` €K (close to CRITICAL_BUFFER_WEEKS threshold; already in WARNING zone since balance < 7×weekly_costs ≈ 127.75 €K).
+  - Active **REGIONAL** TV contract (3yr) signed last season — drift +0.5/wk; threshold crossing at W2-W3.
   - 2 active sponsor contracts (kit + boards).
   - Default squad — no transfers pending.
-  - Currently W4 of season 1 (early enough that the player has runway to
-    recover, late enough that there's already context to read from).
+  - Currently W4 of season 1 (early enough that the player has runway to recover, late enough that there's already context to read from).
 
-This seed is built specifically for this protocol — a fixture-loader to
-populate the DB is part of the implementation prep (separate ticket).
+**Predicted trajectory** (verified by 2026-05-21 paper-trace):
+- W4 (start): CE=59, balance=80, REGIONAL ACTIVE
+- W5: CE=59.5, balance ~75
+- W6: CE=60.0 → **F-TV3 threshold predicate fires** (`prev=59.5 < 60 AND new=60 >= 60`) → REGIONAL contract CANCELLED → midseason offer generated (LOCAL at 70% rate, since week ≤35) → player gets STOP event
+- W7-W34: if player ignores midseason and lets corruption keep drifting (with no active TV income), F8 scandal at CE=80 fires around W34 → 30 €K fine + sponsor kit cancellation → bankruptcy proximity
+
+The fixture loader to seed this state is at `apps/api/tests/fixtures/economy-tuning-crisis.ts` (Sprint 9 task 9-2). To use it: run `pnpm -F @smt/api exec tsx tests/fixtures/economy-tuning-crisis.ts --user=<userId>` from the repo root (creates a fresh playthrough scoped to that user).
 
 ## Session Structure (~90 min total)
 
