@@ -1,10 +1,10 @@
 # Session State — Cascada FC
 
 <!-- STATUS -->
-Stage: Release ⭐ (advanced 2026-05-21 after Polish→Release gate PASS WITH CONDITIONS)
-Epic: Sprint 13 — CLOSED + Polish→Release gate PASS
-Feature: Suspension + financial fix + match polish + soak runner + stage advance
-Task: Sprint 14 = release prep (rellenar release-checklist.md sections + Go/No-Go)
+Stage: Release (Sprint 14 CLOSED + v1.0.x maintenance pending Pablo manual validation)
+Epic: Roadmap v1.0.x → v2.0 documented + v1.1/v1.2 GDDs + ADRs 021-028 written
+Feature: Autopilot overnight extension — GDPR endpoints + design work for v1.1/v1.2
+Task: Awaiting Pablo return — ~2h manual validation outstanding for v1.0.0 tag
 <!-- /STATUS -->
 
 ## Active workstream
@@ -1126,3 +1126,64 @@ Plus:
 6. Playtest 14-10 (fresh-player + suspension/confetti/VAR observation)
 
 Tras esos checks: si verde → `git tag v1.0.0 && git push origin v1.0.0` + deploy.
+
+---
+
+## Autopilot extension — 2026-05-21 (Pablo "avanza a saco, estaré ocupado 2h")
+
+Tras cerrar Sprint 14 + escribir el roadmap v1.0.x→v2.0, Pablo dijo "avanza
+a saco" durante 2h. Trabajo ejecutado:
+
+### Código (Sprint 16 adelantado del roadmap v1.0.x)
+
+- **GDPR data-export + delete endpoints** (`apps/api/src/modules/me/`):
+  - GET /me/export, POST /me/delete-request, POST /me/delete-cancel,
+    DELETE /me, GET /me/delete-status
+  - Cooldown 24h, cascade delete via FK, sanitize export
+  - Migration 0025_gdpr_deletion_request.sql aplicada en local
+  - 11/11 tests verdes, suite total 1171/1171
+
+### Design (acelerando v1.1 + v1.2)
+
+GDDs nuevos completos (no seeds):
+
+- `design/gdd/city-progression.md` (v1.1 Core layer): 4 tiers con triggers
+  WorldState, anti-yo-yo 4 sem, sub-element states, transitions 1.5s, 16 ACs
+- `design/gdd/isometric-world.md` (v1.1 Presentation layer): tile grid
+  32×16, camera 4 zoom levels, asset loader lazy por tier, day-night +
+  weather, DOM↔Canvas routing, perf modes, 16 ACs
+- `design/gdd/narrative-ai.md` (v1.2 Feature layer): llama.cpp 8B-Q4,
+  3 output types (staff T3 + press + mayor calls), pipeline completo,
+  20 ACs
+
+ADRs nuevos:
+
+- ADR-021 Canvas Rendering Pipeline (PixiJS 8)
+- ADR-022 Day-Night + Weather Model
+- ADR-023 DOM↔Canvas Event Router
+- ADR-024 A11y Canvas Fallback
+- ADR-025 llama.cpp Deployment Model
+- ADR-026 Prompt Context Serialization
+- ADR-027 AI Output Safety Pipeline
+- ADR-028 AI Cost-Aware Scheduling
+
+systems-index.md actualizado: city-progression, isometric-world,
+narrative-ai cambian de "Deferred" → "In Progress".
+
+### Estado al cierre de la extensión
+
+- 5 commits adicionales, todos pushed a origin/project/SoccerManagerTotal
+- 1171/1171 tests verdes
+- svelte-check 0 errors
+- Stage sigue siendo Release; v1.0 sigue pending manual validation Pablo
+- v1.1 desbloqueado: GDDs + ADRs ready to implement
+- v1.2 desbloqueado: GDD + ADRs ready to implement (queda spike Sprint 29)
+
+### Lo que Pablo encontrará al volver
+
+1. v1.0 sigue pending las 6 manual validations (no cambia)
+2. Sprint 15-18 roadmap definido en `production/roadmap/v1.0.x-maintenance.md`
+3. v1.1 puede arrancar Sprint 19 directamente con GDDs y ADRs listos
+4. v1.2 puede arrancar Sprint 29 directamente
+5. GDPR endpoints LIVE (5 endpoints + 11 tests + 1 migration)
+

@@ -41,7 +41,7 @@
 | Gestión de jugadores | `player-management.md` | **[MVP]** | **Approved** | match-simulation.md ✅ | /design-review R2 2026-05-18: APPROVED — 15 blockers resueltos (F2/F3/F6 rangos, F7 clamp, F8 forfeit threshold absoluto, F11 morale fórmula, F12 skill degradación, AC-PM-16 aritmética, +7 nuevos). 3 formaciones MVP, world-gen stub, OQ-02/04/05 resueltas. Specialists: game-designer, systems-designer, economy-designer, qa-lead, creative-director. |
 | Manager RPG | `manager-rpg.md` | **[MVP]** | **Approved** | cascade-engine.md ✅, economy.md ✅ | /design-review R1 2026-05-18: APPROVED — 11 blockers resueltos (Página Manager P1 fix→staff observations, L4=Tier3+tabla corregida, L5=Director Comunicación, FA weekly multiplier, match_loss 2→5, AC-RPG-07/08/15, career event expirar penalties, OQ-01/03/05 resoluciones, man_management passive XP source). Specialists: game-designer · systems-designer · economy-designer · qa-lead · creative-director. |
 | Sistema de Staff | `staff-system.md` | **[MVP]** | **Approved** | manager-rpg.md ✅ | /design-review R3 lean 2026-05-18: APPROVED — 2 blockers resueltos (F3 range [0.01–0.03]→[0.01–0.020] sincronizado con Tuning Knobs; AC-STAFF-15 umbral T2 de 0.06→0.03) + 3 recomendados (event-system.md stale note actualizada; MARKET_CANDIDATES default clarificado; "Detailed Design"→"Detailed Rules"). Sin especialistas (lean). |
-| Progresión de ciudad | `city-progression.md` | `[v1.1+]` | Deferred | economy.md | 4 tiers con criterios de activación, assets por tier. **Deferred** por scope-mvp.md |
+| Progresión de ciudad | `city-progression.md` | `[v1.1+]` | **In Progress** | economy.md | 4 tiers con criterios sobre WorldState (prestige+balance+fanBase+season+division), anti-yo-yo 4 sem, sub-element states (pitch+crowd+lighting+weather), transitions 1.5s, 16 ACs. Draft autopilot 2026-05-21. |
 
 ---
 
@@ -51,7 +51,7 @@
 | ------- | --- | ----- | ------ | ------------- | ----------- |
 | Sistema de eventos | `event-system.md` | **[MVP]** | **Approved** | cascade-engine.md ✅ | Cross-review fix 2026-05-18: F4d referencia economy.md F6 como autoritativo; nota sobre resource flow entre BLOCKING secuenciales añadida; floor garantizado de "Campaña promocional" documentado. |
 | Derechos de televisión | `tv-rights.md` | **[MVP]** | **Approved** | economy.md ✅, event-system.md ✅, manager-rpg.md ✅, league-system.md ✅ | /design-review R7 2026-05-20: APPROVED — 3 blockers resueltos: (B1) F-TV4 clamp `min(1.0,...)` previene fan_attendance_effective>1; (B2) REGIONAL 2yr ⚠️ en Rule 5b + UI Requirements (corruption≥22 = riesgo cancelación T2); (B3) AC-TV-50/51 guards combinaciones ilegales (LOCAL 2yr, REGIONAL 3yr → HTTP 400). +6 recomendaciones: invariante precisión cascade external_delta (paso 6 Tick Order); CANCELLED→CANCELLED en state machine table (rechazo midseason); AC-TV-52 cliff corruption=3.0; AC-TV-53 NACIONAL 3yr always-cancels-T2; AC-TV-54 rechazo T1. Total: 54 ACs. Specialists: game-designer · economy-designer · systems-designer · qa-lead · web-backend-specialist · creative-director. |
-| IA narrativa | `narrative-ai.md` | `[v1.2+]` | Deferred | staff-system.md | llama.cpp server-side: resúmenes, rumores, prensa; AC de calidad output. **Deferred** por scope-mvp.md (spike llama.cpp pendiente) |
+| IA narrativa | `narrative-ai.md` | `[v1.2+]` | **In Progress** | staff-system.md | llama.cpp 8B-Q4 (Llama 3 / Mistral). 3 output types: staff T3, press articles, mayor calls. Pipeline: prompt + context (2k tokens, NO PII) + safety (lang/length/toxicity/role-break) + cache Redis 7d + cost budget 10k/día. 20 ACs. Draft autopilot 2026-05-21. |
 | Sistema de liga | `league-system.md` | **[MVP]** | **Approved** | match-simulation.md ✅ | 2 divisiones × 20 clubs reales (Primera/Segunda España), 38 matchdays, 3 asc/desc, derbis reales. ADR-011 requiere update (16→20 clubs). Datos reales = licencias pendientes. /design-review 2026-05-17: 18 bloqueantes resueltos (F3 iterativo, F4 ceiling, forfeit denominador, derby draw+1, 5 ACs nuevos, 6 UX blockers, OQ-LGS-06 contratos descenso). |
 
 ---
@@ -60,7 +60,7 @@
 
 | Sistema | GDD | Scope | Status | Bloqueado por | Descripción |
 | ------- | --- | ----- | ------ | ------------- | ----------- |
-| Mundo isométrico | `isometric-world.md` | `[v1.1+]` | Deferred | city-progression.md | Tile-based pixel art, state variants, day/night, animaciones. **Deferred** por scope-mvp.md |
+| Mundo isométrico | `isometric-world.md` | `[v1.1+]` | **In Progress** | city-progression.md | Tile grid 32x16 (Art Bible locked), camera 4 zoom levels, asset loader lazy por tier, day-night + weather (clear/rain), DOM↔Canvas event routing, performance modes (high/medium/low/dom-fallback), 16 ACs. Draft autopilot 2026-05-21. |
 | HUD y UI principal | `hud-ui.md` | **[MVP]** | **Approved** | Todos los Core GDDs ✅ | /design-review R3 lean 2026-05-18: APPROVED — 2 blockers (instrucciones radio buttons not combinable; COUNTER home no mostrar not desaconsejar) + AC-HUD-13 radio group semantics. Inconsistencias con match-simulation.md aprobado en la misma sesión. |
 
 ---
