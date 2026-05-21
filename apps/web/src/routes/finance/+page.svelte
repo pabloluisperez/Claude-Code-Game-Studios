@@ -8,8 +8,10 @@
   import type { PageData, ActionData } from './$types';
   import { enhance } from '$app/forms';
   import { browser } from '$app/environment';
+  import { page } from '$app/stores';
   import { onMount } from 'svelte';
   import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
+  import { formatEurK } from '$lib/format';
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
   let priceConfirmOpen = $state(false);
@@ -81,7 +83,13 @@
   const statusClass = ['alert-success', 'alert-warning', 'alert-error', 'alert-error'];
 
   type FinanceTab = 'resumen' | 'patrocinadores' | 'abonos';
-  let activeTab = $state<FinanceTab>('resumen');
+  // Bug P1 (playtest 2026-05-21 Pablo): dashboard upcoming-events route
+  // here with ?tab=patrocinadores so the user lands on the right tab.
+  let activeTab = $state<FinanceTab>(
+    $page.url.searchParams.get('tab') === 'patrocinadores' ? 'patrocinadores'
+    : $page.url.searchParams.get('tab') === 'abonos' ? 'abonos'
+    : 'resumen',
+  );
 </script>
 
 <div class="space-y-6">
@@ -281,6 +289,84 @@
         </div>
       </div>
     </div>
+
+    <!-- Bug P13 fix (playtest 2026-05-21 Pablo): 'En finanzas ver un desglose
+         donde se va el cashflow semanal, bien claro, si es en sueldos de quién
+         son los sueldos, y otros gastos, ahora mismo ves que pierdes dinero
+         pero no sabes donde recortar gastos.' -->
+    {@const stateRead = latest.state as Record<string, number>}
+    {@const incSponsor = Math.round(stateRead['sponsor_revenue_weekly'] ?? 0)}
+    {@const incMatchday = Math.round(stateRead['matchday_revenue_weekly'] ?? 0)}
+    {@const incTV = Math.round((stateRead['tv_revenue_weekly'] ?? 0) * 10) / 10}
+    {@const incMerch = Math.round(stateRead['merch_revenue_weekly'] ?? 0)}
+    {@const totalIncome = incSponsor + incMatchday + incTV + incMerch}
+    {@const costStaff = Math.round(stateRead['staff_cost_weekly'] ?? 0)}
+    {@const costPlayers = Math.round(stateRead['player_wages_weekly'] ?? 0)}
+    {@const totalCost = costStaff + costPlayers}
+    <section class="card bg-base-100 shadow">
+      <div class="card-body">
+        <h2 class="card-title text-base">Desglose del cashflow semanal</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
+          <!-- INGRESOS -->
+          <div>
+            <div class="text-xs uppercase opacity-70 mb-2">📈 Ingresos · +{formatEurK(totalIncome)}</div>
+            <table class="table table-sm">
+              <tbody>
+                <tr>
+                  <td>Patrocinadores</td>
+                  <td class="text-right font-mono text-success">+{formatEurK(incSponsor)}</td>
+                </tr>
+                <tr>
+                  <td>Taquilla (partido en casa)</td>
+                  <td class="text-right font-mono {incMatchday > 0 ? 'text-success' : 'opacity-40'}">
+                    {incMatchday > 0 ? '+' : ''}{formatEurK(incMatchday)}
+                  </td>
+                </tr>
+                <tr>
+                  <td>Derechos de TV</td>
+                  <td class="text-right font-mono {incTV > 0 ? 'text-success' : 'opacity-40'}">
+                    {incTV > 0 ? '+' : ''}{formatEurK(incTV)}
+                  </td>
+                </tr>
+                <tr>
+                  <td>Merchandising</td>
+                  <td class="text-right font-mono text-success">+{formatEurK(incMerch)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <!-- GASTOS -->
+          <div>
+            <div class="text-xs uppercase opacity-70 mb-2">📉 Gastos · −{formatEurK(totalCost)}</div>
+            <table class="table table-sm">
+              <tbody>
+                <tr>
+                  <td>Salarios de jugadores</td>
+                  <td class="text-right font-mono text-error">−{formatEurK(costPlayers)}</td>
+                </tr>
+                <tr>
+                  <td>Salarios del staff</td>
+                  <td class="text-right font-mono text-error">−{formatEurK(costStaff)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Recovery levers -->
+        <div class="divider my-1"></div>
+        <div class="text-xs opacity-70">
+          <strong>Para recortar gastos:</strong>
+          <a href="/staff" class="link">despide staff de tier alto</a> ·
+          <a href="/squad" class="link">vende jugadores</a>
+          en el mercado de fichajes.
+          <strong>Para subir ingresos:</strong> firma nuevos
+          <a href="/finance?tab=patrocinadores" class="link">patrocinadores</a> ·
+          ajusta el <a href="/finance?tab=abonos" class="link">precio de abono</a>
+          en pretemporada.
+        </div>
+      </div>
+    </section>
 
     {#if cashflowSeries.length > 0}
       {@const minVal = Math.min(...cashflowSeries, 0)}

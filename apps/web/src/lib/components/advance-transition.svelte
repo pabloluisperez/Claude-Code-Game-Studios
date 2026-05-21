@@ -396,43 +396,50 @@
       </div>
 
       <!-- Controls -->
+      <!-- Bug D fix (playtest 2026-05-21 Pablo): 'Saltar al fin de semana' e
+           'Ir a partido' eran prácticamente lo mismo cuando había partido el
+           finde. Consolidado en un único botón context-aware:
+             matchPendingThisAdvance=true  → '⚽ Avanzar a día de partido'
+             matchPendingThisAdvance=false → '⏩ Avanzar a fin de semana' -->
       <div class="flex flex-wrap justify-center gap-2 mt-6">
         {#if !completed}
           {#if !paused}
             <button class="btn btn-warning btn-sm" type="button" onclick={handlePause}>
               ⏸ Pausar
             </button>
-            <button class="btn btn-accent btn-sm" type="button" onclick={handleFastForward}>
-              ⏩ Saltar al fin de semana
-            </button>
             {#if matchPendingThisAdvance && onMatchChoice}
               <button
                 class="btn btn-primary btn-sm"
                 type="button"
                 onclick={() => onMatchChoice('autoplay')}
               >
-                ⚽ Ir al partido
+                ⚽ Avanzar a día de partido
+              </button>
+            {:else}
+              <button class="btn btn-accent btn-sm" type="button" onclick={handleFastForward}>
+                ⏩ Avanzar a fin de semana
               </button>
             {/if}
           {:else}
             <button class="btn btn-success btn-sm" type="button" onclick={handleResume}>
               ▶ Reanudar
             </button>
-            <button class="btn btn-accent btn-sm" type="button" onclick={handleFastForward}>
-              ⏩ Saltar al fin de semana
-            </button>
-            <button class="btn btn-error btn-sm" type="button" onclick={handleCancel}>
-              🛑 Cancelar y actuar
-            </button>
             {#if matchPendingThisAdvance && onMatchChoice}
               <button
                 class="btn btn-primary btn-sm"
                 type="button"
                 onclick={() => onMatchChoice('autoplay')}
               >
-                ⚽ Ir al partido
+                ⚽ Avanzar a día de partido
+              </button>
+            {:else}
+              <button class="btn btn-accent btn-sm" type="button" onclick={handleFastForward}>
+                ⏩ Avanzar a fin de semana
               </button>
             {/if}
+            <button class="btn btn-error btn-sm" type="button" onclick={handleCancel}>
+              🛑 Cancelar y actuar
+            </button>
           {/if}
         {/if}
       </div>

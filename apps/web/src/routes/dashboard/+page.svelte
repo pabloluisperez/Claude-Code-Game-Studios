@@ -232,7 +232,21 @@
     if (type.startsWith('transfer_'))  return '💼';
     if (type.startsWith('sponsor_'))   return '🤝';
     if (type.startsWith('board_'))     return '🏛';
+    if (type.startsWith('tv_'))        return '📺';
     return '•';
+  }
+
+  /**
+   * Route an event card to its decision-making destination.
+   * Bug P1 fix (playtest 2026-05-21 Pablo): the dashboard's upcoming-events
+   * cards used to all link to /calendar regardless of type. Now sponsor
+   * offers go to /finance#patrocinadores and TV-related events to
+   * /finance/tv-rights.
+   */
+  function eventDestination(type: string): string {
+    if (type === 'sponsor_offer') return '/finance?tab=patrocinadores';
+    if (type === 'tv_auction' || type === 'tv_midseason_offer') return '/finance/tv-rights';
+    return '/calendar';
   }
 </script>
 
@@ -493,9 +507,13 @@
             </a>
           {/each}
 
+          <!-- Bug P1 fix (playtest 2026-05-21 Pablo): events now route to the
+               decision destination, not just /calendar. sponsor_offer →
+               /finance#patrocinadores; tv_auction / tv_midseason_offer →
+               /finance/tv-rights; default → /calendar. -->
           {#each pendingEvents as e}
             <a
-              href="/calendar"
+              href={eventDestination(e.type)}
               class="flex items-center justify-between p-3 rounded
                      {e.priority === 'STOP' ? 'bg-error/10 border border-error/30' : 'bg-base-200'}"
             >
