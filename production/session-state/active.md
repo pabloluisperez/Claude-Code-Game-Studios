@@ -1077,3 +1077,52 @@ Plus:
 36+ commits across the full overnight + morning + Sprint 9 session. All pushed to `origin/project/SoccerManagerTotal`.
 
 <!-- QA-PLAN: 2026-05-21 | System: sprint-14 | Plan written: production/qa/qa-plan-sprint-14-2026-05-21.md -->
+
+---
+
+## Sprint 14 autopilot overnight session — 2026-05-21
+
+**Trigger**: Pablo said "dale caña sin parar" → autonomous Release-prep execution.
+
+### Sprint 14 status: 9/10 stories DONE, 1 blocked (human)
+
+| ID | Story | Priority | Status | Commit |
+|----|-------|----------|--------|--------|
+| 14-1 | Rate limiting middleware (Hono + SvelteKit) | Must | ✅ Done | f453185 |
+| 14-2 | Legal pages /terms + /privacy + footer | Must | ✅ Done | d490c54 |
+| 14-3 | Build verification final + tsc/build fixes | Must | ✅ Done | 9939e77 |
+| 14-4 | Copy review + tooltips + onboarding trace | Must | ✅ Done | 28dd1be |
+| 14-5 | Go/No-Go v1.0 decision document | Must | ✅ Done | ba0d6fc |
+| 14-6 | Store metadata (name/desc/category/pricing) | Should | ✅ Done | 47d28d0 |
+| 14-7 | Sentry observability + DB backup runbook | Should | ✅ Done | 8d73e12 |
+| 14-8 | Player-facing changelog v1.0 (ES) | Should | ✅ Done | 816c7bc |
+| 14-9 | Rollback plan + asset attributions | Nice | ✅ Done | ad94497 |
+| 14-10 | Playtest fresh-player + match polish | Nice | 🚫 Blocked | (Pablo) |
+
+9 commits, all pushed to `origin/project/SoccerManagerTotal`.
+
+### Test/build state at sprint close
+
+- `pnpm test`: **1160/1160 verde** (977 shared + 61 api + 122 web + 5 todo)
+- `pnpm turbo run build`: ✅ PASS (apps/web + apps/api, tras fixes ESM en 14-3)
+- `pnpm soak-test --season-count=5`: ✅ PASS, peak RSS 75.4 MB (cap 512 MB)
+- `svelte-check`: 0 errors / 1511 files / 5 warnings
+- Bundle: 9.4 KB initial entry (1.9% del cap 500 KB)
+
+### Notable autonomous decisions
+
+1. **14-7 Sentry stack**: chose @sentry/node SDK installed properly (option B vs no-op wrapper). Pulled @opentelemetry/api which duplicated drizzle-orm — resolved via `pnpm.overrides`. Documented in 14-4 commit.
+2. **14-3 production build fix**: discovered tsc build was broken in baseline (pre-existing tech debt). Fixed via mass `.js` import extension sed across packages/db + apps/api sources, plus logger type fix + worldState cast. Tests stayed green throughout.
+3. **14-4 onboarding "walkthrough"**: produced code-trace evidence (paper-trace pattern from Sprint 9) instead of skipping. Pablo runs the real human walkthrough pre-tag v1.0.
+4. **14-5 verdict CONDITIONAL GO**: didn't tag v1.0.0 autonomously — pricing, screenshots, Lighthouse, EXPLAIN ANALYZE, backup restore practice need real browser/DB tooling. ~2h of manual validation outstanding before Pablo can tag.
+
+### Outstanding pre-tag-v1.0 work (Pablo, ~2 hours)
+
+1. Build §1 manual checks (Playwright e2e + Lighthouse + autocannon + EXPLAIN ANALYZE + cold-start Fast 3G)
+2. Store §2 screenshots reales (5+) + icon set 16-512px
+3. Legal §3 LICENSE root verification
+4. Security §5 migration smoke vs DB fresh
+5. Backup restore practice — go-live blocker per `rollback-plan.md`
+6. Playtest 14-10 (fresh-player + suspension/confetti/VAR observation)
+
+Tras esos checks: si verde → `git tag v1.0.0 && git push origin v1.0.0` + deploy.
