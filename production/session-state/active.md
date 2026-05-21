@@ -2,12 +2,70 @@
 
 <!-- STATUS -->
 Stage: Polish
-Epic: Sprint 11 planning
-Feature: Orchestrator full extraction + ADR-020 acceptance + a11y P1 cleanup
-Task: Sprint 11 plan + QA plan escritos — listo para implementar
+Epic: Sprint 11 — CLOSED
+Feature: Orchestrator full + ADR-020 + tick diario foundation + A11y P1
+Task: Sprint 11 closed — APPROVED WITH CONDITIONS · awaiting Pablo's next instruction
 <!-- /STATUS -->
 
 ## Active workstream
+
+**🎯 SPRINT 11 — ✅ CLOSED** (2026-05-21)
+
+Second Polish-phase sprint complete. 4 of 5 stories closed (1 blocked on
+Pablo). All 3 Must Have + 1 Should Have stories delivered. 2 deviations
+documented (orchestrator location · day-by-day Option B scope) — both have
+clear Sprint 12+ paths and zero blocking impact.
+
+- Sprint plan: `production/sprints/sprint-11.md`
+- QA plan: `production/qa/qa-plan-sprint-11-2026-05-21.md`
+- QA sign-off: `production/qa/qa-signoff-sprint-11-2026-05-21.md` — APPROVED WITH CONDITIONS
+- Smoke: `production/qa/smoke-sprint-11-2026-05-21.md` — PASS, 1046/1046 automated tests + 4 todo (Sprint 12+ deferrals)
+- A11y P1 evidence: `production/qa/evidence/a11y-p1-sprint-11.md` (6/6 P1 findings closed)
+
+### Sprint 11 deliverables (chronological)
+
+| Commit | Story | Done |
+|---|---|---|
+| `cd5a0f3` | 11-1 + plan | Sprint 11 plan + QA plan + ADR-020 → Accepted |
+| `9a4ebed` | 11-2 | Full advance-orchestrator extraction (`runAdvanceTickFull`) — dashboard form action collapsed 576→254 LOC; pipeline action 340→30 LOC; +14 grep-based regression tests; README at `apps/api/src/modules/advance/README.md` documents deviation |
+| `4bb3492` | 11-3 | A11y P1 batch (6 findings closed: confirm-dialog focus trap+return, advance-transition focus, tab aria, match aria-live, balance icon); +21 aria assertions; evidence checklist |
+| `0aa5b91` | 11-4 | ADR-020 day-by-day foundation: `current_day_of_season` column + migration 0021 + `advanceDays` API + 17 tests (4 todo deferred to Sprint 12+) |
+| (this commit) | 11-end | Sprint 11 smoke + QA sign-off + session-state refresh |
+
+### Carry-forward to Sprint 12
+
+1. **Mid-week pause feature** — true per-day decomposition in `advanceDays`
+   (ADR-020 §"Enables"). 4 `it.todo` items in `advance-days.test.ts`
+   document the work: STOP day-3 halt, match-on-Saturday, day-6 rollover,
+   cascade decay Option A revisit.
+2. **`POST /api/advance` Hono route + cross-app HTTP migration** —
+   architectural Sprint 12+ work when realtime-multiplayer-specialist
+   designs the MMO migration.
+3. **3 A11y P2 findings** — skip-link, heading levels, sponsor form labels
+   (from `production/qa/a11y-audit-2026-05-21.md`).
+4. **Playtest Polish #1 (11-5)** — Pablo solo session, ~45 min, blocked on
+   availability. Foco: feel of cleaner advance pipeline + foundation
+   readiness for day-by-day.
+5. **Manual walkthrough sign-offs** (Pablo, ~10 min total):
+   - A11y P1 keyboard pass — checklist in `production/qa/evidence/a11y-p1-sprint-11.md`
+   - Browser e2e: dashboard → advance → next week verification
+
+### Recommended next user action
+
+- `/sprint-plan new` for Sprint 12 — anchor around mid-week pause + remaining carry-forward.
+- Or spawn the deferred playtest (11-5) when Pablo has ~45 min.
+- Or run the manual A11y walkthrough to convert CONDITIONAL → PASS on the WCAG audit.
+
+### Cumulative session commits (Sprint 11)
+
+5 commits this session, all on `project/SoccerManagerTotal`:
+`cd5a0f3` → `9a4ebed` → `4bb3492` → `0aa5b91` → (closeout).
+
+Test growth: 998 baseline → **1046 passing** + 4 todo. Net +48 tests.
+
+---
+
+## Earlier workstreams (historical context, do not act on)
 
 **🎯 SPRINT 10 — ✅ CLOSED** (2026-05-21)
 
