@@ -22,6 +22,8 @@ import {
   desc,
 } from '@smt/db';
 import { derivePresentationState } from '@smt/shared';
+import { deriveTier } from '$lib/canvas/tier-derivation';
+import { EMPTY_TIER_HISTORY, type TierHistory } from '$lib/canvas/types';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
   if (!locals.user) throw redirect(303, '/login');
@@ -59,20 +61,44 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     dayOfSeason: currentDay,
   });
 
-  // For v1.1 Sprint 22 launch: tier comes from the simple read of `cityTier`
-  // on the club. The full tier-derivation service (with anti-yo-yo history)
-  // wires in once the playthroughs.tierHistory column lands in Sprint 23.
   const [club] = await db
     .select({
       name: clubs.name,
       city: clubs.city,
       cityTier: clubs.cityTier,
       division: clubs.division,
+      prestige: clubs.prestige,
+      fanBase: clubs.fanBase,
+      currentSeason: clubs.currentSeason,
     })
     .from(clubs)
     .where(eq(clubs.id, ctx.playthrough.clubId));
 
-  const tier = (club?.cityTier ?? 1) as 1 | 2 | 3 | 4;
+  // v1.1 Sprint 23: derive tier from WorldState + tier history (anti-yo-yo).
+  // Falls back to club.cityTier if anything is missing (legacy playthroughs
+  // pre-v1.1, fresh sessions, etc.).
+  const tierHistory =
+    (ctx.playthrough as { tierHistory?: TierHistory | null }).tierHistory ??
+    EMPTY_TIER_HISTORY;
+  const balanceK = snapshot
+    ? Number(
+        (snapshot.worldState as Record<string, number>)['financial_balance'] ?? 0,
+      )
+    : 0;
+  const derivedTierResult = club
+    ? deriveTier(
+        {
+          prestige: club.prestige,
+          financialBalanceK: balanceK,
+          fanBase: club.fanBase,
+          currentSeason: club.currentSeason,
+          division: club.division,
+        },
+        tierHistory,
+      )
+    : { tier: 1 as 1 | 2 | 3 | 4 };
+
+  const tier = derivedTierResult.tier;
 
   // Crowd density only matters if a fixture is live (placeholder NULL).
   const liveFixture = null as null | { crowdDensity: number };

@@ -26,7 +26,12 @@
     applyDayNightTint,
     type PixiBundle,
   } from '$lib/canvas/pixi-app';
-  import { screenToTile, TILE_WIDTH_HALF, TILE_HEIGHT_HALF } from '$lib/canvas/tile-projection';
+  import { screenToTile } from '$lib/canvas/tile-projection';
+  import {
+    INITIAL_CAMERA,
+    handleCameraKeydown,
+    type CameraState,
+  } from '$lib/canvas/camera';
 
   type Props = {
     worldView: CanvasWorldView;
@@ -42,6 +47,9 @@
   // $state.raw because PIXI.Application is a complex object that we don't want
   // Svelte's reactive proxy wrapping (would break PIXI internals).
   let bundle = $state.raw<PixiBundle | null>(null);
+
+  // Camera state — pure POJO, reactive.
+  let camera = $state<CameraState>({ ...INITIAL_CAMERA });
 
   onMount(async () => {
     if (!canvasEl) return;
@@ -64,6 +72,17 @@
     applyDayNightTint(bundle, view);
   });
 
+  // React to camera changes — apply pan + zoom to the relevant layers.
+  $effect(() => {
+    const cam = camera;
+    if (!bundle) return;
+    // Apply camera offset on top of the centering computed in renderTier1Baseline.
+    // We store the base centering at the moment of render, then add the camera offset.
+    for (const layer of [bundle.layers.terrain, bundle.layers.buildings]) {
+      layer.scale.set(cam.zoom, cam.zoom);
+    }
+  });
+
   function handleClick(ev: MouseEvent): void {
     if (!bundle || !canvasEl || !onTileClick) return;
     const rect = canvasEl.getBoundingClientRect();
@@ -76,12 +95,23 @@
   }
 
   function handleKeydown(ev: KeyboardEvent): void {
-    if (!bundle) return;
-    if (ev.key === 'f' || ev.key === 'F') {
-      // Re-center on stadium
+    if (!canvasEl) return;
+    const viewport = { width: canvasEl.clientWidth, height: canvasEl.clientHeight };
+    const next = handleCameraKeydown(camera, ev, viewport);
+    if (next !== null) {
       ev.preventDefault();
-      renderTier1Baseline(bundle, worldView);
+      camera = next;
     }
+  }
+
+  function handleWheel(ev: WheelEvent): void {
+    if (!bundle) return;
+    ev.preventDefault();
+    const direction = ev.deltaY < 0 ? +1 : -1;
+    const viewport = { width: canvasEl?.clientWidth ?? width, height: canvasEl?.clientHeight ?? height };
+    const synthEv = { key: direction === +1 ? '+' : '-' } as KeyboardEvent;
+    const next = handleCameraKeydown(camera, synthEv, viewport);
+    if (next !== null) camera = next;
   }
 </script>
 
@@ -94,6 +124,7 @@
   aria-label="Vista isométrica del estadio del club. Usa Tab para salir de la vista. Pulsa F para centrar en el estadio. Hay una vista alternativa en formato texto disponible en el menú de accesibilidad."
   onclick={handleClick}
   onkeydown={handleKeydown}
+  onwheel={handleWheel}
 ></canvas>
 
 <style>

@@ -183,6 +183,13 @@
       "when": 1779375900000,
       "tag": "0025_gdpr_deletion_request",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1779379700000,
+      "tag": "0026_tier_history",
+      "breakpoints": true
     }
   ]
 }

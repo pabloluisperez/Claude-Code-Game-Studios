@@ -66,6 +66,16 @@ export const playthroughs = pgTable('playthroughs', {
    * day, writes to it on cancel, and resets it to 0 when the week commits.
    */
   advanceResumeDay: integer('advance_resume_day').notNull().default(0),
+  /**
+   * v1.1 Sprint 23: city-progression tier history (anti yo-yo state machine).
+   *
+   * jsonb shape: `{ everReachedTier: 1|2|3|4, weeksBelow: { 2,3,4: number } }`
+   * (see apps/web/src/lib/canvas/types.ts TierHistory).
+   *
+   * Nullable for backward compat — playthroughs created before v1.1 default
+   * to EMPTY_TIER_HISTORY when read.
+   */
+  tierHistory: jsonb('tier_history'),
   lastTickAt: timestamp('last_tick_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
