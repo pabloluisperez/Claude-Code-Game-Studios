@@ -22,14 +22,35 @@ quede cerrado y enlaza el artefacto justificativo en `production/`.
 
 ## 2. Store / hosting metadata
 
-- [ ] **Nombre**: "Cascada FC — Total Soccer Manager"
-- [ ] **Descripción corta** (≤ 80 chars): TBD
-- [ ] **Descripción larga**: 3 párrafos · pillars A + C · DOM-only
-- [ ] **Screenshots** (5+): dashboard, /finance, /squad, /match live, /league
-- [ ] **Logo + iconos**: 16/32/64/128/256/512 px
-- [ ] **Categoría store**: Sports / Simulation
-- [ ] **Pricing**: TBD (free? freemium? one-time?)
-- [ ] **Soporte**: email / URL de contacto
+- [x] **Nombre**: "Total Soccer Manager" (subtítulo opcional: "Tu carrera, tu club").
+- [x] **Descripción corta** (≤ 80 chars): "Manager de fútbol por navegador. Simula temporadas, gestiona club y carrera." (79 chars)
+- [x] **Descripción larga** (3 párrafos):
+
+> **Pillar A — Simulación táctica profunda**
+> Total Soccer Manager simula partidos minuto a minuto basándose en las
+> características reales de tu plantilla. Decide la alineación, formación
+> y táctica antes del partido y haz cambios en momentos clave: cambios,
+> presión, defender el resultado. El simulador es determinista y server-
+> authoritative — cada partido es justo, reproducible y libre de trampas.
+>
+> **Pillar C — DOM-only, sin instalación**
+> Funciona en cualquier navegador moderno, desktop o móvil. Tu carrera se
+> guarda en la nube ligada a tu cuenta. Sin descargas, sin parches, sin
+> launchers — solo abre el navegador y juega. La accesibilidad es de
+> primera clase: navegación por teclado completa, soporte de lectores de
+> pantalla y contraste WCAG 2.1 AA.
+>
+> **Una carrera, no un partido**
+> Gestiona finanzas (taquilla, TV, patrocinios, salarios), tu cuerpo
+> técnico, el mercado de fichajes y la moral del vestuario. Acompaña a
+> tu manager temporada a temporada conforme acumula experiencia, hitos
+> profesionales y reputación. Cada decisión cuenta.
+
+- [ ] **Screenshots** (5+): dashboard, /finance, /squad, /match live, /league — capturar con build de producción tras 14-3.
+- [ ] **Logo + iconos**: 16/32/64/128/256/512 px (favicon ya existe; pendiente set completo)
+- [x] **Categoría store**: Sports / Simulation · Management
+- [x] **Pricing (MVP v1.0)**: **Gratuito** durante el periodo de soft-launch. Sin micropagos. Decisión: priorizar feedback de jugadores y validación de retention antes de monetizar.
+- [x] **Soporte**: GitHub Issues público + correo de contacto en `/terms` §10 (a actualizar con el alias real del owner antes del go-live).
 
 ## 3. Legal / Privacy
 
