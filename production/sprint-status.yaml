@@ -9,90 +9,70 @@
 #   done           ↔  Complete
 #   blocked        ↔  Blocked
 
-sprint: 9
-goal: "Advance-loop orchestrator extraction + playtest enablement + UX polish"
-start: "2026-08-26"
-end: "2026-09-08"
+sprint: 10
+goal: "Polish carry-forward — tick model + difficulty curve + recovery levers + a11y + orchestrator"
+start: "2026-09-09"
+end: "2026-09-22"
 generated: "2026-05-21"
 updated: "2026-05-21"
 
 stories:
-  - id: "9-1"
-    name: "Advance-loop orchestrator extraction (PARTIAL — context loader extracted + adopted; full orchestrator deferred Sprint 10)"
-    file: "packages/db/src/repos/advance-context.ts"
+  - id: "10-1"
+    name: "Day-by-day tick model ADR"
+    file: "docs/architecture/ADR-020-day-by-day-tick.md"
     priority: must-have
-    status: done
-    owner: ""
-    estimate_days: 3
-    blocker: ""
-    completed: "2026-05-21"
-
-  - id: "9-2"
-    name: "Economy-tuning seeded-state retune + crisis fixture loader"
-    file: "apps/api/tests/fixtures/economy-tuning-crisis.ts"
-    priority: must-have
-    status: done
-    owner: ""
-    estimate_days: 1
-    blocker: ""
-    completed: "2026-05-21"
-
-  - id: "9-3"
-    name: "Decide §C0 amendment intent — Option 3 confirmed by Pablo via 'todo ok, continua'"
-    file: "design/gdd/cascade-engine.md"
-    priority: must-have
-    status: done
-    owner: ""
+    status: ready-for-dev
+    owner: "technical-director"
     estimate_days: 0.5
     blocker: ""
-    completed: "2026-05-21"
-
-  - id: "9-4"
-    name: "UX polish — 4 friction items from agent fresh-player walkthrough"
-    file: "apps/web/src/routes/dashboard/+page.svelte"
-    priority: should-have
-    status: done
-    owner: ""
-    estimate_days: 2
-    blocker: ""
-    completed: "2026-05-21"
-
-  - id: "9-5"
-    name: "Run first human fresh-player playtest"
-    file: "production/playtests/"
-    priority: should-have
-    status: blocked
-    owner: ""
-    estimate_days: 1
-    blocker: "Requires human playtester recruitment by Pablo. UX polish (9-4) already landed; protocol ready for execution."
     completed: ""
 
-  - id: "9-6"
-    name: "Run first human economy-tuning playtest"
-    file: "production/playtests/"
-    priority: should-have
-    status: blocked
-    owner: ""
-    estimate_days: 1.5
-    blocker: "Requires human playtester recruitment by Pablo. Fixture loader (9-2) ready; 9-5 should run first per protocol."
-    completed: ""
-
-  - id: "9-7"
-    name: "Cascade-log + threshold-crossings dev viewer"
-    file: "apps/web/src/routes/dev/cascade-log/"
-    priority: nice-to-have
-    status: done
-    owner: ""
-    estimate_days: 1.5
-    blocker: ""
-    completed: "2026-05-21"
-
-  - id: "9-8"
-    name: "Sprint 9 QA plan"
-    file: "production/qa/qa-plan-sprint-09.md"
-    priority: nice-to-have
-    status: done
-    owner: ""
+  - id: "10-2"
+    name: "Difficulty curve synthesis"
+    file: "design/difficulty-curve.md"
+    priority: must-have
+    status: ready-for-dev
+    owner: "game-designer"
     estimate_days: 0.5
     blocker: ""
-    completed: "2026-05-21"
+    completed: ""
+
+  - id: "10-3"
+    name: "Recovery levers coaching panel"
+    file: "apps/web/src/routes/finance/+page.svelte"
+    priority: must-have
+    status: ready-for-dev
+    owner: "gameplay-programmer"
+    estimate_days: 1.5
+    blocker: ""
+    completed: ""
+
+  - id: "10-4"
+    name: "Accessibility audit + fixes"
+    file: "production/qa/a11y-audit-2026-05-21.md"
+    priority: must-have
+    status: ready-for-dev
+    owner: "accessibility-specialist"
+    estimate_days: 1.0
+    blocker: ""
+    completed: ""
+
+  - id: "10-5"
+    name: "Advance-loop orchestrator extraction"
+    file: "apps/api/src/modules/advance/orchestrator.ts"
+    priority: should-have
+    status: backlog
+    owner: "web-backend-specialist"
+    estimate_days: 2.0
+    blocker: ""
+    completed: ""
+
+  - id: "10-6"
+    name: "Polish-phase playtest #1"
+    file: "production/playtests/2026-05-XX-polish-sprint-10.md"
+    priority: nice-to-have
+    status: backlog
+    owner: "Pablo"
+    estimate_days: 0.5
+    blocker: ""
+    completed: ""
