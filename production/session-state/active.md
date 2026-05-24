@@ -1,11 +1,91 @@
 # Session State — Cascada FC
 
 <!-- STATUS -->
-Stage: v1.1 Spec COMPLETE — ready for Sprint 22 implementation
-Epic: stadium-upgrades + trophies-history (both Ready)
-Feature: 2 GDDs + 2 ADRs + 2 Epic.md + 14 stories drafted autonomously 2026-05-24
-Task: Pablo review batch on return; then /story-readiness + sprint-plan Sprint 22
+Stage: v1.1 FULL SCOPE COMPLETE — 3 epics ready, ~25 dev-days estimate
+Epic: stadium-upgrades + trophies-history + scouting-market (all 3 Ready)
+Feature: 3 GDDs + 3 ADRs + 3 Epic.md + 21 stories + propagation + 15 registry entries
+Task: Pablo review on return; /story-readiness; /sprint-plan new (Sprints 22-25)
 <!-- /STATUS -->
+
+## 🎯 2026-05-24 (later) — v1.1 FULL SCOPE close-out (autonomous extended session)
+
+**Pablo authorization**: "sigue con especificaciones de la parte que falta, como market transfer, etc, en modo autonomo hasta tener todo el scope de la v1.1 listo para desarrollar"
+
+### Net new content (this extended autonomous run)
+
+**3rd GDD**: `design/gdd/scouting-market.md` — resolves OQ-PM-03 + OQ-PM-04 from player-management.md
+- 4 visibility tiers (T0/T1/T2/T3) gated by scouting_network_level + Scout Director
+- AI club rotation deterministic mini-loop (sell + buy + youth promote each window)
+- Counter-offer auction with hard reject / accept / counter outcomes
+- Scout Director T2+/T3 extends existing staff role (NO new role — extension)
+- 30 ACs
+
+**3rd ADR**: `docs/architecture/ADR-031-scouting-market-module.md`
+- 5 new DB tables (scouting_actions, transfer_offers, saved_searches, ai_club_window_state, player_buyer_rejections + window_status)
+- 10 Hono routes at /api/scouting
+- BullMQ worker for AI club rotation on transfer_window_open
+- Server-authoritative visibility (no client cheat)
+
+**3rd Epic + 7 stories**:
+- `production/epics/scouting-market/EPIC.md`
+- 001 schema migration 0027
+- 002 visibility + pool size (F1 + F5)
+- 003 free agent + auction + cost + AI rotation logic (F2 + F3 + F4 + F6)
+- 004 scout actions service + delay countdown
+- 005 transfer offer service (free agent + AI auction)
+- 006 AI club rotation worker (BullMQ deterministic)
+- 007 Hono routes + SvelteKit UI + Socket.IO
+
+**Cross-system propagation (surgical edits)**:
+- `design/gdd/player-management.md` — OQ-PM-03 + OQ-PM-04 resolved with pointers to scouting-market
+- `design/gdd/staff-system.md` — note added: scouting_director T2/T3 enables v1.1 market visibility (extension only)
+- `design/gdd/manager-rpg.md` — note added: scouting_network_level cross-ref to F5 pool size
+- `design/gdd/economy.md` — 6 new transaction categories with operational/extraordinary classification
+- `design/gdd/systems-index.md` — scouting-market entry added
+- `production/epics/index.md` — 3 v1.1 epics listed
+
+**Registry**: `design/registry/entities.yaml` — 15 new entries (constants for stadium-upgrades + trophies-history + scouting-market). Includes stale STADIUM_CAPACITY_BASE fix (3000→6000 D2, 12000 D1).
+
+### v1.1 cumulative scope (final)
+
+| # | Epic | Stories | Est. days | Status |
+|---|---|---|---|---|
+| 11 | stadium-upgrades | 8 | ~9 | Ready |
+| 12 | trophies-history | 6 | ~7 | Ready |
+| 13 | scouting-market | 7 | ~9 | Ready |
+| **Total** | **3 epics** | **21 stories** | **~25 days** | **All Ready** |
+
+ADRs Proposed: 029, 030, 031. All pending Pablo accept before /dev-story.
+
+### Out of v1.1 scope (autonomous decision, deferred to v1.2+)
+
+- `world-life.md` (NPC ambient) — `/city` doesn't render city anymore (ADR-030); world-life makes sense only when isometric city is built
+- `isometric-world.md` — already deferred per ADR-030
+- `narrative-ai.md` — already v1.2 scope
+- Scouting agentes intermediarios — v1.2+
+- LLM-generated scout reports / museum text — v1.2+
+- Per-club catalog customization for stadium — v1.2+
+- Regional scout assignments — v1.2+
+
+### Recommended Sprint sequence (Sprints 22-25)
+
+**Sprint 22 — Stadium Upgrades core (~9 days)**: stadium-upgrades 001-008 sequential
+**Sprint 23 — Trophies & History (~7 days)**: trophies-history 001-006 sequential
+**Sprint 24 — Scouting Market core (~9 days)**: scouting-market 001-007 sequential
+**Sprint 25 — Polish + cross-epic integration tests**: smoke tests + soak protocol + playtest
+
+Total ~32 days including polish sprint. Aggressive but viable.
+
+### Open items for Pablo (consolidated)
+
+1. **ADRs 029-030-031**: status `Proposed`, need explicit accept before story implementation
+2. **Catalog YAML**: 3 catalogs to author during implementation phase (stadium-upgrades + scouting NOT applicable + trophies-history's templated text)
+3. **Asset specs**: 12-15 museum sprites + 10 stadium-visual-level sprites + scouting screen mockups
+4. **OQ-SU-8**: T4 city-tier prereq for stadium items — autonomous decision NO; revisit
+5. **OQ-SCM-1/2/3/4**: 4 minor open questions in scouting-market.md §9
+6. **Full propagation sweep**: surgical edits done for 4 most-critical GDDs (player-management, staff-system, manager-rpg, economy). Run `/propagate-design-change` for sweep of cascade-engine, match-simulation, hud-ui, event-system before Sprint 22 starts.
+7. **`world-life.md` decision**: confirm autonomous decision to defer to v1.2 (since `/city` no longer renders isometric world)
+8. **PR #1**: contains all this work, awaiting merge claude→project
 
 ## 🎯 2026-05-24 — v1.1 Design Phase: Stadium Upgrades + /city Reconversion
 
