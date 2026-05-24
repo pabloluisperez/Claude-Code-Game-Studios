@@ -1,11 +1,126 @@
 # Session State — Cascada FC
 
 <!-- STATUS -->
-Stage: Release (Sprint 14 CLOSED + v1.0.x maintenance pending Pablo manual validation)
-Epic: Asset pipeline expansion + HD sprite integration into /stadium route
-Feature: Overnight 2026-05-22 — 11 new HD sprites + /stadium visual upgrade + launch comms
-Task: Awaiting Pablo return — review overnight batch (assets, route change, launch post)
+Stage: v1.1 Spec COMPLETE — ready for Sprint 22 implementation
+Epic: stadium-upgrades + trophies-history (both Ready)
+Feature: 2 GDDs + 2 ADRs + 2 Epic.md + 14 stories drafted autonomously 2026-05-24
+Task: Pablo review batch on return; then /story-readiness + sprint-plan Sprint 22
 <!-- /STATUS -->
+
+## 🎯 2026-05-24 — v1.1 Design Phase: Stadium Upgrades + /city Reconversion
+
+**Pablo authorization**: 4 design decisions closed, GDD authoring begins.
+
+### Decisions closed (2026-05-24)
+
+| # | Decision | Result |
+|---|---|---|
+| 1 | Levels model | **4 tiers gameplay + 10 niveles visuales** dentro de los tiers |
+| 2 | Tier-up condition | **Métricas (actual) + completar reformas requeridas** (doble gate) |
+| 3 | `/city` route | **Reconvertir en pantalla de Trofeos / Historia del Club** (nuevo gameplay) |
+| 4 | Process | **Completo: GDD → ADR → stories → código** |
+
+### Plan sequence (acordado)
+
+**Fase 1 — Diseño**
+- [ ] 1.1 `/design-system stadium-upgrades` → `design/gdd/stadium-upgrades.md` ← **ACTUAL**
+- [ ] 1.2 `/design-system trophies-history` → `design/gdd/trophies-history.md`
+- [ ] 1.3 `/propagate-design-change` → refactor/deprecar `design/gdd/city-progression.md`
+- [ ] 1.4 `/review-all-gdds` → consistency check
+
+**Fase 2 — Arquitectura**
+- [ ] 2.1 ADR stadium-upgrades module
+- [ ] 2.2 ADR /city reconversion → trofeos
+- [ ] 2.3 `/architecture-review` traceability update
+
+**Fase 3 — Stories**
+- [ ] 3.1 `/create-epics` stadium-upgrades + trophies-history
+- [ ] 3.2 `/create-stories` por cada epic
+
+**Fase 4 — Implementación**
+- [ ] 4.1 `/dev-story` por cada story
+- [ ] 4.2 `/code-review` + `/story-done` por cada una
+
+### Authoring mode (Pablo selected 2026-05-24)
+
+- **Granularidad**: section-by-section, con preguntas previas (1 sección a la vez).
+- Por cada sección: pregunto opciones → Pablo decide → redacto draft → Pablo aprueba → escribo a archivo → actualizo active.md → paso a la siguiente.
+- Esto mantiene el contexto en ~5k tokens/sección en lugar de cargar el GDD entero.
+
+### Current step
+
+**v1.1 SPEC PHASE COMPLETE** — 2026-05-24 autonomous closeout.
+
+#### Deliverables shipped (this autonomous session)
+
+**Design (Fase 1)**:
+- ✅ `design/gdd/stadium-upgrades.md` — 8 secciones + §9 OQ + closeout (~1500 lines)
+- ✅ `design/gdd/trophies-history.md` — full GDD (~600 lines)
+- ✅ `design/gdd/city-progression.md` — Status → Superseded; §3.2 doble gate; §4.2 superseded by F3; §6 Deps updated
+- ✅ `design/gdd/systems-index.md` — 2 new entries + city-progression marked Superseded
+
+**Architecture (Fase 2)**:
+- ✅ `docs/architecture/ADR-029-stadium-upgrades-module.md` — schema + API + worker integration
+- ✅ `docs/architecture/ADR-030-city-reconversion-museum.md` — /city refactor + read-only aggregator
+
+**Production (Fase 3)**:
+- ✅ `production/epics/stadium-upgrades/EPIC.md` + 8 stories (~9 days estimate)
+- ✅ `production/epics/trophies-history/EPIC.md` + 6 stories (~7 days estimate)
+- ✅ `production/epics/index.md` — v1.1 epic roster added
+
+**Specialist consultations (2026-05-24)**:
+- ✅ `systems-designer` → F1 (visual_level), F2 (duration), F3 (infrastructure_level) — Option C weighted sum chosen
+- ✅ `economy-designer` → F4 (cost), F5 (capacity), payback validation (7.3 partidos ≈ "8 partidos" ✅)
+
+#### Stories ready for `/dev-story`
+
+**Stadium-upgrades epic (8 stories, ~9 days):**
+1. stadium-upgrades-001 — Drizzle schema + migration 0025 (0.5d)
+2. stadium-upgrades-002 — Catalog YAML + Zod loader (1d)
+3. stadium-upgrades-003 — Formulas F1 + F3 (1d)
+4. stadium-upgrades-004 — Formulas F2 + F4 + F5 + F6 (1d)
+5. stadium-upgrades-005 — Service + FSM + transactions (1.5d)
+6. stadium-upgrades-006 — Hono routes + Zod + 4xx (1d)
+7. stadium-upgrades-007 — World Clock integration + doble gate (1d)
+8. stadium-upgrades-008 — SvelteKit /stadium UI + Socket.IO (2d)
+
+**Trophies-history epic (6 stories, ~7 days):**
+1. trophies-history-001 — Backend aggregator API + read-only invariant (1d)
+2. trophies-history-002 — Formulas F1-F5 (0.5d)
+3. trophies-history-003 — Templated text generation (1d)
+4. trophies-history-004 — /city route refactor (barrio scene) (1.5d)
+5. trophies-history-005 — Museum interior scene (5 zones) (2d)
+6. trophies-history-006 — A11y /city-text + final tests (1d)
+
+#### Open items for Pablo (review on return)
+
+1. **Pablo's question about transfer market / scouting** (received during autonomous run): no está en el scope de esta sesión. Sí, parcialmente cubierto en `player-management.md` (Approved) + cascade NodeIds (`scouting_budget`, `scouting_points`) + staff messages. Recomendado: nueva GDD `scouting-market.md` como v1.1 epic #13 en próxima sesión.
+2. **Cross-system propagation** (Fase 1.3 partial): city-progression done; pending economy.md / cascade-engine.md / match-simulation.md / staff-system.md / manager-rpg.md / event-system.md / hud-ui.md updates. Use `/propagate-design-change` before sprint 22 starts.
+3. **Registry entries** (~15 new) pending update to `design/registry/entities.yaml` (per stadium-upgrades.md §4 closeout). Cleanest after Pablo reviews the formulas.
+4. **Sprint 22 plan**: stadium-upgrades + trophies-history total ~16 days. Sprint plan: `/sprint-plan new` with this scope.
+5. **Stories file paths in stadium-upgrades-008** mention placeholder /stadium UI exists. Verify state of `apps/web/src/routes/stadium/+page.svelte` before assigning to dev.
+6. **Asset spec for museum**: 12-15 new HD sprites needed (museum-exterior, museum-interior-trophies, banners, plaques, etc.). Parallel art story to trophies-history-005.
+7. **OQ-SU-8 economy-designer recommendation**: T4 items con prereq adicional "city tier T3 reached". Mi decisión autónoma: NO (consistencia con §3.1.3). Pablo re-evaluate post-playtest.
+
+#### Implementation order recommendation
+
+Sprint 22 (10 days, sequential):
+- Day 1: stadium-upgrades-001 + 002 (schema + catalog)
+- Day 2-3: stadium-upgrades-003 + 004 (formulas)
+- Day 4-5: stadium-upgrades-005 (service)
+- Day 6-7: stadium-upgrades-006 + 007 (routes + clock)
+- Day 8-9-10: stadium-upgrades-008 (UI)
+- (parallel) trophies-history-002 (formulas)
+
+Sprint 23 (7 days, sequential):
+- Day 1: trophies-history-001 (aggregator)
+- Day 2: trophies-history-003 (text templates)
+- Day 3-4: trophies-history-004 (barrio scene)
+- Day 5-6: trophies-history-005 (museum interior)
+- Day 7: trophies-history-006 (a11y + tests)
+- (parallel) asset spec sheet + sprite generation
+
+---
 
 ## 🌙 Overnight 2026-05-22 — Asset pipeline + visual integration + launch comms
 
