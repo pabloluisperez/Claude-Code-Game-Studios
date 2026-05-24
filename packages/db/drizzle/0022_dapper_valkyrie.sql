@@ -1,0 +1,1 @@
+ALTER TABLE "calendar_events" ADD COLUMN "scheduled_day_of_season" integer;

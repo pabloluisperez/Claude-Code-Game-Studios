@@ -30,7 +30,7 @@
 #   Superseded entries:     Grep pattern="status: superseded"
 
 version: 1
-last_updated: ""
+last_updated: "2026-05-16"  # ADR-008..012: + dom_canvas_frontier, async_onmount_cleanup, stacking_context_in_layout
 
 # ─── STATE OWNERSHIP ─────────────────────────────────────────────────────────
 # Who is the authoritative owner of each piece of shared game state.
@@ -43,7 +43,83 @@ last_updated: ""
 # interface: how other systems access this state (read-only property, method call,
 #   signal, shared resource, etc.) — this is the contract other ADRs depend on.
 
-state_ownership: []
+state_ownership:
+  - state: playthrough_save_game
+    status: active
+    owner_system: playthrough-service
+    adr: docs/architecture/ADR-005-worldstate-persistence.md
+    interface: "Single autosave per user. loadCurrentWorldState(playthroughId) → WorldState + DelayedEffectsBuffer + week"
+    write_access: cascade-tick-service-only
+    referenced_by:
+      - docs/architecture/ADR-005-worldstate-persistence.md
+    added: "2026-05-16"
+    revised: ""
+
+  - state: cascade_world_state
+    status: active
+    owner_system: cascade-engine
+    adr: docs/architecture/ADR-003-cascade-graph-topology.md
+    interface: "WorldState = Map<NodeId, number> — read via getNode(state, id), written only by evaluateTick()"
+    write_access: cascade-engine-only   # no other system writes WorldState directly
+    referenced_by:
+      - docs/architecture/ADR-003-cascade-graph-topology.md
+    added: "2026-05-16"
+    revised: ""
+
+  - state: current_week
+    status: active
+    owner_system: game-clock-service
+    adr: docs/architecture/ADR-008-world-clock-event-loop.md
+    interface: "playthroughs.currentWeek (integer) — incremented only by game-clock-service.advance(). Read via GET /api/game/state or returned in AdvanceResult."
+    write_access: game-clock-service-only   # advance() is the sole incrementer
+    referenced_by:
+      - docs/architecture/ADR-008-world-clock-event-loop.md
+    added: "2026-05-16"
+    revised: ""
+
+  - state: manager_skills
+    status: active
+    owner_system: manager-rpg-service
+    adr: docs/architecture/ADR-010-manager-rpg-progression.md
+    interface: "manager_profiles.skills (JSONB) = Record<ManagerSkillId, ManagerSkill>. Updated only by manager-rpg-service.applyXpGrants(). Read via managerRepo.findByPlaythrough()."
+    write_access: manager-rpg-service-only   # applyXpGrants() is the sole writer
+    referenced_by:
+      - docs/architecture/ADR-010-manager-rpg-progression.md
+    added: "2026-05-16"
+    revised: ""
+
+  - state: clubs_entity
+    status: active
+    owner_system: club-service
+    adr: docs/architecture/ADR-011-league-competition-schema.md
+    interface: "clubs table — read freely; writes ONLY via club-service. Other modules (match-sim, economy, transfers) reference clubId as FK but never INSERT/UPDATE clubs rows directly."
+    write_access: club-service-only
+    referenced_by:
+      - docs/architecture/ADR-011-league-competition-schema.md
+    added: "2026-05-16"
+    revised: ""
+
+  - state: tv_contract
+    status: active
+    owner_system: tv-rights
+    adr: docs/architecture/ADR-019-tv-rights-implementation-contract.md
+    interface: "tv_contracts Drizzle table (NOT WorldState JSON). FSM: NONE→ACTIVE→CANCELLED/EXPIRED→NONE. Reads: any module; writes: tv-rights module only (TVRightsRepo). advance() reads contract to compute revenue; writes final state after tick."
+    write_access: tv-rights-module-only
+    referenced_by:
+      - docs/architecture/ADR-019-tv-rights-implementation-contract.md
+    added: "2026-05-20"
+    revised: ""
+
+  - state: fan_loyalty
+    status: active
+    owner_system: tv-rights
+    adr: docs/architecture/ADR-019-tv-rights-implementation-contract.md
+    interface: "fan_loyalty INTEGER column on managers table (NOT WorldState node, NOT cascade node). Range [0, 50]. Only source: tv_auction / tv_midseason_offer rejection (+10 per reject, cap 50). Used by F-TV4 in matchday revenue calculation."
+    write_access: tv-rights-module-only
+    referenced_by:
+      - docs/architecture/ADR-019-tv-rights-implementation-contract.md
+    added: "2026-05-20"
+    revised: ""
 
 # Example:
 #
@@ -71,7 +147,183 @@ state_ownership: []
 #
 # pattern options: signal | direct_call | event_bus | shared_resource | rpc | none
 
-interfaces: []
+interfaces:
+  - contract: evaluate_tick_signature
+    status: active
+    pattern: direct_call
+    producer: any-tick-caller
+    consumers:
+      - cascade-engine
+      - match-simulation
+    adr: docs/architecture/ADR-003-cascade-graph-topology.md
+    signal_signature: "evaluateTick(ctx: SimContext, graph: CascadeGraph, prevState: WorldState, decisions: PlayerDecisions, pending: DelayedEffectsBuffer): TickResult"
+    notes: "Pure function. All inputs are prev-state. Never mutates inputs. Returns nextState + newDelayedEffects + log."
+    referenced_by:
+      - docs/architecture/ADR-003-cascade-graph-topology.md
+    added: "2026-05-16"
+    revised: ""
+
+  - contract: sport_plugin_interface
+    status: active
+    pattern: direct_call
+    producer: sport-plugin-implementor
+    consumers:
+      - match-simulation-service
+      - cascade-engine (worldStateDeltas)
+    adr: docs/architecture/ADR-007-sport-agnostic-match-sim.md
+    signal_signature: "SportPlugin.simulateMatch(ctx, home, away, worldState): MatchOutcome"
+    notes: "worldStateDeltas is ReadonlyMap<string, number>. winner is always DERIVED from scores.
+      New sport = new SportPlugin implementation; engine does not change."
+    referenced_by:
+      - docs/architecture/ADR-007-sport-agnostic-match-sim.md
+    added: "2026-05-16"
+    revised: ""
+
+  - contract: sim_function_signature
+    status: active
+    pattern: direct_call
+    producer: any-sim-caller
+    consumers:
+      - cascade-engine
+      - match-simulation
+      - economy-tick
+    adr: docs/architecture/ADR-002-simulation-determinism.md
+    signal_signature: "fn(ctx: SimContext, ...domain-specific-params): DomainResult"
+    notes: "All simulation functions in packages/shared/src/sim/ MUST accept SimContext
+      as their first argument. No sim function may call Math.random() or Date.now() directly."
+    referenced_by:
+      - docs/architecture/ADR-002-simulation-determinism.md
+    added: "2026-05-16"
+    revised: ""
+
+  - contract: advance_api_contract
+    status: active
+    pattern: direct_call
+    producer: game-client (SvelteKit)
+    consumers:
+      - game-clock-service
+    adr: docs/architecture/ADR-008-world-clock-event-loop.md
+    signal_signature: "POST /api/game/advance → AdvanceResult { finalWeek, weeksAdvanced, eventsTriggered, thresholdCrossings, nextEventPreview }"
+    notes: "Server determines N (weeks to advance) from calendar_events table. Client never
+      specifies N. All N ticks processed synchronously in a single DB transaction."
+    referenced_by:
+      - docs/architecture/ADR-008-world-clock-event-loop.md
+    added: "2026-05-16"
+    revised: ""
+
+  - contract: threshold_crossing_contract
+    status: active
+    pattern: direct_call
+    producer: cascade-engine (evaluateTick)
+    consumers:
+      - game-clock-service
+    adr: docs/architecture/ADR-008-world-clock-event-loop.md
+    signal_signature: "TickResult.thresholdCrossings: ThresholdCrossing[] — each crossing has { nodeId, previousValue, newValue, direction, priority: 'BLOCKING' | 'ADVISORY' }"
+    notes: "Extends ADR-003 TickResult type. cascade-engine returns crossings; game-clock-service
+      decides whether to stop advance (BLOCKING) or record-and-continue (ADVISORY). Engine has
+      no knowledge of calendar or UI — only reports what happened numerically."
+    referenced_by:
+      - docs/architecture/ADR-008-world-clock-event-loop.md
+      - docs/architecture/ADR-003-cascade-graph-topology.md
+    added: "2026-05-16"
+    revised: ""
+
+  - contract: staff_messages_socket_event
+    status: active
+    pattern: rpc
+    producer: staff-messages-worker (BullMQ)
+    consumers:
+      - sveltekit-client (inbox panel)
+    adr: docs/architecture/ADR-009-staff-message-routing.md
+    signal_signature: "Socket.IO event 'staff:messages-ready' → StaffMessagesReadyEvent { playthroughId, week, messages: StaffMessage[] } emitted to room 'playthrough:{playthroughId}'"
+    notes: "Worker runs in-process with Socket.IO server. Multi-process deployment requires
+      @socket.io/redis-adapter pub/sub instead of direct io import. Startup guard enforced."
+    referenced_by:
+      - docs/architecture/ADR-009-staff-message-routing.md
+    added: "2026-05-16"
+    revised: ""
+
+  - contract: staff_message_job_contract
+    status: active
+    pattern: event_bus
+    producer: game-clock-service (advance)
+    consumers:
+      - staff-messages-worker
+    adr: docs/architecture/ADR-009-staff-message-routing.md
+    signal_signature: "BullMQ queue 'staff-messages' job 'generate' → StaffMessageJobData { playthroughId, finalWeek, season, thresholdCrossings, worldStateDiff }"
+    notes: "Enqueued fire-and-forget after advance() DB transaction commits. advance() does not
+      await the job. Delivery is async — player receives messages ~500ms after advance response."
+    referenced_by:
+      - docs/architecture/ADR-009-staff-message-routing.md
+      - docs/architecture/ADR-008-world-clock-event-loop.md
+    added: "2026-05-16"
+    revised: ""
+
+  - contract: p1_p3_resolution_contract
+    status: active
+    pattern: direct_call
+    producer: manager-rpg-service
+    consumers:
+      - staff-service (hire marketplace)
+    adr: docs/architecture/ADR-010-manager-rpg-progression.md
+    signal_signature: "getMaxHirableStaffQuality(reputationLevel: number): 1 | 2 | 3 — pure function exported from packages/shared/src/types/manager-rpg.ts"
+    notes: "This is the P1↔P3 architectural resolution. Cascade visibility expands ONLY via
+      this path: reputation.level → getMaxHirableStaffQuality() → qualityTier (ADR-009) →
+      perception threshold → more staff messages. The UI must never expose cascade formulas directly."
+    referenced_by:
+      - docs/architecture/ADR-010-manager-rpg-progression.md
+      - docs/architecture/ADR-009-staff-message-routing.md
+    added: "2026-05-16"
+    revised: ""
+
+  - contract: update_standings_after_match
+    status: active
+    pattern: direct_call
+    producer: game-clock-service (advance, match event)
+    consumers:
+      - league-service
+    adr: docs/architecture/ADR-011-league-competition-schema.md
+    signal_signature: "league-service.updateStandingsAfterMatch(tx, fixture: FixtureRecord, outcome: MatchOutcome): Promise<void>"
+    notes: "Called within the advance() DB transaction after SportPlugin.simulateMatch() resolves.
+      Must be in the same transaction as snapshot + currentWeek update for atomicity."
+    referenced_by:
+      - docs/architecture/ADR-011-league-competition-schema.md
+      - docs/architecture/ADR-007-sport-agnostic-match-sim.md
+    added: "2026-05-16"
+    revised: ""
+
+  - contract: tv_corruption_delta
+    status: active
+    pattern: direct_call
+    producer: tv-rights (applyTVCorruptionDelta)
+    consumers:
+      - advance (via applyTVPrePhase — pre-cascade sub-phase)
+      - test suite (AC-TV-22a unit test)
+    adr: docs/architecture/ADR-019-tv-rights-implementation-contract.md
+    signal_signature: "applyTVCorruptionDelta(tier: 'LOCAL'|'REGIONAL'|'NACIONAL', prevCorruption: number, status: TVStatus): number"
+    notes: "Pure function — no I/O. Returns corruption_exposure rounded to 2 decimals.
+      Returns prevCorruption unchanged if status !== 'ACTIVE'. Called at paso 2 of the
+      8-step TV Tick Order (before cascade injection)."
+    referenced_by:
+      - docs/architecture/ADR-019-tv-rights-implementation-contract.md
+    added: "2026-05-20"
+    revised: ""
+
+  - contract: tv_sign_endpoint
+    status: active
+    pattern: rpc
+    producer: tv-rights (POST /api/tv/sign)
+    consumers:
+      - apps/web (SvelteKit form action in /finance)
+    adr: docs/architecture/ADR-019-tv-rights-implementation-contract.md
+    signal_signature: "POST /api/tv/sign { offerId: number, tier: TVTier, durationSeasons: 1|2|3 } → { ok: true } | HTTP 400 | HTTP 409"
+    notes: "Single Drizzle transaction: resolve calendarEvent (consumed=true) + insert tvContract +
+      grant XP. HTTP 409 if contract already ACTIVE or offer already consumed.
+      HTTP 400 if illegal tier+duration combination (F-TV1 guard)."
+    referenced_by:
+      - docs/architecture/ADR-019-tv-rights-implementation-contract.md
+    added: "2026-05-20"
+    revised: ""
 
 # Example:
 #
@@ -131,7 +383,81 @@ performance_budgets: []
 # Register an API decision when the choice is non-obvious and other ADRs might
 # make a different choice for the same purpose without knowing this was decided.
 
-api_decisions: []
+api_decisions:
+  - purpose: world_state_type
+    status: active
+    api: "Map<NodeId, number> via getNode(state, id) helper"
+    not: "Record<NodeId, number> — causes number|undefined with noUncheckedIndexedAccess:true"
+    adr: docs/architecture/ADR-003-cascade-graph-topology.md
+    reason: "Map avoids noUncheckedIndexedAccess widening. getNode() provides a single safe access point with a clear error message when a node is missing."
+    referenced_by:
+      - docs/architecture/ADR-003-cascade-graph-topology.md
+    added: "2026-05-16"
+    revised: ""
+
+  - purpose: llm_server_url_format
+    status: active
+    api: "http://127.0.0.1:8080 (NOT http://localhost:8080)"
+    not: "http://localhost:8080 — Node.js 22 may resolve localhost to ::1 (IPv6) causing ECONNREFUSED if llama-server only listens on IPv4"
+    adr: docs/architecture/ADR-004-narrative-ai-architecture.md
+    reason: "IPv4/IPv6 ambiguity in Node.js 22+ where localhost preferentially resolves to ::1"
+    referenced_by:
+      - docs/architecture/ADR-004-narrative-ai-architecture.md
+    added: "2026-05-16"
+    revised: ""
+
+  - purpose: simulation_prng
+    status: active
+    api: "seedrandom(seed, { state: false }) from 'seedrandom' npm package"
+    not: "Math.random() — explicitly banned inside packages/shared/src/sim/"
+    adr: docs/architecture/ADR-002-simulation-determinism.md
+    reason: "Battle-tested, isomorphic (Node + browser), correct distribution for game
+      simulations, TypeScript types via @types/seedrandom. { state: false } avoids Vite SSR gotcha."
+    referenced_by:
+      - docs/architecture/ADR-002-simulation-determinism.md
+    added: "2026-05-16"
+    revised: ""
+
+  - purpose: manager_skills_storage
+    status: active
+    api: "JSONB column manager_profiles.skills: Record<ManagerSkillId, ManagerSkill>"
+    not: "WorldState nodes (Map<NodeId, number>) — manager skills are discrete structured levels, not continuous cascade values"
+    adr: docs/architecture/ADR-010-manager-rpg-progression.md
+    reason: "Manager skills are structured (named, leveled, XP-tracked) domain data, not
+      cascade numeric values. Storing as WorldState nodes would couple cascade engine to RPG
+      progression and force discrete enum values into a continuous numeric space."
+    referenced_by:
+      - docs/architecture/ADR-010-manager-rpg-progression.md
+    added: "2026-05-16"
+    revised: ""
+
+  - purpose: dom_canvas_frontier
+    status: active
+    api: "Canvas (PixiJS 8) for world rendering; DOM (Svelte 5) for all management UI"
+    not: "PixiJS for UI panels/forms/tables; DOM for world tiles/sprites/animations"
+    adr: docs/architecture/ADR-012-ui-architecture-dom-canvas-frontier.md
+    reason: "Management game requires complex forms, tables, and accessible UI. PixiJS canvas
+      excels at 60fps sprite rendering. Separation gives each tool its optimal use case.
+      Z-index system: canvas z-0, HUD z-10, panels z-20, modals z-30, toasts z-40, overlay z-50."
+    referenced_by:
+      - docs/architecture/ADR-012-ui-architecture-dom-canvas-frontier.md
+      - docs/architecture/ADR-006-isometric-rendering.md
+    added: "2026-05-16"
+    revised: ""
+
+  - purpose: corruption_exposure_precision
+    status: active
+    api: "roundCorruption(value: number): number — Math.round(value * 100) / 100"
+    not: "Raw float arithmetic on corruption_exposure without rounding; DB round-trip within a single tick cycle"
+    adr: docs/architecture/ADR-019-tv-rights-implementation-contract.md
+    reason: "corruption_exposure stored as numeric(5,2) in DB. Drizzle returns it as string.
+      All arithmetic must use roundCorruption() immediately after each step to prevent
+      float drift (e.g., 59.9999... vs 60.00) that would cause false-negative threshold crossings.
+      No intra-tick DB round-trip needed — in-memory rounding provides identical precision."
+    referenced_by:
+      - docs/architecture/ADR-019-tv-rights-implementation-contract.md
+    added: "2026-05-20"
+    revised: ""
 
 # Example:
 #
@@ -157,7 +483,168 @@ api_decisions: []
 # Register a pattern when an ADR explicitly bans it AND other ADRs might
 # unknowingly use it (i.e., it's a tempting but wrong approach for this project).
 
-forbidden_patterns: []
+forbidden_patterns:
+  - pattern: pixijs_v7_destroy_signature
+    status: active
+    description: "app.destroy(bool, options) is the PixiJS v7 signature. In v8 use:
+      app.destroy({ removeView: true, children: true, texture: false, textureSource: false })"
+    why: "v8 changed destroy() to accept a single options object. Using the v7 two-arg form
+      silently ignores the second argument — texture/children options are never applied."
+    adr: docs/architecture/ADR-006-isometric-rendering.md
+    added: "2026-05-16"
+
+  - pattern: pixijs_graphics_overlay_over_cached_layer
+    status: active
+    description: "Never use a Graphics object as a day/night or color overlay above a
+      Container.cacheAsTexture() layer. Use a pre-rendered Sprite with tinted alpha instead."
+    why: "A dynamic Graphics child invalidates the texture cache of parent Containers,
+      eliminating the draw-call savings of cacheAsTexture on the ground layer."
+    adr: docs/architecture/ADR-006-isometric-rendering.md
+    added: "2026-05-16"
+
+  - pattern: drizzle_jsonb_without_zod_parse
+    status: active
+    description: "Never read JSONB columns from Drizzle without a runtime Zod parse.
+      .$type<>() provides zero runtime validation — TypeScript types only.
+      Required: z.record(z.number()).parse(row.worldState) before using in sim."
+    why: "Corrupted DB data bypasses TypeScript types silently. Zod throws at the
+      DB boundary with a clear error before bad data reaches the simulation engine."
+    adr: docs/architecture/ADR-005-worldstate-persistence.md
+    added: "2026-05-16"
+
+  - pattern: tenant_unscoped_delete
+    status: active
+    description: "DELETE queries on multi-user tables MUST include the owning entity
+      ID (playthroughId, userId, clubId) in the WHERE clause. A range-only WHERE
+      (e.g. week < N) without tenant scoping deletes across all users silently."
+    why: "Multi-tenant data safety. Missing tenant filter is a data loss bug."
+    adr: docs/architecture/ADR-005-worldstate-persistence.md
+    added: "2026-05-16"
+
+  - pattern: raw_json_type_assertion_at_api_boundary
+    status: active
+    description: "Never use `as { field: type }` on external API responses (llama-server, third-party HTTP).
+      Always parse with Zod before accessing fields."
+    why: "Type assertions bypass runtime validation. If the external API returns an error body or
+      unexpected shape, the assertion silently succeeds and the undefined/wrong-type field propagates
+      through the system. Zod.parse() throws at the boundary with a clear error."
+    adr: docs/architecture/ADR-004-narrative-ai-architecture.md
+    added: "2026-05-16"
+
+  - pattern: direct_world_state_access
+    status: active
+    description: "Direct WorldState.get(nodeId) without the getNode() helper is forbidden.
+      Always use: getNode(state, nodeId) from cascade-types.ts"
+    why: "noUncheckedIndexedAccess:true makes direct .get() return number|undefined.
+      Using the helper centralizes the undefined check and produces a clear error
+      when a node is missing instead of silent NaN propagation."
+    adr: docs/architecture/ADR-003-cascade-graph-topology.md
+    added: "2026-05-16"
+
+  - pattern: math_random_in_sim
+    status: active
+    description: "Math.random() must never be called inside packages/shared/src/sim/.
+      Use ctx.rng() from the SimContext passed as parameter."
+    why: "Math.random() is non-deterministic. Sim functions must produce identical output
+      for the same seed — Math.random() breaks replays, debugging, and client preview."
+    adr: docs/architecture/ADR-002-simulation-determinism.md
+    added: "2026-05-16"
+
+  - pattern: date_now_in_sim
+    status: active
+    description: "Date.now() and new Date() must never be called inside packages/shared/src/sim/.
+      Use ctx.worldClock (the in-game week number) instead."
+    why: "Wall-clock time inside sim logic creates non-determinism. The sim must be
+      a pure function of its inputs; time is an input, not a side-channel read."
+    adr: docs/architecture/ADR-002-simulation-determinism.md
+    added: "2026-05-16"
+
+  - pattern: async_io_in_sim
+    status: active
+    description: "No await, fetch, DB calls, or file I/O inside packages/shared/src/sim/ functions.
+      Load all state before calling sim, persist results after sim returns."
+    why: "Async I/O inside sim breaks the pure-function guarantee and makes the sim
+      untestable in isolation. The service layer owns load and persist; sim owns computation."
+    adr: docs/architecture/ADR-002-simulation-determinism.md
+    added: "2026-05-16"
+
+  - pattern: multi_advance_calls_for_skip
+    status: active
+    description: "The SvelteKit client must never call POST /api/game/advance N times
+      to implement skip-to-next-event. A single call returns the correct final state.
+      The server determines N internally."
+    why: "Calling /advance N times from the client moves the 'what is the next event'
+      logic to the client, creates N separate DB transactions (risk of partial state),
+      and multiplies HTTP latency. The server is the authority on calendar events."
+    adr: docs/architecture/ADR-008-world-clock-event-loop.md
+    added: "2026-05-16"
+
+  - pattern: worker_io_import_multiprocess
+    status: active
+    description: "BullMQ workers must not import the Socket.IO io singleton (from lib/socket.ts)
+      if the worker runs in a separate process from the HTTP/Socket.IO server.
+      Direct io import only works when worker and server share the same Node.js process.
+      Multi-process deployment requires @socket.io/redis-adapter pub/sub."
+    why: "In a multi-process setup, io in the worker process is either undefined or a
+      disconnected instance. io.to().emit() would silently drop events — no error thrown,
+      no message delivered. The startup guard catches this at boot time in-process."
+    adr: docs/architecture/ADR-009-staff-message-routing.md
+    added: "2026-05-16"
+
+  - pattern: cross_module_clubs_write
+    status: active
+    description: "No module other than club-service may INSERT or UPDATE rows in the clubs table.
+      Other modules (match-sim, economy, transfers, staff) reference clubs via clubId FK and
+      may read via SELECT, but must never write clubs rows directly."
+    why: "clubs is a shared entity referenced by many modules. Direct writes from multiple
+      modules create race conditions and make club state unpredictable. Centralizing writes
+      in club-service ensures consistent validation and audit trail."
+    adr: docs/architecture/ADR-011-league-competition-schema.md
+    added: "2026-05-16"
+
+  - pattern: async_onmount_cleanup
+    status: active
+    description: "Never pass an async function to Svelte's onMount() if cleanup is needed.
+      Use synchronous onMount with .then() for any async init: onMount(() => { task.then(...); return () => cleanup(); })"
+    why: "onMount(async () => ...) returns a Promise, not a cleanup function. Svelte treats
+      a non-function return as no cleanup. The component will not destroy PixiJS Applications,
+      cancel timers, or disconnect Socket.IO listeners on unmount — silently leaking memory."
+    adr: docs/architecture/ADR-012-ui-architecture-dom-canvas-frontier.md
+    added: "2026-05-16"
+
+  - pattern: stacking_context_in_layout
+    status: active
+    description: "SvelteKit +layout.svelte files must not apply CSS properties that create
+      stacking contexts: transform, filter, will-change, isolation: isolate, or perspective.
+      These properties clip z-index values to the layout subtree, breaking the z-layer system
+      defined by UI_LAYERS (canvas z-0 through overlay z-50)."
+    why: "A stacking context makes z-index relative to the context's parent, not the viewport.
+      A layout wrapping the canvas and a panel will make z-50 (overlay) appear below z-0 (canvas)
+      from the browser's perspective. No lint error — fails silently in visual testing."
+    adr: docs/architecture/ADR-012-ui-architecture-dom-canvas-frontier.md
+    added: "2026-05-16"
+
+  - pattern: corruption_arithmetic_without_rounding
+    status: active
+    description: "Never compute arithmetic on corruption_exposure without wrapping the result in
+      roundCorruption(). Applies to F-TV3 delta (paso 2), cascade injection (paso 6), and any
+      other operation that modifies corruption_exposure within a tick."
+    why: "IEEE 754 float arithmetic on values like 59.5 + 0.5 can produce 59.999999... instead of 60.0
+      in JavaScript. The threshold predicate (prev < 60 AND new >= 60) would silently give a
+      false-negative, meaning the contract is never cancelled even when it should be.
+      roundCorruption() ensures the comparison uses the same precision as the DB column numeric(5,2)."
+    adr: docs/architecture/ADR-019-tv-rights-implementation-contract.md
+    added: "2026-05-20"
+
+  - pattern: drizzle_numeric_without_parsefloat
+    status: active
+    description: "Never use tvContracts.weeklyRateEurK (or any other Drizzle numeric column) in
+      arithmetic without first calling parseFloat(). Drizzle returns numeric columns as strings."
+    why: "JavaScript's + operator on a string and a number silently concatenates instead of adding:
+      '7.16' + 0 === '7.160'. This produces NaN or string concatenation bugs in revenue calculations.
+      Use parseCorruption() for corruption_exposure and parseFloat() for weeklyRateEurK."
+    adr: docs/architecture/ADR-019-tv-rights-implementation-contract.md
+    added: "2026-05-20"
 
 # Example:
 #

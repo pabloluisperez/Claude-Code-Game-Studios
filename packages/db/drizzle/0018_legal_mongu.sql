@@ -1,0 +1,1 @@
+ALTER TABLE "sponsors" ADD COLUMN "slot" text DEFAULT 'kit' NOT NULL;

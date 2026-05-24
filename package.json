@@ -1,0 +1,33 @@
+{
+  "name": "smt",
+  "private": true,
+  "packageManager": "pnpm@11.1.2",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "test:unit": "turbo run test",
+    "test:e2e": "playwright test",
+    "lint": "turbo run lint",
+    "format": "prettier --write .",
+    "db:generate": "pnpm --filter @smt/db run db:generate",
+    "db:migrate": "pnpm --filter @smt/db run db:migrate",
+    "db:studio": "pnpm --filter @smt/db run db:studio",
+    "soak-test": "tsx tools/soak-test.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "@smt/shared": "workspace:*",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0",
+    "prettier-plugin-svelte": "^3.0.0",
+    "tsx": "^4.22.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.4.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "@opentelemetry/api": "1.9.1"
+    }
+  }
+}

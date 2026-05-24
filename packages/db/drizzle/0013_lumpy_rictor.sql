@@ -1,0 +1,1 @@
+ALTER TABLE "clubs" ADD COLUMN "last_season_ticket_paid_season" integer DEFAULT 0 NOT NULL;

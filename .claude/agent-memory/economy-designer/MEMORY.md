@@ -1,0 +1,2 @@
+- [User profile](user_profile.md) — Pablo is a senior dev building Cascada FC (soccer manager web game), reviews in Spanish; economy work done in adversarial/consultative mode.
+- [Project economy context](project_economy_cascada.md) — D2 soccer manager; 15K €K/season budget, transfer values 0.5-250 €K, wage bill weekly, transfer_value formula F6 with SKILL_VALUE_EXP=1.8.

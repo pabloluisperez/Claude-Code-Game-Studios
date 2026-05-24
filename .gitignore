@@ -25,6 +25,11 @@ marrow/
 # Created on first use by /consistency-check and /architecture-review
 docs/consistency-failures.md
 
+# === Asset Pipeline Scratch ===
+# Raw ComfyUI generations — many experimental, not all are kept.
+# Curated assets are promoted to assets/sprites/city-hd/ or per-system dirs.
+assets/sprites/_raw/
+
 # === Build Output ===
 build/
 builds/
@@ -131,6 +136,12 @@ secrets.json
 # *.exr
 # *.hdr
 
+# === Web Stack (pnpm + Turbo + SvelteKit) ===
+.turbo/
+.svelte-kit/
+.output/
+pnpm-lock.yaml.bak
+
 # === OS Generated ===
 ehthumbs.db
 ehthumbs_vista.db
@@ -142,3 +153,4 @@ $RECYCLE.BIN/
 *.msm
 *.msp
 *.lnk
+apps/web/test-results/

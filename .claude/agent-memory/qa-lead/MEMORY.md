@@ -1,0 +1,2 @@
+- [Project context](project_cascada_fc.md) — Soccer manager web game, MVP = 2 pilares (Soccer Mgr + Manager-RPG), cascade-engine es el sistema más crítico.
+- [User profile](user_profile.md) — Pablo, senior developer, comunica en español, conoce profundamente el diseño del proyecto.

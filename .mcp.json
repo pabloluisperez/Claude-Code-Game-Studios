@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "comfyui": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "tsx",
+        "/Users/Shared/Projects/Claude-Code-Game-Studios/tools/comfyui-mcp/src/server.ts"
+      ],
+      "env": {
+        "COMFYUI_URL": "http://bosgame.localdomain:8188",
+        "COMFYUI_OUTPUT_DIR": "assets/sprites/_raw"
+      }
+    }
+  }
+}

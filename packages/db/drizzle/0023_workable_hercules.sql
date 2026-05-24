@@ -1,0 +1,1 @@
+ALTER TABLE "players" ADD COLUMN "suspended_until_week" integer;

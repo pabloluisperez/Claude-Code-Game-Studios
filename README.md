@@ -310,3 +310,28 @@ Sponsorships help fund time spent maintaining skills, adding new agents, keeping
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.
+
+---
+
+## Cascada FC — Game Project
+
+> Soccer manager game built with this studio template.
+
+```bash
+# Install deps
+pnpm install
+
+# Start local DB + Redis
+docker compose up -d
+
+# Copy env file
+cp .env.example .env
+
+# Run DB migrations
+pnpm db:migrate
+
+# Start dev servers (web :5173, api :3001)
+pnpm dev
+```
+
+Stack: SvelteKit 2 + Hono 4 + Drizzle + Socket.IO + PixiJS 8 | Scope: `@smt` | Postgres host port: **5433** (5432 was in conflict)

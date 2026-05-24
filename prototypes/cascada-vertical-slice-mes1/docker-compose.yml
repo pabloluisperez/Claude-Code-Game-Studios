@@ -1,0 +1,42 @@
+# VERTICAL SLICE - NOT FOR PRODUCTION
+# Date: 2026-05-18
+#
+# Slice-local Postgres + Redis on isolated ports (5435 / 6380) to avoid
+# colliding with the project's main stack (5433 / 6379).
+#
+# Bring up:  docker compose -f docker-compose.yml up -d
+# Tear down: docker compose -f docker-compose.yml down -v   (DESTROYS volume)
+
+services:
+  postgres-slice:
+    image: postgres:16-alpine
+    container_name: cascada-slice-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: slice
+      POSTGRES_PASSWORD: slice
+      POSTGRES_DB: cascada_slice
+    ports:
+      - "5435:5432"
+    volumes:
+      - slice-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U slice -d cascada_slice"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis-slice:
+    image: redis:7-alpine
+    container_name: cascada-slice-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  slice-postgres-data:

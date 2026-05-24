@@ -1,0 +1,1 @@
+ALTER TABLE "clubs" ADD COLUMN "boards_capacity" integer DEFAULT 4 NOT NULL;

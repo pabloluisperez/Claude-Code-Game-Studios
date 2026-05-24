@@ -1,0 +1,38 @@
+{
+  "name": "@smt/db",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./src/client.ts",
+      "types": "./src/client.ts"
+    },
+    "./schema": {
+      "import": "./src/schema/index.ts",
+      "types": "./src/schema/index.ts"
+    },
+    "./auth": {
+      "import": "./src/auth.ts",
+      "types": "./src/auth.ts"
+    }
+  },
+  "scripts": {
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@oslojs/crypto": "^1.0.0",
+    "@oslojs/encoding": "^1.1.0",
+    "@smt/shared": "workspace:*",
+    "drizzle-orm": "^0.36.0",
+    "pg": "^8.11.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.11.0",
+    "drizzle-kit": "^0.28.0",
+    "typescript": "^5.4.0"
+  }
+}

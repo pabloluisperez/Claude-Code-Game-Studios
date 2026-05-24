@@ -37,7 +37,7 @@
 #   Each entry: name, status, source, referenced_by[], attributes{}, added, revised
 
 version: 1
-last_updated: ""
+last_updated: "2026-05-21"
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
 # Named game-world objects: enemies, NPCs, characters, factions, bosses.
@@ -48,7 +48,62 @@ last_updated: ""
 # Attribute fields: any key stats that could appear in another GDD
 #   (health, damage, drops, faction, etc.)
 
-entities: []
+entities:
+  - name: team_skill
+    status: active
+    source: design/gdd/cascade-engine.md
+    referenced_by:
+      - design/gdd/cascade-engine.md
+      - design/gdd/match-simulation.md
+    range: [0, 100]
+    default: 50
+    behavior: "Calidad media del squad. Nodo estático — no tiene cascade edge propio. Cambia via PlayerDecision (fichajes, cesiones, desarrollo individual). Leído por match-simulation como input de rendimiento."
+    added: "2026-05-17"
+    revised: ""
+  - name: fan_momentum
+    status: active
+    source: design/gdd/cascade-engine.md
+    referenced_by:
+      - design/gdd/cascade-engine.md
+      - design/gdd/economy.md
+    range: [0, 100]
+    default: 60
+    behavior: "Histéresis asimétrica: se gana lento (victorias + precios justos), se pierde rápido (pocas derrotas o precios injustos). Actúa como modulador path-dependent de sensibilidad al precio de entradas."
+    blocking_threshold_below: 20
+    advisory_threshold_above: 75
+    added: "2026-05-17"
+    revised: "2026-05-18"
+
+  - name: fan_loyalty
+    status: active
+    source: design/gdd/tv-rights.md
+    referenced_by:
+      - design/gdd/tv-rights.md
+      - design/gdd/economy.md
+    owner_system: tv-rights
+    storage: managers.fan_loyalty (integer column, NOT WorldState node)
+    range: [0, 50]
+    default: 0
+    behavior: "Acumulador de fidelidad de afición. Se incrementa en +10 al rechazar tv_auction o tv_midseason_offer (cap 50). Sin decay. Per F-TV4: fan_attendance_effective = min(1.0, fan_attendance × (1 + fan_loyalty × 0.005)). Aplicado en computeMatchDayRevenue (economy §F3). NO participa en el cascade graph — es atributo del manager, no nodo de WorldState."
+    cross_system_readers:
+      - economy (matchday revenue path — F-TV4)
+    added: "2026-05-20"
+    revised: ""
+
+  - name: corruption_exposure
+    status: active
+    source: design/gdd/cascade-engine.md
+    referenced_by:
+      - design/gdd/cascade-engine.md
+      - design/gdd/tv-rights.md
+      - design/gdd/event-system.md
+    range: [0, 100]
+    default: 0
+    behavior: "Acumulador de escrutinio mediático sobre el manager. Per F-TV3 (tv-rights): LOCAL −0.5/sem, REGIONAL +0.5/sem, NACIONAL +1.5/sem mientras el contrato está ACTIVE. Storage: numeric(5,2) en DB. Cruce al alza de TV_SCANDAL_THRESHOLD=60 cancela el contrato TV. Cruce al alza del threshold global 80 dispara escándalo público (event-system)."
+    blocking_threshold_above: 80
+    tv_cancel_threshold: 60
+    added: "2026-05-20"
+    revised: ""
 
 # Example (remove when first real entry is added):
 #
@@ -106,7 +161,201 @@ items: []
 #   output_range[min, max], added
 # Optional: expression (the actual formula), notes
 
-formulas: []
+formulas:
+  - name: fan_momentum_asymmetric_hysteresis
+    status: active
+    source: design/gdd/cascade-engine.md
+    referenced_by:
+      - design/gdd/cascade-engine.md
+    variables:
+      - match_performance_index
+      - K_win_base
+      - K_loss_base
+      - P_win
+      - P_loss
+    output_range: [-16, 5.5]
+    expression: "Si MPI>=50: K_win_base * ln(1 + (MPI-50)/50) / Si MPI<50: -K_loss_base * (1 + ((50-MPI)/50)^2)"
+    notes: "La asimetría fundamental del sistema. K_win_base=8, K_loss_base=8. Ratio K_loss/K_win = 1.0 post-R4 (2026-05-18). La asimetría persiste por diferencia de forma (logarítmica vs cuadrática) — derrota equivalente cuesta ~3.4× más que una victoria. Peor caso (MPI=0): -8×(1+1)=-16. Mejor caso (MPI=100): +8×ln(2)≈+5.5. (R4 2026-05-18: K_loss_base corregido de 10→8 — validación cuantitativa mostró que ratio 1.25 producía crisis crónica con 50% WR incluso con recovery paths activas.)"
+    added: "2026-05-17"
+    revised: "2026-05-18"
+  - name: fan_attendance_price_momentum_interaction
+    status: active
+    source: design/gdd/cascade-engine.md
+    referenced_by:
+      - design/gdd/cascade-engine.md
+      - design/gdd/economy.md
+    variables:
+      - fan_momentum
+      - ticket_price_index
+      - ATTEND_MAX_BASE
+      - ATTEND_MIN_BASE
+      - MOMENTUM_TOLERANCE_DIVISOR
+      - PRICE_BONUS_K
+    output_range: [0, 100]
+    expression: "attendance_target = (fan_momentum/100 * 60 + 5) + max(0, 50-TPI)*0.25 - max(0, TPI-50)*(1-fan_momentum/120)"
+    notes: "El fan_momentum modula la sensibilidad al precio. Economy.md usa fan_attendance como input para el cálculo de revenue del partido."
+    added: "2026-05-17"
+    revised: ""
+  - name: effective_rating
+    status: active
+    source: design/gdd/match-simulation.md
+    referenced_by:
+      - design/gdd/match-simulation.md
+      - design/gdd/player-management.md
+    variables:
+      - skill
+      - form
+      - morale
+      - effective_fitness
+    output_range: [13, 96]
+    expression: "skill*0.35 + form*0.20 + morale*0.15 + effective_fitness(player,t)*0.30"
+    notes: "Rating compuesto de un jugador en el minuto t del partido. Depende de F1 (effective_fitness). Player-management debe conocer esta fórmula para calcular el match_rating individual post-partido y actualizar el rolling average de 'form'. Rango [13,96] con inputs reales de player-management.md (skill∈[20,95], form∈[30,90], morale∈[0,100], effective_fitness∈[0,100])."
+    added: "2026-05-17"
+    revised: ""
+  - name: match_day_revenue
+    status: active
+    source: design/gdd/economy.md
+    referenced_by:
+      - design/gdd/economy.md
+      - design/gdd/hud-ui.md
+    variables:
+      - fan_attendance
+      - STADIUM_CAPACITY_BASE
+      - ticket_price_eur
+      - is_home_match
+    output_range: [0, 21.6]
+    expression: "(fan_attendance / 100) × STADIUM_CAPACITY_BASE × ticket_price_eur / 1000 × is_home_match"
+    notes: "Revenue de taquilla en €K por partido. D3 defaults: capacity=3000, ticket_price_base=8€. 0 en partidos visitantes. Economy es el owner; hud-ui.md lo muestra al jugador."
+    added: "2026-05-17"
+    revised: ""
+  - name: financial_state_thresholds
+    status: active
+    source: design/gdd/economy.md
+    referenced_by:
+      - design/gdd/economy.md
+      - design/gdd/event-system.md
+      - design/gdd/hud-ui.md
+    variables:
+      - WARNING_BUFFER_WEEKS
+      - CRITICAL_BUFFER_WEEKS
+      - weekly_total_costs_eur_k
+    output_range: [0, 9999]
+    expression: "WARNING = 7 × weekly_total_costs; CRITICAL = 3 × weekly_total_costs"
+    notes: "Umbrales dinámicos (relativos a costes). WARNING_BUFFER_WEEKS=7, CRITICAL_BUFFER_WEEKS=3. Event-system debe recibir ThresholdCrossings de estos umbrales. hud-ui.md muestra el estado resultante."
+    added: "2026-05-17"
+    revised: ""
+  - name: emergency_loan
+    status: active
+    source: design/gdd/economy.md
+    referenced_by:
+      - design/gdd/economy.md
+      - design/gdd/event-system.md
+    variables:
+      - loan_amount_eur_k
+      - base_interest_rate
+      - LOAN_PENALTY_MULTIPLIER
+      - loan_number
+      - LOAN_REPAYMENT_WEEKS
+    output_range: [0, 9999]
+    expression: "effective_rate = 0.15 × 2^(loan_n-1); weekly_repayment = loan × (1+effective_rate) / 10"
+    notes: "Préstamo de emergencia escalante. base_interest_rate=0.15, LOAN_PENALTY_MULTIPLIER=2.0, LOAN_REPAYMENT_WEEKS=10. Event-system gestiona la presentación al jugador."
+    added: "2026-05-17"
+    revised: ""
+  - name: scandal_economic_impact
+    status: active
+    source: design/gdd/economy.md
+    referenced_by:
+      - design/gdd/economy.md
+      - design/gdd/event-system.md
+    variables:
+      - corruption_exposure
+      - SCANDAL_FINE_BASE_EUR_K
+      - FINE_SEVERITY_FACTOR
+    output_range: [30, 50]
+    expression: "scandal_fine_eur_k = 30 × (1 + FINE_SEVERITY_FACTOR × (corruption_exposure − 80) / 20)"
+    notes: "SCANDAL_FINE_BASE_EUR_K=30 €K. Solo cancela el slot de camiseta (no estadio) en MVP. Complementa el cascade scandal_fan_impact=-30 definido en cascade-engine.md."
+    added: "2026-05-17"
+    revised: ""
+  - name: mpi_bonus_tactical_insight
+    status: active
+    source: design/gdd/manager-rpg.md
+    referenced_by:
+      - design/gdd/manager-rpg.md
+      - design/gdd/cascade-engine.md
+    variables:
+      - tactical_insight_level
+    output_range: [0, 5]
+    expression: "[0, 1, 2, 3, 5][tactical_insight_level - 1]"
+    notes: "Bonus sobre match_performance_index aplicado como implicit PlayerDecision en Paso 3 del cascade tick, solo en semanas con partido. Niveles: L1=0, L2=+1, L3=+2, L4=+3, L5=+5."
+    added: "2026-05-17"
+    revised: ""
+  - name: happiness_bonus_man_management
+    status: active
+    source: design/gdd/manager-rpg.md
+    referenced_by:
+      - design/gdd/manager-rpg.md
+      - design/gdd/cascade-engine.md
+    variables:
+      - man_management_level
+    output_range: [0, 4]
+    expression: "[0, 1, 2, 3, 4][man_management_level - 1]"
+    notes: "Bonus semanal sobre player_happiness aplicado como implicit PlayerDecision en Paso 3, cada semana (con o sin partido). Niveles: L1=0, L2=+1, L3=+2, L4=+3, L5=+4."
+    added: "2026-05-17"
+    revised: ""
+  - name: fa_multiplier_financial_acumen
+    status: active
+    source: design/gdd/manager-rpg.md
+    referenced_by:
+      - design/gdd/manager-rpg.md
+      - design/gdd/economy.md
+    variables:
+      - financial_acumen_level
+      - LEVEL_MODIFIER_base
+    output_range: [1.00, 1.12]
+    expression: "[1.00, 1.03, 1.06, 1.09, 1.12][financial_acumen_level - 1] × LEVEL_MODIFIER_base"
+    notes: "Multiplicador aplicado sobre LEVEL_MODIFIER de F3 (economy.md) en el momento de firma de contratos de patrocinio. Solo aplica a nuevas firmas — contratos activos mantienen el multiplicador del momento de su firma."
+    added: "2026-05-17"
+    revised: ""
+  - name: sn_multiplier_scouting_network
+    status: active
+    source: design/gdd/manager-rpg.md
+    referenced_by:
+      - design/gdd/manager-rpg.md
+      - design/gdd/cascade-engine.md
+    variables:
+      - scouting_network_level
+      - K_scouting_base
+    output_range: [15.0, 21.0]
+    expression: "[1.00, 1.10, 1.20, 1.28, 1.40][scouting_network_level - 1] × K_scouting_base"
+    notes: "Modifica la constante K_scouting de C9a (cascade-engine.md). effective_K_scouting = K_scouting_base × sn_multiplier. K_scouting_base=15.0. Con L5 y budget=30: equilibrio scouting_points≈78 (vs 56 en L1)."
+    added: "2026-05-17"
+    revised: ""
+  - name: getMaxHirableStaffQuality
+    status: active
+    source: design/gdd/manager-rpg.md
+    referenced_by:
+      - design/gdd/manager-rpg.md
+      - design/gdd/staff-system.md
+    variables:
+      - reputation_level
+    output_range: [1, 3]
+    expression: "reputation_level >= 4 → 3; reputation_level >= 3 → 2; else → 1"
+    notes: "Pure function — la resolución arquitectónica de Pilar 1↔Pilar 3. Gatea la calidad máxima de staff contratables. Reputation L1-2=tier1, L3=tier2, L4-5=tier3. Definida en ADR-010 como pure function usable en servidor y cliente."
+    added: "2026-05-17"
+    revised: ""
+  - name: effectiveThreshold
+    status: active
+    source: design/gdd/staff-system.md
+    referenced_by:
+      - design/gdd/staff-system.md
+    variables:
+      - BASE_THRESHOLD_PCT
+      - qualityTier
+    output_range: [0.02, 0.06]
+    expression: "BASE_THRESHOLD_PCT × QUALITY_FACTOR[qualityTier]; QUALITY_FACTOR = {1:3.0, 2:1.5, 3:1.0}"
+    notes: "Umbral de percepción efectivo por tier a defaults (BASE=0.02). T1=0.06(6pts), T2=0.03(3pts), T3=0.02(2pts). Todos los umbrales usan comparación ≥. Revisado 2026-05-18: output_range corregido de [0.04,0.12]→[0.02,0.06] al corregir BASE_THRESHOLD_PCT."
+    added: "2026-05-17"
+    revised: "2026-05-18"
 
 # Example:
 #
@@ -139,7 +388,336 @@ formulas: []
 #
 # Required fields: name, status, source, referenced_by, value, unit, added
 
-constants: []
+constants:
+  - name: fan_momentum_blocking_threshold_low
+    status: active
+    source: design/gdd/cascade-engine.md
+    referenced_by:
+      - design/gdd/cascade-engine.md
+      - design/gdd/hud-ui.md
+    value: 20
+    unit: "fan_momentum units [0-100]"
+    notes: "Cuando fan_momentum cae por debajo de 20, se genera un ThresholdCrossing BLOCKING que para el advance loop y fuerza un board meeting. Event-system.md y hud-ui.md deben referenciar este valor."
+    added: "2026-05-17"
+    revised: ""
+  - name: player_happiness_blocking_threshold_low
+    status: active
+    source: design/gdd/cascade-engine.md
+    referenced_by:
+      - design/gdd/cascade-engine.md
+    value: 25
+    unit: "player_happiness units [0-100]"
+    notes: "Cuando player_happiness cae por debajo de 25, se genera un ThresholdCrossing BLOCKING que para el advance loop y fuerza una reunión con el capitán. Event-system.md debe referenciar este valor."
+    added: "2026-05-17"
+    revised: ""
+  - name: corruption_exposure_blocking_threshold_high
+    status: active
+    source: design/gdd/cascade-engine.md
+    referenced_by:
+      - design/gdd/cascade-engine.md
+      - design/gdd/economy.md
+    value: 80
+    unit: "corruption_exposure units [0-100]"
+    notes: "Cuando corruption_exposure supera 80, se genera un ThresholdCrossing BLOCKING de escándalo. El impacto en fan_momentum es SCANDAL_FAN_IMPACT=30. Economy.md usa este umbral como trigger para F8."
+    added: "2026-05-17"
+    revised: ""
+  - name: scandal_fan_impact
+    status: active
+    source: design/gdd/cascade-engine.md
+    referenced_by:
+      - design/gdd/cascade-engine.md
+      - design/gdd/economy.md
+    value: 30
+    unit: "fan_momentum points"
+    notes: "Caída de fan_momentum cuando se descubre un escándalo de corrupción. Economy.md modela el impacto económico adicional (multa F8 + cancelación de patrocinador)."
+    added: "2026-05-17"
+    revised: ""
+  - name: cascade_node_default_range
+    status: active
+    source: design/gdd/cascade-engine.md
+    referenced_by:
+      - design/gdd/cascade-engine.md
+    value: "[0, 100]"
+    unit: "unitless [0-100] normalizado"
+    notes: "Todos los nodos del WorldState de cascade-engine tienen rango [0, 100] salvo consecutive_wins/losses [0-10]. Cualquier GDD que defina un nuevo nodo debe seguir esta convención. ADR-003 implementa este rango como parámetro en CascadeNodeDef."
+    added: "2026-05-17"
+    revised: ""
+  - name: squad_available_pct_minimum_threshold
+    status: active
+    source: design/gdd/match-simulation.md
+    referenced_by:
+      - design/gdd/match-simulation.md
+      - design/gdd/player-management.md
+    value: 63
+    unit: "squad_available_pct units [0-100]"
+    notes: "Cuando squad_available_pct cae a 63 o menos (7 o menos jugadores disponibles de 11), el partido no puede disputarse — se registra como derrota por incomparecencia (0-3). Player-management debe asegurar que el squad siempre supere este umbral antes del día de partido. League-system aplica la regla de forfeit."
+    added: "2026-05-17"
+    revised: ""
+  - name: fitness_decay_max
+    status: active
+    source: design/gdd/match-simulation.md
+    referenced_by:
+      - design/gdd/match-simulation.md
+      - design/gdd/player-management.md
+    value: 15
+    unit: "fitness points"
+    notes: "Pérdida máxima de fitness efectiva al final del partido (minuto 90) para un jugador con stamina=0. Jugadores con stamina=100 no pierden fitness durante el partido. Player-management usa este valor para modelar la fatiga post-partido junto con los minutos jugados."
+    added: "2026-05-17"
+    revised: "2026-05-18"
+  - name: injury_risk_per_injury
+    status: active
+    source: design/gdd/match-simulation.md
+    referenced_by:
+      - design/gdd/match-simulation.md
+      - design/gdd/player-management.md
+    value: 5
+    unit: "injury_risk points"
+    notes: "Incremento de injury_risk (WorldState node) por cada lesión ocurrida durante el partido. El cascade-engine debe calibrar su decay semanal de injury_risk teniendo en cuenta este valor — si el decay es <5 por semana, un partido con lesiones mantiene el riesgo elevado crónicamente."
+    added: "2026-05-17"
+    revised: ""
+  - name: match_pause_timeout_hours
+    status: active
+    source: design/gdd/match-simulation.md
+    referenced_by:
+      - design/gdd/match-simulation.md
+      - design/gdd/hud-ui.md
+    value: 24
+    unit: "hours (wall clock)"
+    notes: "Tiempo máximo que un MatchSession puede estar en 'paused_for_decision' antes de que el segundo entrenador aplique la decisión por defecto (no hacer nada). El HUD/UI debe informar al jugador del tiempo restante si se aproxima al timeout. BullMQ implementa este timer como un delayed job."
+    added: "2026-05-17"
+    revised: ""
+  - name: tv_rights_annual_d2_eur_k
+    status: active
+    source: design/gdd/economy.md
+    referenced_by:
+      - design/gdd/economy.md
+      - design/gdd/league-system.md
+      - design/gdd/tv-rights.md
+    value: 20
+    unit: "€K/temporada"
+    notes: "Derechos de TV anuales para D2. Ahora corresponde al techo del canal LOCAL en D2 (tv-rights.md §F-TV1: TV_BASE[LOCAL]=0.53 €K/sem × 38 = 20.14 €K/año ≈ 20 €K). Referencia conservada para compatibilidad con ACs de economy.md."
+    added: "2026-05-17"
+    revised: "2026-05-20"
+  - name: tv_rights_annual_d1_eur_k
+    status: active
+    source: design/gdd/economy.md
+    referenced_by:
+      - design/gdd/economy.md
+      - design/gdd/league-system.md
+      - design/gdd/tv-rights.md
+    value: 270
+    unit: "€K/temporada"
+    notes: "Derechos de TV anuales para D1. Ahora corresponde al techo del canal NACIONAL en D1 (tv-rights.md §F-TV1: TV_BASE[NACIONAL]=5.30 €K/sem × 1.35 × 38 ≈ 272 €K/año ≈ 270 €K). Referencia conservada para compatibilidad con ACs de economy.md."
+    added: "2026-05-17"
+    revised: "2026-05-20"
+  - name: tv_base_eur_k_local
+    status: active
+    source: design/gdd/tv-rights.md
+    referenced_by:
+      - design/gdd/tv-rights.md
+      - design/gdd/economy.md
+    value: 0.53
+    unit: "€K/sem"
+    notes: "Base semanal del canal LOCAL (F-TV1). D2: 0.53×1.0=0.53 €K/sem (~20 €K/año — alineado con tv_rights_annual_d2_eur_k). D1: 0.53×1.35=0.72 €K/sem."
+    added: "2026-05-20"
+    revised: ""
+  - name: tv_base_eur_k_regional
+    status: active
+    source: design/gdd/tv-rights.md
+    referenced_by:
+      - design/gdd/tv-rights.md
+    value: 1.75
+    unit: "€K/sem"
+    notes: "Base semanal del canal REGIONAL (F-TV1). D2: 1.75 €K/sem (~67 €K/año). D1: 2.36 €K/sem (~90 €K/año)."
+    added: "2026-05-20"
+    revised: ""
+  - name: tv_base_eur_k_nacional
+    status: active
+    source: design/gdd/tv-rights.md
+    referenced_by:
+      - design/gdd/tv-rights.md
+    value: 5.30
+    unit: "€K/sem"
+    notes: "Base semanal del canal NACIONAL (F-TV1). D2: 5.30 €K/sem (~201 €K/año). D1: 7.16 €K/sem (~272 €K/año — alineado con tv_rights_annual_d1_eur_k=270 €K). Ratio NACIONAL/LOCAL = 10×."
+    added: "2026-05-20"
+    revised: ""
+  - name: tv_division_multiplier_d1
+    status: active
+    source: design/gdd/tv-rights.md
+    referenced_by:
+      - design/gdd/tv-rights.md
+    value: 1.35
+    unit: "multiplicador"
+    notes: "Multiplicador de tarifa TV al firmar en D1 (vs D2=1.0). Un club D1 recibe ~35% más por el mismo tier de canal. Tuning knob rango seguro [1.10, 1.60]."
+    added: "2026-05-20"
+    revised: ""
+  - name: tv_midseason_penalty_factor
+    status: active
+    source: design/gdd/tv-rights.md
+    referenced_by:
+      - design/gdd/tv-rights.md
+    value: 0.70
+    unit: "factor"
+    notes: "Descuento aplicado a ofertas TV mid-season tras cancelación por escándalo (F-TV2). Canal negocia desde posición de fuerza. Rango seguro [0.50, 0.90]."
+    added: "2026-05-20"
+    revised: ""
+  - name: warning_buffer_weeks
+    status: active
+    source: design/gdd/economy.md
+    referenced_by:
+      - design/gdd/economy.md
+      - design/gdd/hud-ui.md
+    value: 7
+    unit: "semanas de costes totales"
+    notes: "El balance cae a estado 'En Riesgo' cuando queda menos de 7 semanas de costes totales en caja. hud-ui.md debe mostrar este estado al jugador."
+    added: "2026-05-17"
+    revised: "2026-05-18"
+  - name: critical_buffer_weeks
+    status: active
+    source: design/gdd/economy.md
+    referenced_by:
+      - design/gdd/economy.md
+      - design/gdd/event-system.md
+      - design/gdd/hud-ui.md
+    value: 3
+    unit: "semanas de costes totales"
+    notes: "El balance cae a estado 'Crisis' y genera un ThresholdCrossing BLOCKING cuando queda menos de 3 semanas de costes totales en caja. Event-system gestiona el board meeting de rescate."
+    added: "2026-05-17"
+    revised: ""
+  - name: scandal_fine_base_eur_k
+    status: active
+    source: design/gdd/economy.md
+    referenced_by:
+      - design/gdd/economy.md
+      - design/gdd/event-system.md
+    value: 30
+    unit: "€K"
+    notes: "Multa mínima al superar corruption_exposure=80 (F8). Puede escalarse con FINE_SEVERITY_FACTOR=1.0. Complementa scandal_fan_impact=-30 (cascade-engine). Solo el slot de camiseta del patrocinador cancela en MVP."
+    added: "2026-05-17"
+    revised: ""
+  - name: ce2_fan_momentum_bonus
+    status: active
+    source: design/gdd/manager-rpg.md
+    referenced_by:
+      - design/gdd/manager-rpg.md
+      - design/gdd/cascade-engine.md
+    value: 8
+    unit: "fan_momentum points"
+    notes: "Bonus de fan_momentum cuando el manager recibe el reconocimiento de prensa nacional (Career Event CE-2, reputation.level=4). Aplicado como implicit PlayerDecision en el cascade tick de esa semana."
+    added: "2026-05-17"
+    revised: ""
+  - name: base_threshold_pct
+    status: active
+    source: design/gdd/staff-system.md
+    referenced_by:
+      - design/gdd/staff-system.md
+    value: 0.02
+    unit: "fracción [0-1] de cambio en un nodo WorldState [0-100]"
+    notes: "Umbral base de percepción del staff. Uniforme para todos los roles. effectiveThreshold = base_threshold_pct × QUALITY_FACTOR[tier]. T1=0.06(6pts), T2=0.03(3pts), T3=0.02(2pts). Tuning range: [0.01–0.020] — NUNCA superar 0.020 para preservar contrato C1b (delta máximo C1b = 6.25pts; INVARIANT: base_threshold_pct × QUALITY_FACTOR[T1] ≤ 0.0625). Revisado 2026-05-18: valor corregido de 0.04→0.02 al reescribir F3."
+    added: "2026-05-17"
+    revised: "2026-05-18"
+  - name: severance_weeks
+    status: active
+    source: design/gdd/staff-system.md
+    referenced_by:
+      - design/gdd/staff-system.md
+      - design/gdd/economy.md
+    value: 4
+    unit: "semanas de salario"
+    notes: "Indemnización por despido de staff = 4 × salario_semanal_actual. Economy.md deduce este coste del balance_eur_k al confirmar un despido."
+    added: "2026-05-17"
+    revised: ""
+  - name: formation_multiplier
+    status: active
+    source: design/gdd/staff-system.md
+    referenced_by:
+      - design/gdd/staff-system.md
+      - design/gdd/economy.md
+    value: 8
+    unit: "semanas de salario"
+    notes: "Coste de formación interna = 8 × salario_semanal_actual del tier origen. Economy.md deduce este coste del balance_eur_k al confirmar una formación. FORMATION_MULTIPLIER > SEVERANCE_WEEKS (4) por diseño: la formación es la opción 'premium sin vacante'."
+    added: "2026-05-17"
+    revised: ""
+  - name: staff_salary_tier1_total_eur_k
+    status: active
+    source: design/gdd/staff-system.md
+    referenced_by:
+      - design/gdd/staff-system.md
+      - design/gdd/economy.md
+    value: 2.75
+    unit: "€K/semana"
+    notes: "Coste total semanal de los 6 roles al tier 1 (inicio de partida). Contribuye a weekly_wage_bill_eur_k de economy.md F0. Breakdown: groundskeeper(0.25) + fitness_coach(0.50) + commercial_director(0.50) + scouting_director(0.50) + finance_director(0.50) + head_coach(0.50). Tier 3 total = 12.00 €K/sem."
+    added: "2026-05-17"
+    revised: ""
+  - name: ce3_loyalty_fan_momentum_bonus
+    status: active
+    source: design/gdd/manager-rpg.md
+    referenced_by:
+      - design/gdd/manager-rpg.md
+      - design/gdd/cascade-engine.md
+    value: 15
+    unit: "fan_momentum points"
+    notes: "Bonus de fan_momentum cuando el manager rechaza activamente la oferta soñada (Career Event CE-3, reputation.level=5). La lealtad legendaria del manager a la ciudad se traduce en un pico de apoyo aficionado."
+    added: "2026-05-17"
+    revised: ""
+  - name: fitness_recovery_weekly
+    status: active
+    source: design/gdd/player-management.md
+    referenced_by:
+      - design/gdd/player-management.md
+    value: 8.0
+    unit: "fitness points/semana"
+    notes: "Recuperación de fitness cuando el jugador no disputa partido esa semana. Tuning range: [5–12]. Interacciona con fitness_decay_max: si el ratio recovery/decay < 1, el jugador acumula fatiga crónica si juega todos los partidos."
+    added: "2026-05-18"
+    revised: ""
+  - name: form_decay_weekly
+    status: active
+    source: design/gdd/player-management.md
+    referenced_by:
+      - design/gdd/player-management.md
+    value: 2.0
+    unit: "form points/semana"
+    notes: "Decay de form por semana sin jugar, una vez superadas 5 semanas de inactividad. Convergencia a MIN_FORM=30 si el jugador nunca juega. Tuning range: [1–4]."
+    added: "2026-05-18"
+    revised: ""
+  - name: transfer_value_formula
+    status: active
+    source: design/gdd/player-management.md
+    referenced_by:
+      - design/gdd/player-management.md
+      - design/gdd/economy.md
+    variables:
+      - skill
+      - age
+      - form
+      - BASE_VALUE_K
+      - SKILL_VALUE_EXP
+      - age_curve
+    output_range: [0.1, 250]
+    expression: "BASE_VALUE_K × (skill/50)^SKILL_VALUE_EXP × age_curve[age] × (0.8 + (form-60)/100 × 0.4)"
+    notes: "Valor de mercado en €K. BASE_VALUE_K=5.0, SKILL_VALUE_EXP=1.8. age_curve pico en 22-24 (factor=1.2), mínimo 34+ (factor=0.35). Rango real D2: ~0.5–50 €K; D1 jugadores: ~20–250 €K."
+    added: "2026-05-18"
+    revised: ""
+  - name: skill_value_exp
+    status: active
+    source: design/gdd/player-management.md
+    referenced_by:
+      - design/gdd/player-management.md
+    value: 1.8
+    unit: "exponente (adimensional)"
+    notes: "Exponente de la curva skill→valor en transfer_value_formula. Tuning range: [1.5–2.5]. Subir crea mercado elitista donde los cracks valen exponencialmente más; bajar lineariza el mercado."
+    added: "2026-05-18"
+    revised: ""
+  - name: base_value_k
+    status: active
+    source: design/gdd/player-management.md
+    referenced_by:
+      - design/gdd/player-management.md
+    value: 5.0
+    unit: "€K"
+    notes: "Valor de referencia en transfer_value_formula para un jugador skill=50, age=24, form=60. Tuning range: [2–10]. Calibrar junto con economía D2 — un jugador de referencia debe costar aproximadamente 2-3 meses de TV rights en D2."
+    added: "2026-05-18"
+    revised: ""
 
 # Example:
 #
