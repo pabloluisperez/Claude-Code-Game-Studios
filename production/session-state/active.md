@@ -1,11 +1,60 @@
 # Session State — Cascada FC
 
 <!-- STATUS -->
-Stage: v1.1 Sprint 22 COMPLETE — stadium-upgrades epic shipped end-to-end
-Epic: stadium-upgrades (8/8 stories done) · trophies-history + scouting-market remain Ready
-Feature: 8 stories shipped autonomously 2026-05-25: schema + catalog + F1-F6 + service + routes + tier-evaluator + UI
-Task: Manual /stadium walkthrough + playtest (22-8 evidence) · Sprint 23 plan (trophies-history)
+Stage: v1.1 Sprints 22 + 23 COMPLETE — stadium-upgrades + trophies-history shipped end-to-end
+Epic: stadium-upgrades (8/8) + trophies-history (6/6) done · scouting-market remains Ready
+Feature: 14 stories shipped autonomously 2026-05-25 + hotfix (catalog path) + design tweak (weekly installments) + tab sync bug fix
+Task: Manual walkthrough /stadium + /city · Decide Sprint 24 scope (scouting-market or polish)
 <!-- /STATUS -->
+
+## 🎯 2026-05-25 (afternoon) — Sprint 23 closeout
+
+Sprint 23 (trophies-history, 6 stories estimated ~7d) completed in one extension of the autonomous run. Total cumulative test count: 1288 → **1432** (+144 new, 0 regressions).
+
+### Sprint 23 stories shipped
+
+| # | Commit | What | Tests |
+|---|---|---|---|
+| 23-2 | `b6f0f88` | Museum formulas F1-F5 (pure) + types | +18 shared |
+| 23-1 | `786b9bc` | Museum aggregator API (read-only) + cache | +6 api |
+| 23-3 | `1d45a4e` | Spanish text templates + adjective picker | +15 shared |
+| 23-4/5/6 | `90ae096` + `a2b8479` | DOM-first `/city` museum + barrio nav | UI (manual) |
+
+### Sprint 23 deviations
+
+1. **23-4/5/6 merged into one delivery**: DOM-first museum at `/city` (semantic HTML, ARIA, mobile-ready) instead of PixiJS BarrioScene + MuseumInteriorScene + separate /city-text fallback. Saves ~3d of canvas work; v1.2+ can add canvas as visual polish without changing data shapes.
+2. **23-1 categories partial**: trophies + legendTransfers return `[]` because their source tables (cups, transfers) don't exist in v1.1. Will be plumbed when those modules ship in v1.2+.
+
+### Mid-sprint hotfixes + design tweaks (2026-05-25)
+
+1. **`a5f1b53`** — Fix catalog path resolution (Pablo found ENOENT on signup boot; cwd-based path failed when API booted from apps/api/. Now walks up from import.meta.url).
+2. **`8d2564d`** — Weekly installments (Pablo: "las reformas deben costarle dinero al club, ir cobrandotelo mes a mes"):
+   - service.buy() no longer debits upfront — returns `{totalCost, durationWeeks, installmentEurK}`
+   - service.tickClub() debits installment each week; final tick pays rounding remainder
+   - service.cancel() refund = 50% of paid-to-date (not 50% of total commitment)
+   - /stadium UI shows "Coste total" + "Cuota semanal X k€ × N sem" before buy button
+3. **`8d2564d`** — /finance tab sync fix: $effect now syncs activeTab with $page.url.searchParams.tab so RecoveryLeversPanel "Patrocinadores" + "Ajustar precio de abono" links actually switch tabs.
+
+### Final test totals (2026-05-25 close)
+
+| Workspace | Sprint 22 start | After Sprint 22 | After Sprint 23 | Delta this run |
+|---|---|---|---|---|
+| shared | 996 | 1036 | **1069** | +73 |
+| api | 72 | 128 | **135** | +63 |
+| web | 220 | 220 | **220** | 0 (rewrites without test changes) |
+| db | 0 | 8 | **8** | +8 |
+| **TOTAL** | **1288** | **1392** | **1432** | **+144** |
+
+### Pending manual / non-blocking items
+
+- Manual walkthrough `/stadium` + `/city` to confirm installments UX + museum empty state
+- Capture 22-8 evidence: screenshots × 10 visual levels + buy/critical-balance videos
+- Wire `tickAllClubsWithActiveUpgrades()` into advance-orchestrator (~30 min when ready)
+- v1.2+ canvas scenes for `/city` (BarrioScene + MuseumInteriorScene)
+- `.mcp.json` ssh-bosgame password still uncommitted (security hygiene)
+- Decide Sprint 24: scouting-market (~9d, last v1.1 epic) OR polish + playtest
+
+
 
 ## 🎯 2026-05-25 — Sprint 22 closeout (autonomous full-sprint run)
 
