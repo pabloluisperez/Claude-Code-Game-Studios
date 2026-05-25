@@ -23,15 +23,60 @@
   let filterTier = $state<'ALL' | '0' | '1' | '2' | '3'>('ALL');
   let filterContract = $state<'ALL' | 'in_contract' | 'expiring' | 'free_agent'>('ALL');
 
+  // Sort state (Pablo 2026-05-25: "se debe permitir ordenar en la tabla")
+  type SortKey = 'name' | 'position' | 'club' | 'tier' | 'ovr' | 'value';
+  let sortKey = $state<SortKey>('tier');
+  let sortDir = $state<'asc' | 'desc'>('desc');
+
+  function toggleSort(key: SortKey): void {
+    if (sortKey === key) {
+      sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      sortKey = key;
+      sortDir = 'desc';
+    }
+  }
+
+  function ovrOf(p: { ovrExact?: number; ovrEstimate?: number; ovrBand?: string }): number {
+    if (p.ovrExact !== undefined) return p.ovrExact;
+    if (p.ovrEstimate !== undefined) return p.ovrEstimate;
+    if (p.ovrBand) {
+      const lo = parseInt(p.ovrBand.split('-')[0] ?? '0', 10);
+      return lo || 0;
+    }
+    return 0;
+  }
+  function valueOf(p: { transferValueExact?: number; transferValueEstimate?: number }): number {
+    return p.transferValueExact ?? p.transferValueEstimate ?? 0;
+  }
+
   const filteredPool = $derived(
-    data.pool.filter((p) => {
-      if (searchTerm && !p.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
-      if (filterPosition !== 'ALL' && p.position !== filterPosition) return false;
-      if (filterTier !== 'ALL' && String(p.visibilityTier) !== filterTier) return false;
-      if (filterContract !== 'ALL' && p.contractStatus !== filterContract) return false;
-      return true;
-    }),
+    data.pool
+      .filter((p) => {
+        if (searchTerm && !p.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+        if (filterPosition !== 'ALL' && p.position !== filterPosition) return false;
+        if (filterTier !== 'ALL' && String(p.visibilityTier) !== filterTier) return false;
+        if (filterContract !== 'ALL' && p.contractStatus !== filterContract) return false;
+        return true;
+      })
+      .slice()
+      .sort((a, b) => {
+        const dir = sortDir === 'asc' ? 1 : -1;
+        switch (sortKey) {
+          case 'name': return a.name.localeCompare(b.name) * dir;
+          case 'position': return (a.position ?? '').localeCompare(b.position ?? '') * dir;
+          case 'club': return (a.clubName ?? '').localeCompare(b.clubName ?? '') * dir;
+          case 'tier': return (a.visibilityTier - b.visibilityTier) * dir;
+          case 'ovr': return (ovrOf(a) - ovrOf(b)) * dir;
+          case 'value': return (valueOf(a) - valueOf(b)) * dir;
+        }
+      }),
   );
+
+  function sortIcon(key: SortKey): string {
+    if (sortKey !== key) return '↕';
+    return sortDir === 'asc' ? '↑' : '↓';
+  }
 
   function closeOffer(): void {
     offerPlayerId = null;
@@ -151,11 +196,15 @@
       <table class="table table-sm">
         <thead>
           <tr>
-            <th>Jugador</th>
-            <th>Pos.</th>
-            <th>Club</th>
-            <th>Info</th>
-            <th class="text-right">Datos</th>
+            <th><button type="button" class="hover:underline" onclick={() => toggleSort('name')}>Jugador {sortIcon('name')}</button></th>
+            <th><button type="button" class="hover:underline" onclick={() => toggleSort('position')}>Pos. {sortIcon('position')}</button></th>
+            <th><button type="button" class="hover:underline" onclick={() => toggleSort('club')}>Club {sortIcon('club')}</button></th>
+            <th><button type="button" class="hover:underline" onclick={() => toggleSort('tier')}>Info {sortIcon('tier')}</button></th>
+            <th class="text-right">
+              <button type="button" class="hover:underline" onclick={() => toggleSort('ovr')}>OVR {sortIcon('ovr')}</button>
+              {' / '}
+              <button type="button" class="hover:underline" onclick={() => toggleSort('value')}>Valor {sortIcon('value')}</button>
+            </th>
             <th></th>
           </tr>
         </thead>

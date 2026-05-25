@@ -371,9 +371,14 @@ export async function makeOffer(
       .limit(1);
     if (existing[0]) return err('ALREADY_PENDING_OFFER' as const);
 
-    const totalCommitment = params.feeEurK + params.wageOfferEurKWeek * params.contractWeeks;
+    // Balance check: in real football, fee is paid upfront but wages are
+    // weekly operational expense. Requiring the full contract's wages
+    // upfront would lock out smaller clubs entirely. Pablo bug 2026-05-25:
+    // "con la pasta y el nivel más bajo no se puede hacer casi nada".
+    // New rule: need at least fee + 4 weeks of wages (1-month buffer).
+    const upfrontCommitment = params.feeEurK + params.wageOfferEurKWeek * 4;
     const balance = await readBalance(tx, params.clubId);
-    if (balance < totalCommitment) return err('INSUFFICIENT_BALANCE' as const);
+    if (balance < upfrontCommitment) return err('INSUFFICIENT_BALANCE' as const);
 
     const transferValueEurK = player.skill * 10;
     let dbStatus: 'accepted' | 'rejected' | 'countered';
