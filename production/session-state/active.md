@@ -1,11 +1,206 @@
 # Session State — Cascada FC
 
 <!-- STATUS -->
-Stage: Release (Sprint 14 CLOSED + v1.0.x maintenance pending Pablo manual validation)
-Epic: Asset pipeline expansion + HD sprite integration into /stadium route
-Feature: Overnight 2026-05-22 — 11 new HD sprites + /stadium visual upgrade + launch comms
-Task: Awaiting Pablo return — review overnight batch (assets, route change, launch post)
+Stage: v1.1 FULL SCOPE COMPLETE — 3 epics ready, ~25 dev-days estimate
+Epic: stadium-upgrades + trophies-history + scouting-market (all 3 Ready)
+Feature: 3 GDDs + 3 ADRs + 3 Epic.md + 21 stories + propagation + 15 registry entries
+Task: Pablo review on return; /story-readiness; /sprint-plan new (Sprints 22-25)
 <!-- /STATUS -->
+
+## 🎯 2026-05-24 (later) — v1.1 FULL SCOPE close-out (autonomous extended session)
+
+**Pablo authorization**: "sigue con especificaciones de la parte que falta, como market transfer, etc, en modo autonomo hasta tener todo el scope de la v1.1 listo para desarrollar"
+
+### Net new content (this extended autonomous run)
+
+**3rd GDD**: `design/gdd/scouting-market.md` — resolves OQ-PM-03 + OQ-PM-04 from player-management.md
+- 4 visibility tiers (T0/T1/T2/T3) gated by scouting_network_level + Scout Director
+- AI club rotation deterministic mini-loop (sell + buy + youth promote each window)
+- Counter-offer auction with hard reject / accept / counter outcomes
+- Scout Director T2+/T3 extends existing staff role (NO new role — extension)
+- 30 ACs
+
+**3rd ADR**: `docs/architecture/ADR-031-scouting-market-module.md`
+- 5 new DB tables (scouting_actions, transfer_offers, saved_searches, ai_club_window_state, player_buyer_rejections + window_status)
+- 10 Hono routes at /api/scouting
+- BullMQ worker for AI club rotation on transfer_window_open
+- Server-authoritative visibility (no client cheat)
+
+**3rd Epic + 7 stories**:
+- `production/epics/scouting-market/EPIC.md`
+- 001 schema migration 0027
+- 002 visibility + pool size (F1 + F5)
+- 003 free agent + auction + cost + AI rotation logic (F2 + F3 + F4 + F6)
+- 004 scout actions service + delay countdown
+- 005 transfer offer service (free agent + AI auction)
+- 006 AI club rotation worker (BullMQ deterministic)
+- 007 Hono routes + SvelteKit UI + Socket.IO
+
+**Cross-system propagation (surgical edits)**:
+- `design/gdd/player-management.md` — OQ-PM-03 + OQ-PM-04 resolved with pointers to scouting-market
+- `design/gdd/staff-system.md` — note added: scouting_director T2/T3 enables v1.1 market visibility (extension only)
+- `design/gdd/manager-rpg.md` — note added: scouting_network_level cross-ref to F5 pool size
+- `design/gdd/economy.md` — 6 new transaction categories with operational/extraordinary classification
+- `design/gdd/systems-index.md` — scouting-market entry added
+- `production/epics/index.md` — 3 v1.1 epics listed
+
+**Registry**: `design/registry/entities.yaml` — 15 new entries (constants for stadium-upgrades + trophies-history + scouting-market). Includes stale STADIUM_CAPACITY_BASE fix (3000→6000 D2, 12000 D1).
+
+### v1.1 cumulative scope (final)
+
+| # | Epic | Stories | Est. days | Status |
+|---|---|---|---|---|
+| 11 | stadium-upgrades | 8 | ~9 | Ready |
+| 12 | trophies-history | 6 | ~7 | Ready |
+| 13 | scouting-market | 7 | ~9 | Ready |
+| **Total** | **3 epics** | **21 stories** | **~25 days** | **All Ready** |
+
+ADRs Proposed: 029, 030, 031. All pending Pablo accept before /dev-story.
+
+### Out of v1.1 scope (autonomous decision, deferred to v1.2+)
+
+- `world-life.md` (NPC ambient) — `/city` doesn't render city anymore (ADR-030); world-life makes sense only when isometric city is built
+- `isometric-world.md` — already deferred per ADR-030
+- `narrative-ai.md` — already v1.2 scope
+- Scouting agentes intermediarios — v1.2+
+- LLM-generated scout reports / museum text — v1.2+
+- Per-club catalog customization for stadium — v1.2+
+- Regional scout assignments — v1.2+
+
+### Recommended Sprint sequence (Sprints 22-25)
+
+**Sprint 22 — Stadium Upgrades core (~9 days)**: stadium-upgrades 001-008 sequential
+**Sprint 23 — Trophies & History (~7 days)**: trophies-history 001-006 sequential
+**Sprint 24 — Scouting Market core (~9 days)**: scouting-market 001-007 sequential
+**Sprint 25 — Polish + cross-epic integration tests**: smoke tests + soak protocol + playtest
+
+Total ~32 days including polish sprint. Aggressive but viable.
+
+### Open items for Pablo (consolidated)
+
+1. **ADRs 029-030-031**: status `Proposed`, need explicit accept before story implementation
+2. **Catalog YAML**: 3 catalogs to author during implementation phase (stadium-upgrades + scouting NOT applicable + trophies-history's templated text)
+3. **Asset specs**: 12-15 museum sprites + 10 stadium-visual-level sprites + scouting screen mockups
+4. **OQ-SU-8**: T4 city-tier prereq for stadium items — autonomous decision NO; revisit
+5. **OQ-SCM-1/2/3/4**: 4 minor open questions in scouting-market.md §9
+6. **Full propagation sweep**: surgical edits done for 4 most-critical GDDs (player-management, staff-system, manager-rpg, economy). Run `/propagate-design-change` for sweep of cascade-engine, match-simulation, hud-ui, event-system before Sprint 22 starts.
+7. **`world-life.md` decision**: confirm autonomous decision to defer to v1.2 (since `/city` no longer renders isometric world)
+8. **PR #1**: contains all this work, awaiting merge claude→project
+
+## 🎯 2026-05-24 — v1.1 Design Phase: Stadium Upgrades + /city Reconversion
+
+**Pablo authorization**: 4 design decisions closed, GDD authoring begins.
+
+### Decisions closed (2026-05-24)
+
+| # | Decision | Result |
+|---|---|---|
+| 1 | Levels model | **4 tiers gameplay + 10 niveles visuales** dentro de los tiers |
+| 2 | Tier-up condition | **Métricas (actual) + completar reformas requeridas** (doble gate) |
+| 3 | `/city` route | **Reconvertir en pantalla de Trofeos / Historia del Club** (nuevo gameplay) |
+| 4 | Process | **Completo: GDD → ADR → stories → código** |
+
+### Plan sequence (acordado)
+
+**Fase 1 — Diseño**
+- [ ] 1.1 `/design-system stadium-upgrades` → `design/gdd/stadium-upgrades.md` ← **ACTUAL**
+- [ ] 1.2 `/design-system trophies-history` → `design/gdd/trophies-history.md`
+- [ ] 1.3 `/propagate-design-change` → refactor/deprecar `design/gdd/city-progression.md`
+- [ ] 1.4 `/review-all-gdds` → consistency check
+
+**Fase 2 — Arquitectura**
+- [ ] 2.1 ADR stadium-upgrades module
+- [ ] 2.2 ADR /city reconversion → trofeos
+- [ ] 2.3 `/architecture-review` traceability update
+
+**Fase 3 — Stories**
+- [ ] 3.1 `/create-epics` stadium-upgrades + trophies-history
+- [ ] 3.2 `/create-stories` por cada epic
+
+**Fase 4 — Implementación**
+- [ ] 4.1 `/dev-story` por cada story
+- [ ] 4.2 `/code-review` + `/story-done` por cada una
+
+### Authoring mode (Pablo selected 2026-05-24)
+
+- **Granularidad**: section-by-section, con preguntas previas (1 sección a la vez).
+- Por cada sección: pregunto opciones → Pablo decide → redacto draft → Pablo aprueba → escribo a archivo → actualizo active.md → paso a la siguiente.
+- Esto mantiene el contexto en ~5k tokens/sección en lugar de cargar el GDD entero.
+
+### Current step
+
+**v1.1 SPEC PHASE COMPLETE** — 2026-05-24 autonomous closeout.
+
+#### Deliverables shipped (this autonomous session)
+
+**Design (Fase 1)**:
+- ✅ `design/gdd/stadium-upgrades.md` — 8 secciones + §9 OQ + closeout (~1500 lines)
+- ✅ `design/gdd/trophies-history.md` — full GDD (~600 lines)
+- ✅ `design/gdd/city-progression.md` — Status → Superseded; §3.2 doble gate; §4.2 superseded by F3; §6 Deps updated
+- ✅ `design/gdd/systems-index.md` — 2 new entries + city-progression marked Superseded
+
+**Architecture (Fase 2)**:
+- ✅ `docs/architecture/ADR-029-stadium-upgrades-module.md` — schema + API + worker integration
+- ✅ `docs/architecture/ADR-030-city-reconversion-museum.md` — /city refactor + read-only aggregator
+
+**Production (Fase 3)**:
+- ✅ `production/epics/stadium-upgrades/EPIC.md` + 8 stories (~9 days estimate)
+- ✅ `production/epics/trophies-history/EPIC.md` + 6 stories (~7 days estimate)
+- ✅ `production/epics/index.md` — v1.1 epic roster added
+
+**Specialist consultations (2026-05-24)**:
+- ✅ `systems-designer` → F1 (visual_level), F2 (duration), F3 (infrastructure_level) — Option C weighted sum chosen
+- ✅ `economy-designer` → F4 (cost), F5 (capacity), payback validation (7.3 partidos ≈ "8 partidos" ✅)
+
+#### Stories ready for `/dev-story`
+
+**Stadium-upgrades epic (8 stories, ~9 days):**
+1. stadium-upgrades-001 — Drizzle schema + migration 0025 (0.5d)
+2. stadium-upgrades-002 — Catalog YAML + Zod loader (1d)
+3. stadium-upgrades-003 — Formulas F1 + F3 (1d)
+4. stadium-upgrades-004 — Formulas F2 + F4 + F5 + F6 (1d)
+5. stadium-upgrades-005 — Service + FSM + transactions (1.5d)
+6. stadium-upgrades-006 — Hono routes + Zod + 4xx (1d)
+7. stadium-upgrades-007 — World Clock integration + doble gate (1d)
+8. stadium-upgrades-008 — SvelteKit /stadium UI + Socket.IO (2d)
+
+**Trophies-history epic (6 stories, ~7 days):**
+1. trophies-history-001 — Backend aggregator API + read-only invariant (1d)
+2. trophies-history-002 — Formulas F1-F5 (0.5d)
+3. trophies-history-003 — Templated text generation (1d)
+4. trophies-history-004 — /city route refactor (barrio scene) (1.5d)
+5. trophies-history-005 — Museum interior scene (5 zones) (2d)
+6. trophies-history-006 — A11y /city-text + final tests (1d)
+
+#### Open items for Pablo (review on return)
+
+1. **Pablo's question about transfer market / scouting** (received during autonomous run): no está en el scope de esta sesión. Sí, parcialmente cubierto en `player-management.md` (Approved) + cascade NodeIds (`scouting_budget`, `scouting_points`) + staff messages. Recomendado: nueva GDD `scouting-market.md` como v1.1 epic #13 en próxima sesión.
+2. **Cross-system propagation** (Fase 1.3 partial): city-progression done; pending economy.md / cascade-engine.md / match-simulation.md / staff-system.md / manager-rpg.md / event-system.md / hud-ui.md updates. Use `/propagate-design-change` before sprint 22 starts.
+3. **Registry entries** (~15 new) pending update to `design/registry/entities.yaml` (per stadium-upgrades.md §4 closeout). Cleanest after Pablo reviews the formulas.
+4. **Sprint 22 plan**: stadium-upgrades + trophies-history total ~16 days. Sprint plan: `/sprint-plan new` with this scope.
+5. **Stories file paths in stadium-upgrades-008** mention placeholder /stadium UI exists. Verify state of `apps/web/src/routes/stadium/+page.svelte` before assigning to dev.
+6. **Asset spec for museum**: 12-15 new HD sprites needed (museum-exterior, museum-interior-trophies, banners, plaques, etc.). Parallel art story to trophies-history-005.
+7. **OQ-SU-8 economy-designer recommendation**: T4 items con prereq adicional "city tier T3 reached". Mi decisión autónoma: NO (consistencia con §3.1.3). Pablo re-evaluate post-playtest.
+
+#### Implementation order recommendation
+
+Sprint 22 (10 days, sequential):
+- Day 1: stadium-upgrades-001 + 002 (schema + catalog)
+- Day 2-3: stadium-upgrades-003 + 004 (formulas)
+- Day 4-5: stadium-upgrades-005 (service)
+- Day 6-7: stadium-upgrades-006 + 007 (routes + clock)
+- Day 8-9-10: stadium-upgrades-008 (UI)
+- (parallel) trophies-history-002 (formulas)
+
+Sprint 23 (7 days, sequential):
+- Day 1: trophies-history-001 (aggregator)
+- Day 2: trophies-history-003 (text templates)
+- Day 3-4: trophies-history-004 (barrio scene)
+- Day 5-6: trophies-history-005 (museum interior)
+- Day 7: trophies-history-006 (a11y + tests)
+- (parallel) asset spec sheet + sprite generation
+
+---
 
 ## 🌙 Overnight 2026-05-22 — Asset pipeline + visual integration + launch comms
 

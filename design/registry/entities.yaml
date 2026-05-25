@@ -744,3 +744,187 @@ constants:
 #     unit: slots
 #     added: 2026-03-26
 #     revised: ""
+
+# ─── v1.1 ADDITIONS (2026-05-24) ──────────────────────────────────────────────
+# Stadium Upgrades + Trophies & History + Scouting Market constants
+# Added during autonomous v1.1 spec phase.
+
+  - name: stadium_capacity_base_d2
+    status: active
+    source: design/gdd/economy.md
+    referenced_by:
+      - design/gdd/economy.md
+      - design/gdd/stadium-upgrades.md  # F5 base capacity per division
+      - design/gdd/match-simulation.md  # consumed via stadium_capacity (no direct ref)
+    value: 6000
+    unit: asientos
+    notes: "Capacity pre-upgrades del estadio en D2. Migrated from registry note (was stale 3000 for D3 — D3 fuera de MVP). stadium_capacity = base + Σ(items_gradas × CAPACITY_PER_GRADA_ITEM)."
+    added: "2026-05-24"
+    revised: ""
+
+  - name: stadium_capacity_base_d1
+    status: active
+    source: design/gdd/economy.md
+    referenced_by:
+      - design/gdd/economy.md
+      - design/gdd/stadium-upgrades.md
+      - design/gdd/match-simulation.md
+    value: 12000
+    unit: asientos
+    notes: "Capacity pre-upgrades del estadio en D1. Base para fórmula stadium_capacity."
+    added: "2026-05-24"
+    revised: ""
+
+  - name: stadium_items_max
+    status: active
+    source: design/gdd/stadium-upgrades.md
+    referenced_by:
+      - design/gdd/stadium-upgrades.md
+      - design/gdd/city-progression.md  # F3 supersedes its old §4.2
+    value: 24
+    unit: items
+    notes: "Sum de items en 3 stadium tracks (Gradas + Pitch + Servicios) — 8 per track. Used in F3 normalized weighted sum for infrastructure_level."
+    added: "2026-05-24"
+    revised: ""
+
+  - name: training_items_max
+    status: active
+    source: design/gdd/stadium-upgrades.md
+    referenced_by:
+      - design/gdd/stadium-upgrades.md
+      - design/gdd/city-progression.md
+    value: 8
+    unit: items
+    notes: "Items totales en Training Facility track del catalog. F3 input."
+    added: "2026-05-24"
+    revised: ""
+
+  - name: academy_items_max
+    status: active
+    source: design/gdd/stadium-upgrades.md
+    referenced_by:
+      - design/gdd/stadium-upgrades.md
+      - design/gdd/city-progression.md
+    value: 8
+    unit: items
+    notes: "Items totales en Youth Academy track del catalog. F3 input."
+    added: "2026-05-24"
+    revised: ""
+
+  - name: stadium_visual_levels_count
+    status: active
+    source: design/gdd/stadium-upgrades.md
+    referenced_by:
+      - design/gdd/stadium-upgrades.md
+      - design/gdd/trophies-history.md  # estadio histórico timeline
+    value: 10
+    unit: niveles
+    notes: "10 niveles visuales del estadio close-up (0..9). Output range de F1 stadium_visual_level. Cada nivel tiene un sprite (alineado con Nano Banana prompts commit 4ba63f0)."
+    added: "2026-05-24"
+    revised: ""
+
+  - name: tier_up_gate_pct
+    status: active
+    source: design/gdd/stadium-upgrades.md
+    referenced_by:
+      - design/gdd/stadium-upgrades.md
+      - design/gdd/city-progression.md  # doble gate consumes this
+    value: 0.70
+    unit: fracción (0-1)
+    notes: "70% de items del nivel N requeridos en Complete para gate-up city tier N+1 (segundo gate; primer gate son métricas). Tuning range [0.50, 0.90]."
+    added: "2026-05-24"
+    revised: ""
+
+  - name: cancel_refund_pct
+    status: active
+    source: design/gdd/stadium-upgrades.md
+    referenced_by:
+      - design/gdd/stadium-upgrades.md
+      - design/gdd/economy.md  # classified as stadium_refund_extraordinary
+    value: 0.50
+    unit: fracción (0-1)
+    notes: "50% refund del cost en cancelación de obra mid-progress. Clasificado como extraordinary income en economy F-revenue-flow (anti-exploit, no proyectable)."
+    added: "2026-05-24"
+    revised: ""
+
+  - name: bankruptcy_visual_decay
+    status: active
+    source: design/gdd/stadium-upgrades.md
+    referenced_by:
+      - design/gdd/stadium-upgrades.md
+      - design/gdd/city-progression.md  # §5.2 references
+    value: 3
+    unit: niveles
+    notes: "Stadium_visual_level retrocede en N puntos durante bankruptcy. Counter stadium_upgrade_count NO cambia — sólo visual. Recovery restaura."
+    added: "2026-05-24"
+    revised: ""
+
+  - name: scout_cost_eur_k
+    status: active
+    source: design/gdd/scouting-market.md
+    referenced_by:
+      - design/gdd/scouting-market.md
+      - design/gdd/economy.md  # classified as scouting_scout_cost
+    value: 5
+    unit: €K
+    notes: "Coste por acción de scout (T1→T2 visibility). Modifiers: T3 Scout Director aplica -20%. Tuning range [2, 15]."
+    added: "2026-05-24"
+    revised: ""
+
+  - name: deep_scout_cost_eur_k
+    status: active
+    source: design/gdd/scouting-market.md
+    referenced_by:
+      - design/gdd/scouting-market.md
+      - design/gdd/economy.md
+    value: 15
+    unit: €K
+    notes: "Coste por deep-scout action (T2→T3 visibility). Requiere Scout Director T2+. Modifiers: T3 Scout Director aplica -20%."
+    added: "2026-05-24"
+    revised: ""
+
+  - name: max_bids_per_player
+    status: active
+    source: design/gdd/scouting-market.md
+    referenced_by:
+      - design/gdd/scouting-market.md
+    value: 3
+    unit: bids
+    notes: "Máximo de offers que un manager puede hacer a un mismo jugador en una sola transfer window. 4ta offer → HTTP 409."
+    added: "2026-05-24"
+    revised: ""
+
+  - name: ai_transfer_budget_pct
+    status: active
+    source: design/gdd/scouting-market.md
+    referenced_by:
+      - design/gdd/scouting-market.md
+    value: 0.10
+    unit: fracción (0-1)
+    notes: "AI club presupuesta 10% de su balance para transfers cada window. Tuning range [0.05, 0.20]."
+    added: "2026-05-24"
+    revised: ""
+
+  - name: legendary_threshold_fan_momentum
+    status: active
+    source: design/gdd/trophies-history.md
+    referenced_by:
+      - design/gdd/trophies-history.md
+      - design/gdd/match-simulation.md  # legendary match flag
+    value: 15
+    unit: fan_momentum delta abs
+    notes: "Umbral de fan_momentum_delta absoluto para que un partido cualifique como 'legendary' (F1 trophies-history). También cualifican: landslide ≥5 goal diff, derby win, cup final."
+    added: "2026-05-24"
+    revised: ""
+
+  - name: top_5_player_min_weeks
+    status: active
+    source: design/gdd/trophies-history.md
+    referenced_by:
+      - design/gdd/trophies-history.md
+      - design/gdd/player-management.md  # players who hit TOP_5 flag for Hall of Fame
+    value: 20
+    unit: semanas consecutivas
+    notes: "Player debe permanecer en TOP_5 OVR del club por ≥20 semanas consecutivas para flag permanente en Hall of Fame (museum). F2 trophies-history."
+    added: "2026-05-24"
+    revised: ""

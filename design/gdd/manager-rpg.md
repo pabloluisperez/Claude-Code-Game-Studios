@@ -101,6 +101,8 @@ Multiplicador sobre la constante `K_scouting` en la fórmula C9a del cascade eng
 
 Referencia: T_scouting_active = 50 (umbral de C9b). Con scouting_level 1 y budget=30, el equilibrio es ~56. Con level 5, mismo budget da equilibrio ~78 — C9b activo con mayor delta hacia squad_available_pct.
 
+**v1.1 cross-ref (2026-05-24)**: `scouting_network` ahora también determina el **pool size visible** en el transfer market — ver `scouting-market.md §F5`. Niveles 1-5 producen pool de 48 a 80 AI players visibles (additivo sobre todos los free agents que están siempre visibles). Este efecto es **ortogonal** al multiplicador K_scouting actual (no double-dip). El skill mantiene su definición original; scouting-market.md sólo lo consume como input.
+
 ---
 
 **`reputation` — Reputación del Manager** (definido en ADR-010)

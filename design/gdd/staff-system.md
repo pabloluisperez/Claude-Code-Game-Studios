@@ -93,6 +93,11 @@ La fantasía del sistema de staff es **sentirte rodeado de personas que ven lo q
 
 **Nota `corruption_exposure`**: El `scouting_director` de **tier 3** detecta acumulación antes del BLOCKING de C18 y puede proponer reducirlo activamente. Tier 1 solo reporta cuando ya es crítico.
 
+**Nota v1.1 (2026-05-24)**: `scouting_director` tier 2/3 **adicionalmente habilita las visibility tiers del market** definidas en `scouting-market.md §3.7`:
+- T2 director (skill 50-70) habilita `deep-scout` action en mercado (T2→T3 transition)
+- T3 director (skill 70-100) reduce `SCOUT_DELAY_WEEKS` (1→0, instant) + 20% discount en `SCOUT_COST_EUR_K`
+- Cost/perception scope del role NO cambia — sólo se extiende lo que sus tiers permiten al manager en el sistema de scouting market.
+
 ---
 
 ### Hiring Mechanics

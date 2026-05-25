@@ -1,12 +1,19 @@
 # City Progression — Game Design Document
 
-> **Status**: 🟡 **In Progress** (v1.1 design draft — autopilot 2026-05-21)
-> **Layer**: Core
-> **Owner**: game-designer + systems-designer
+> **Status**: ⚠️ **Superseded by `stadium-upgrades.md` + `trophies-history.md`** (2026-05-24)
+> **Reason**: gameplay layer absorbed by stadium-upgrades (tier-up doble gate); presentation layer of `/city` route absorbed by trophies-history (museum + barrio). City-progression retained for cross-reference only — visual tier definitions (§3.1) still inform stadium-upgrades visual targets. **Do not implement city-progression as standalone system**; it is historical context.
+> **Layer**: Core (deprecated)
+> **Owner**: game-designer + systems-designer (legacy)
 > **Pillar**: B — *Mundo Isométrico Vivo* / *The World Is The Scoreboard*
 > **Engine binding**: cascade-engine.md (read-only consumer), economy.md (state source), isometric-world.md (presentation)
 > **ADR refs**: ADR-014 (canvas pipeline), ADR-015 (day-night model), ADR-006 (PixiJS isometric — re-activated)
-> **Scope**: v1.1 (post-MVP)
+> **Scope**: v1.1 (post-MVP) — **superseded**
+
+> **Migration notes (2026-05-24)**:
+> - **§3.2 Tier triggers**: now require BOTH métricas (this doc) AND `X de N items completados` from `stadium-upgrades.md §3.1.5 / F6`. The original gate (métricas only) is incomplete.
+> - **§4.2 `infrastructure_level` formula**: **broken with new item counts** (24/8/8 × 5 = max 200, not 100). Replaced by `stadium-upgrades.md §4 F3` (normalized weighted sum).
+> - **§3.5 Rendering scope (`/city` row)**: `/city` no longer renders "vista principal isométrica de ciudad completa". Reconverted to museum + barrio del club per `trophies-history.md §3.2`. The full isometric world remains a v1.2+ feature deferred behind `isometric-world.md`.
+> - **§4.1 / §5 / §6 / §7 / §8 / §10**: still authoritative for visual tier definitions (T1-T4 sprites, palette, ambient NPCs counts) — these inform `stadium-upgrades.md F1` (stadium_visual_level) and `isometric-world.md` (renderer).
 
 ---
 
@@ -95,15 +102,20 @@ ciudad. Tiers superiores incluyen todo lo del tier inferior + adiciones.
 - **Ambient**: 30+ NPCs distribuidos, despacho con 3-5 trofeos y fotos
   enmarcadas
 
-### 3.2 Tier activation triggers
+### 3.2 Tier activation triggers ⚠️ UPDATED 2026-05-24 — DOBLE GATE
 
-Cada tier se activa cuando el WorldState cumple un set de condiciones.
-Tiers se activan **monotónicamente con persistencia** (anti-yo-yo):
+> **Cambio v1.1 (2026-05-24)**: tier-up ahora requiere **AMBOS gates**:
+> 1. **Métricas** (esta sección, sin cambios)
+> 2. **Reformas requeridas completadas** (`stadium-upgrades.md §3.1.5 / F6`): ≥ `TIER_UP_GATE_PCT` (~70%) de items del nivel N en `Complete`.
 
-Una vez alcanzado un tier, requiere caer por debajo del threshold del
-tier MENOR por 4 semanas consecutivas antes de bajar.
+Cada tier se activa cuando el WorldState cumple un set de condiciones de
+métricas **Y ADEMÁS** el segundo gate de reformas. Tiers se activan
+**monotónicamente con persistencia** (anti-yo-yo): una vez alcanzado, requiere
+caer por debajo del threshold del tier MENOR por 4 semanas consecutivas antes
+de bajar (las **métricas** disparan la bajada — los items completados son
+monotónicos y no se pierden).
 
-Triggers por tier:
+Triggers por tier (métricas — gate 1):
 
 | Tier | Condición de activación (TODAS deben cumplirse) |
 |------|------------------------------------------------|
@@ -111,6 +123,17 @@ Triggers por tier:
 | 2 | `prestige >= 15` AND `financial_balance >= 50` (k€) AND `fan_base >= 1500` |
 | 3 | `prestige >= 35` AND `financial_balance >= 200` AND `fan_base >= 5000` AND `currentSeason >= 3` |
 | 4 | `prestige >= 60` AND `financial_balance >= 500` AND `fan_base >= 15000` AND `currentSeason >= 6` AND `division IN ('first', 'second')` |
+
+Segundo gate (reformas — gate 2, definido en `stadium-upgrades.md`):
+
+| Tier | Condición de reformas |
+|------|---------------------|
+| 1 | (default) — sin condición de reformas |
+| 2 | ≥ 70% items nivel N1 del catalog en `Complete` |
+| 3 | ≥ 70% items nivel N2 del catalog en `Complete` |
+| 4 | ≥ 70% items nivel N3 del catalog en `Complete` |
+
+**Ambos gates deben cumplirse simultáneamente para tier-up.** Items completados son monotónicos (no se pierden si métricas caen — sólo se pausa el tier hasta que métricas se recuperen).
 
 Los thresholds están en tuning knobs §7 — ajustables sin redeploy.
 
@@ -206,15 +229,36 @@ isTierActive(t: 1..4, state: WorldState, history: TierHistory): boolean
   return upConditions
 ```
 
-### 4.2 Sub-element infrastructure score
+### 4.2 Sub-element infrastructure score ⚠️ SUPERSEDED 2026-05-24
+
+> **Esta fórmula es OBSOLETA**. Reemplazada por `stadium-upgrades.md §4 F3`
+> (normalized weighted sum). Razón: con los nuevos counts del catálogo
+> stadium-upgrades (24 items estadio + 8 training + 8 academy), la fórmula
+> original daba `max = 200` rompiendo el rango 0..100 esperado por §3.3 y
+> cascade-engine.
+
+**Fórmula vigente (en stadium-upgrades.md §4 F3):**
 
 ```
-infrastructure_level(state: WorldState): 0..100
+stadium_score   = stadium_upgrade_count / STADIUM_ITEMS_MAX     // 0..1 (MAX = 24)
+training_score  = training_facility_level / TRAINING_ITEMS_MAX  // 0..1 (MAX = 8)
+academy_score   = youth_academy_level / ACADEMY_ITEMS_MAX       // 0..1 (MAX = 8)
 
+infrastructure_level = clamp(
+  round((stadium_score × 0.50 + training_score × 0.25 + academy_score × 0.25) × 100),
+  0, 100
+)
+```
+
+**Original (deprecated — keep for reference):**
+
+```
+// DEPRECATED — do not implement
+infrastructure_level(state: WorldState): 0..100
   weights = [
-    state.stadium_upgrade_count * 5,        // hasta 50
-    state.training_facility_level * 5,      // hasta 25
-    state.youth_academy_level * 5,          // hasta 25
+    state.stadium_upgrade_count * 5,
+    state.training_facility_level * 5,
+    state.youth_academy_level * 5,
   ]
   return clamp(sum(weights), 0, 100)
 ```
@@ -284,16 +328,18 @@ hacen cross-fade al nuevo color en 5s.
 
 ---
 
-## 6. Dependencies
+## 6. Dependencies ⚠️ UPDATED 2026-05-24
 
 | Sistema | Direction | Concern |
 |---------|-----------|---------|
-| cascade-engine.md | reads | NodeIds: prestige, financial_balance, fan_base, infrastructure_level |
+| **stadium-upgrades.md** | **reads from this doc + supersedes §4.2** | tier-up doble gate (`F6` items requeridos) + infrastructure_level redefinida (`F3`) |
+| **trophies-history.md** | **supersedes `/city` rendering of §3.5** | `/city` route ya no renderiza isometric world — renderiza museum + barrio |
+| cascade-engine.md | reads | NodeIds: prestige, financial_balance, fan_base, infrastructure_level (vía stadium-upgrades F3) |
 | economy.md | reads | financial_balance source-of-truth |
-| match-simulation.md | reads | fixture.attendance, fixture.capacity, fixture.time_of_day |
+| match-simulation.md | reads | fixture.attendance, fixture.capacity (vía stadium-upgrades F5), fixture.time_of_day |
 | event-system.md | reads | special events que disparan animaciones únicas (e.g., copa) |
 | league-system.md | reads | club.division, currentSeason |
-| isometric-world.md | extends | tier sprites se renderizan en el sistema canvas |
+| isometric-world.md | extends | tier sprites se renderizan en el sistema canvas (v1.2+ feature) |
 | manager-rpg.md | reads | manager visible en despacho — manager-rpg expone su sprite progression |
 | ADR-014 (canvas pipeline) | extends | tier sprites son assets del pipeline |
 | ADR-015 (day-night) | extends | lighting layer sobre el tier base |

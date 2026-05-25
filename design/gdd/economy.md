@@ -422,6 +422,19 @@ El escándalo cancela automáticamente el contrato activo del **slot de camiseta
 | HUD y UI principal | `hud-ui.md` | Balance actual, nómina semanal, proyección de ingresos, deuda activa, estado financiero, resumen de contratos de patrocinio | Economy expone `ClubFinances` snapshot + `WeeklyIncomeProjection` para renderizado DOM |
 | Manager-RPG | `manager-rpg.md` | El nivel económico del club influye en eventos de carrera del manager y su reputación | Economy expone `club_division` + estado financiero como contexto para eventos del RPG (via event-system) |
 | Progresión de Ciudad | `city-progression.md` (v1.1+) | Los tiers de ciudad se activan con umbrales de nivel económico del club | Economy deberá exponer `season_revenue_total_eur_k` como criterio de activación de tier |
+| **Stadium Upgrades (v1.1)** | `stadium-upgrades.md` | Debit cost en BUY, refund 50% en cancel (clasificación especial), categorías nuevas | Categorías a soportar: `stadium_upgrade_cost`, `stadium_refund_extraordinary` (NO incluir en weekly_income_projection — anti-exploit §5.16 stadium-upgrades.md) |
+| **Scouting & Mercado (v1.1)** | `scouting-market.md` | Debit scout/deep-scout cost, debit transfer fee al buyer, credit al seller (zero-sum), refund 50% si scout pendiente en cierre de window | Categorías a soportar: `scouting_scout_cost`, `scouting_refund_window_closed` (extraordinary), `transfer_market_operational`, `transfer_market_ai_to_ai` (zero-sum AI club ↔ AI club) |
+
+**Categorías de transacción nuevas para v1.1** (clasificación en `weekly_income_projection`):
+
+| Categoría | Operational/Extraordinary | Razón |
+|---|---|---|
+| `stadium_upgrade_cost` | Operational (gasto) | Compra de reforma — gasto planificado |
+| `stadium_refund_extraordinary` | **Extraordinary** | Refund 50% cancel — anti-exploit (no permitir usar como liquidez en crisis) |
+| `scouting_scout_cost` | Operational | Coste de scout action |
+| `scouting_refund_window_closed` | **Extraordinary** | Refund 50% scout pendiente cuando window cierra |
+| `transfer_market_operational` | Operational | Transfer fee del player buyer ↔ seller |
+| `transfer_market_ai_to_ai` | Operational (no afecta player balance) | AI club ↔ AI club transfer, zero-sum |
 
 ### Notas de bidireccionalidad
 
