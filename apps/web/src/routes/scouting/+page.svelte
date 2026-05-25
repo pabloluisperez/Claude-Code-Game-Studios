@@ -17,6 +17,22 @@
   let offerWage = $state(5);
   let offerContractWeeks = $state(52);
 
+  // Filter / search state (v1.2 — 25-9 client-side)
+  let searchTerm = $state('');
+  let filterPosition = $state<'ALL' | 'GK' | 'DEF' | 'MID' | 'FWD'>('ALL');
+  let filterTier = $state<'ALL' | '0' | '1' | '2' | '3'>('ALL');
+  let filterContract = $state<'ALL' | 'in_contract' | 'expiring' | 'free_agent'>('ALL');
+
+  const filteredPool = $derived(
+    data.pool.filter((p) => {
+      if (searchTerm && !p.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+      if (filterPosition !== 'ALL' && p.position !== filterPosition) return false;
+      if (filterTier !== 'ALL' && String(p.visibilityTier) !== filterTier) return false;
+      if (filterContract !== 'ALL' && p.contractStatus !== filterContract) return false;
+      return true;
+    }),
+  );
+
   function closeOffer(): void {
     offerPlayerId = null;
   }
@@ -101,7 +117,35 @@
       </div>
     {/if}
 
-    <p class="text-xs opacity-60">{data.pool.length} jugadores visibles · click "Scout" para revelar más.</p>
+    <p class="text-xs opacity-60">{filteredPool.length} de {data.pool.length} jugadores · click "Scout" para revelar más.</p>
+
+    <!-- Filters bar (v1.2 — 25-9 client-side filter) -->
+    <div class="flex gap-2 flex-wrap items-center text-sm mb-3">
+      <input type="text" placeholder="Buscar por nombre…" bind:value={searchTerm} class="input input-bordered input-sm w-40" />
+      <select bind:value={filterPosition} class="select select-bordered select-sm">
+        <option value="ALL">Todas posiciones</option>
+        <option value="GK">Portero</option>
+        <option value="DEF">Defensa</option>
+        <option value="MID">Mediocampo</option>
+        <option value="FWD">Delantero</option>
+      </select>
+      <select bind:value={filterTier} class="select select-bordered select-sm">
+        <option value="ALL">Todo nivel info</option>
+        <option value="0">Sin info</option>
+        <option value="1">Básico</option>
+        <option value="2">Estimado</option>
+        <option value="3">Detallado</option>
+      </select>
+      <select bind:value={filterContract} class="select select-bordered select-sm">
+        <option value="ALL">Cualquier contrato</option>
+        <option value="in_contract">Con contrato</option>
+        <option value="expiring">Termina contrato</option>
+        <option value="free_agent">Agente libre</option>
+      </select>
+      <button type="button" class="btn btn-ghost btn-sm" onclick={() => { searchTerm = ''; filterPosition = 'ALL'; filterTier = 'ALL'; filterContract = 'ALL'; }}>
+        Limpiar
+      </button>
+    </div>
 
     <div class="overflow-x-auto">
       <table class="table table-sm">
@@ -116,7 +160,7 @@
           </tr>
         </thead>
         <tbody>
-          {#each data.pool as p (p.id)}
+          {#each filteredPool as p (p.id)}
             <tr>
               <td class="font-semibold">{p.name}</td>
               <td>{POSITION_LABELS[p.position] ?? p.position}</td>
