@@ -79,6 +79,19 @@ export const players = pgTable(
     salaryEurK: integer('salary_eur_k').notNull(),
     contractStartWeek: integer('contract_start_week').notNull(),
     contractEndWeek: integer('contract_end_week').notNull(),
+    /**
+     * Contract lifecycle status (v1.2 Sprint 25):
+     *   - 'in_contract' (default): under contract; not on the transfer market
+     *   - 'expiring': within last 8 weeks of contract; shows in market
+     *   - 'free_agent': no contract; club_id is NULL; pure free agent
+     *
+     * Sprint 25-2 / story SCOUTING-MARKET-005 enabler.
+     */
+    contractStatus: text('contract_status').notNull().default('in_contract'),
+    /** Weeks unsigned counter for the F2 desperation discount (free agents only). */
+    weeksUnsigned: integer('weeks_unsigned').notNull().default(0),
+    /** Wage expectation (€K/week) — used by F2 free agent acceptance. */
+    wageExpectationEurKWeek: integer('wage_expectation_eur_k_week').notNull().default(5),
 
     // Lifecycle
     availability: text('availability').notNull().default('available'),
