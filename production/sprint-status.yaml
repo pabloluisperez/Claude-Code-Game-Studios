@@ -30,14 +30,14 @@ stories:
     completed: "2026-05-25"
 
   - id: "22-2"
-    name: "Catalog YAML + Zod loader"
+    name: "Catalog (JSON instead of YAML) + Zod loader"
     file: "production/epics/stadium-upgrades/stories/stadium-upgrades-002-catalog-yaml.md"
     priority: must-have
-    status: ready-for-dev
-    owner: ""
+    status: done
+    owner: "claude"
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-05-25"
 
   - id: "22-3"
     name: "Formulas F1 (visual_level) + F3 (infrastructure)"

@@ -1,12 +1,14 @@
 ---
 Story: STADIUM-UPGRADES-002
-Status: Ready
+Status: Complete
+Last Updated: 2026-05-25
+Completed: 2026-05-25
 Type: Logic
 GDD Requirement: AC-SU-01/02/03 (catalog structure)
 Governing ADR: ADR-029 §D3
 Control Manifest: 2026-05-19
-Test Evidence: apps/api/tests/stadium-upgrades-catalog.test.ts (pending)
-ImplementedAt: design/data/stadium-upgrades-catalog.yaml + apps/api/src/modules/stadium-upgrades/catalog.ts
+Test Evidence: apps/api/tests/stadium-upgrades/catalog.test.ts (12/12 passing)
+ImplementedAt: design/data/stadium-upgrades-catalog.json (JSON instead of YAML — deviation) + apps/api/src/modules/stadium-upgrades/catalog.ts
 ---
 
 # Story: Catalog YAML + Zod loader + boot validation

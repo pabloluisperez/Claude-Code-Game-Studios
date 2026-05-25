@@ -15,6 +15,7 @@ import { createTVRightsRoutes } from './modules/tv-rights/routes.js';
 import { createMeRoutes } from './modules/me/routes.js';
 import { createSocketServer } from './socket/index.js';
 import { registerScheduledJobs, matchQueue } from './jobs/queues.js';
+import { loadCatalog as loadStadiumCatalog } from './modules/stadium-upgrades/catalog.js';
 
 const app = new Hono()
   .use(
@@ -48,6 +49,12 @@ export type AppType = typeof app;
 
 async function main(): Promise<void> {
   initObservability();
+
+  // Load static catalogs before listening. Fails fast on invariant violation
+  // (per ADR-029 §D3: stadium-upgrades catalog must satisfy 40-item + slug-unique
+  // + 2-per-(track,tier) invariants).
+  const stadiumCatalog = await loadStadiumCatalog();
+  pinoLogger.info({ stadiumCatalogItems: stadiumCatalog.length }, 'Stadium upgrades catalog loaded');
 
   const server = serve(
     {
