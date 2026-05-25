@@ -520,6 +520,97 @@ export async function runAdvanceTickFull(
     }
   }
 
+  // ── Phase 6c: press article on notable match (v1.2 Sprint 26-3) ────────
+  // Generates a deterministic-but-varied press article when the user's
+  // club played a notable fixture this week. Uses the narrative engine
+  // (no LLM — pure template generator, see packages/shared/src/sim/narrative).
+  // Notable = goal diff >= 3 OR home_score = 0 AND away_score = 0 (cero-cero notable)
+  // OR any league fixture for v1.2 (we don't yet have derby/cup flags).
+  try {
+    const [thisFixture] = await db
+      .select({
+        id: fixtures.id,
+        homeClubId: fixtures.homeClubId,
+        awayClubId: fixtures.awayClubId,
+        homeScore: fixtures.homeScore,
+        awayScore: fixtures.awayScore,
+        matchday: fixtures.matchday,
+      })
+      .from(fixtures)
+      .where(
+        and(
+          eq(fixtures.week, nextWeek),
+          or(eq(fixtures.homeClubId, active.clubId), eq(fixtures.awayClubId, active.clubId)),
+          eq(fixtures.status, 'played'),
+        ),
+      )
+      .limit(1);
+
+    if (thisFixture && thisFixture.homeScore !== null && thisFixture.awayScore !== null) {
+      const isHome = thisFixture.homeClubId === active.clubId;
+      const myScore = isHome ? thisFixture.homeScore : thisFixture.awayScore;
+      const theirScore = isHome ? thisFixture.awayScore : thisFixture.homeScore;
+      const goalDiff = myScore - theirScore;
+      const isNotable = Math.abs(goalDiff) >= 3 || (myScore === 0 && theirScore === 0);
+
+      if (isNotable) {
+        const [club] = await db
+          .select({ name: clubs.name, city: clubs.city })
+          .from(clubs)
+          .where(eq(clubs.id, active.clubId))
+          .limit(1);
+        const opponentId = isHome ? thisFixture.awayClubId : thisFixture.homeClubId;
+        const [opponentClub] = await db
+          .select({ name: clubs.name })
+          .from(clubs)
+          .where(eq(clubs.id, opponentId))
+          .limit(1);
+
+        const { renderNarrative, matchOutcomeTemplates } = await import('@smt/shared');
+        const seed = nextWeek * 1000 + (thisFixture.matchday ?? 0);
+        const pressBody = renderNarrative(matchOutcomeTemplates, {
+          seed,
+          variables: {
+            homeScore: myScore,
+            awayScore: theirScore,
+            goalDiff,
+            clubName: club?.name ?? 'el club',
+            opponent: opponentClub?.name ?? 'el rival',
+          },
+        });
+
+        // Persist as a staff message under a virtual "press" role.
+        // We attach to the head_coach to keep schema clean (staffId is required).
+        const [headCoach] = await db
+          .select({ id: staff.id })
+          .from(staff)
+          .where(
+            and(
+              eq(staff.playthroughId, active.id),
+              eq(staff.role, 'head_coach'),
+              eq(staff.status, 'active'),
+            ),
+          )
+          .limit(1);
+
+        if (headCoach && pressBody) {
+          await db.insert(staffMessages).values({
+            playthroughId: active.id,
+            staffId: headCoach.id,
+            week: nextWeek,
+            season: tvCurrentSeason,
+            priority: 'ROUTINE',
+            templateKey: 'press:match_outcome',
+            content: `📰 Crónica de prensa — ${pressBody}`,
+            isRead: false,
+          });
+        }
+      }
+    }
+  } catch {
+    // Press article is decorative — never block the advance pipeline.
+  }
+
   // ── Phase 6b: pretemporada abono reminder (2 weeks before kickoff) ──────
   const [activeStaffFinance] = await db
     .select({ id: staff.id })
