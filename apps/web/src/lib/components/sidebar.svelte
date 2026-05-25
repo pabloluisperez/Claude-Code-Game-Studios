@@ -25,10 +25,11 @@
     { href: '/dashboard',  icon: '📊', label: 'Dashboard' },
     { href: '/squad',      icon: '👥', label: 'Plantilla' },
     { href: '/staff',      icon: '🧑‍💼', label: 'Staff' },
+    { href: '/scouting',   icon: '🔍', label: 'Scouting' },
     { href: '/finance',    icon: '💰', label: 'Finanzas' },
     { href: '/league',     icon: '🏆', label: 'Liga' },
     { href: '/calendar',   icon: '📅', label: 'Calendario' },
-    { href: '/city',       icon: '🗺', label: 'Ciudad' },
+    { href: '/city',       icon: '🏛', label: 'Museo' },
     { href: '/stadium',    icon: '🏟', label: 'Estadio' },
     { href: '/manager',    icon: '🧠', label: 'Mánager' },
   ] as const;
