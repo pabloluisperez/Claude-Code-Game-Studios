@@ -280,9 +280,18 @@ export async function scoutPlayer(params: {
       .limit(1);
     if (existing[0]) return err('ALREADY_SCOUTED' as const);
 
-    // 3. Compute cost with Scout Director T3 discount
+    // 3. Compute cost with Scout Director T3 discount + cityTier multiplier
     const directorTier = await getScoutDirectorTier(tx, params.clubId);
-    const cost = scoutActionCost(params.actionType, { scoutDirectorT3: directorTier === 3 });
+    const [clubRow] = await tx
+      .select({ cityTier: clubs.cityTier })
+      .from(clubs)
+      .where(eq(clubs.id, params.clubId))
+      .limit(1);
+    const cityTier = (clubRow?.cityTier ?? 1) as 1 | 2 | 3 | 4;
+    const cost = scoutActionCost(params.actionType, {
+      scoutDirectorT3: directorTier === 3,
+      cityTier,
+    });
 
     // 4. Balance check
     const balance = await readBalance(tx, params.clubId);

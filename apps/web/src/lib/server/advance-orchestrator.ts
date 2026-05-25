@@ -50,6 +50,7 @@ import {
   or,
   desc,
   sql,
+  tvContracts,
 } from '@smt/db';
 import {
   CASCADA_FC_GRAPH,
@@ -281,6 +282,60 @@ export async function runAdvanceTickFull(
   const active = ctx.playthrough;
   const nextWeek = ctx.latestWeek + 1;
   const tvCurrentSeason = ctx.currentSeason;
+
+  // ── Phase 0: ensure TV auction event exists (Pablo bug 2026-05-25) ──────
+  // The TV auction event was originally generated via rolloverTVSeasonStart
+  // at season transitions, but it was never wired into the new-playthrough
+  // bootstrap path. Catch-up here: if there's no ACTIVE TV contract AND no
+  // pending tv_auction event for the active season, insert one. Idempotent
+  // via existing partial-UNIQUE index on (playthroughId, season, type) for
+  // tv_auction events.
+  try {
+    const [{ count: contractCount } = { count: 0 }] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(tvContracts)
+      .where(
+        and(
+          eq(tvContracts.playthroughId, active.id),
+          eq(tvContracts.status, 'ACTIVE'),
+        ),
+      );
+    const [{ count: pendingCount } = { count: 0 }] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(calendarEvents)
+      .where(
+        and(
+          eq(calendarEvents.playthroughId, active.id),
+          eq(calendarEvents.type, 'tv_auction'),
+          eq(calendarEvents.status, 'pending'),
+        ),
+      );
+    if (Number(contractCount) === 0 && Number(pendingCount) === 0) {
+      const { buildTVAuctionPayload } = await import('@smt/shared');
+      const payload = buildTVAuctionPayload({
+        prevSeasonFinalPosition: null, // T1 fresh start → LOCAL only
+        currentDivision: ctx.currentDivision,
+        managerReputation: 0,
+        corruptionExposure: 0,
+        season: tvCurrentSeason,
+      });
+      await db
+        .insert(calendarEvents)
+        .values({
+          playthroughId: active.id,
+          week: nextWeek,
+          season: tvCurrentSeason,
+          type: 'tv_auction',
+          priority: 'STOP',
+          status: 'pending',
+          consumed: false,
+          metadata: payload as unknown as Record<string, unknown>,
+        })
+        .onConflictDoNothing();
+    }
+  } catch {
+    // TV auction generation must never block the advance pipeline.
+  }
 
   // ── Phase 1: pure-compute pipeline ──────────────────────────────────────
   const orchestrated = await runAdvanceTickCore({

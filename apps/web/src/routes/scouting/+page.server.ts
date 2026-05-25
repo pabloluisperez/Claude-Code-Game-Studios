@@ -8,7 +8,7 @@
 
 import type { PageServerLoad, Actions } from './$types';
 import { fail, redirect } from '@sveltejs/kit';
-import { db, clubs, loadAdvanceContext, eq } from '@smt/db';
+import { db, clubs, players, loadAdvanceContext, eq } from '@smt/db';
 
 type PoolEntry = {
   id: string;
@@ -57,7 +57,21 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
     }
   }
 
-  return { hasPlaythrough: true, club: club ?? null, pool };
+  // Own roster (for the "compare with mine" panel — Pablo 2026-05-25).
+  const ownRoster = club
+    ? await db
+        .select({
+          id: players.id,
+          firstName: players.firstName,
+          lastName: players.lastName,
+          position: players.position,
+          skill: players.skill,
+        })
+        .from(players)
+        .where(eq(players.clubId, club.id))
+    : [];
+
+  return { hasPlaythrough: true, club: club ?? null, pool, ownRoster };
 };
 
 export const actions = {
