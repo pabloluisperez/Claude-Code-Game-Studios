@@ -27,14 +27,28 @@ Task: Wire narrative engine into staff messages + press articles + mayor calls (
 | 25-7 tickAllClubsWithActiveUpgrades wire-up | Already done | Sprint 22 commit cdee604 |
 | 25-8 GDPR data-export endpoint | Already exists | Sprint 14 — GET /api/me/export |
 
-### Sprint 26 — narrative engine + press articles (DONE)
+### Sprint 26 — narrative engine + ALL emitters wired (DONE)
 
 | Story | Status |
 |---|---|
 | 26-1 Engine + vocab + library + tests | ✅ Complete `b03e5e9` |
-| 26-3 Press articles emitter (new feature) | ✅ Complete `cc163de` |
-| 26-2 Migrate staff T3 messages to use engine | ⏳ Deferred — existing templates work; engine available when needed |
-| 26-4 Mayor calls emitter (new feature) | ⏳ Deferred — needs career-event trigger from manager-rpg module |
+| 26-3 Press articles emitter (notable matches) | ✅ Complete `cc163de` |
+| 26-4 Mayor calls (career milestone `ten_matches`) | ✅ Complete (Phase 8b in same later commit) |
+| 26-2 Finance commentary (weekly, template-generated) | ✅ Complete (Phase 8c) |
+| 26-2 full migration of existing staff templates | ⏳ v1.3 — engine ready, opt-in additive |
+
+### Sprint 25 should-have
+
+| Story | Status |
+|---|---|
+| 25-9 Scouting filters (client-side search + 4 filters) | ✅ Complete |
+| 25-9 Saved searches persistence | ⏳ v1.3 (schema exists from 24-1) |
+| 25-10 Asset hygiene MANIFEST | ⏳ v1.3 |
+
+### v1.2 changelog
+
+`production/releases/changelog-v1.2.md` — full player-facing description
+of features + deferred items + playtest checklist for Pablo.
 
 **Engine ships**:
 - packages/shared/src/sim/narrative/{types,engine,vocab,library}.ts
