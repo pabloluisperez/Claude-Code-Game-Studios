@@ -8,7 +8,7 @@
 
 import type { PageServerLoad, Actions } from './$types';
 import { fail, redirect } from '@sveltejs/kit';
-import { db, clubs, players, loadAdvanceContext, eq } from '@smt/db';
+import { db, clubs, players, transferOffers, loadAdvanceContext, eq, and } from '@smt/db';
 
 type PoolEntry = {
   id: string;
@@ -71,7 +71,33 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
         .where(eq(players.clubId, club.id))
     : [];
 
-  return { hasPlaythrough: true, club: club ?? null, pool, ownRoster };
+  // Incoming offers (Pablo 2026-05-25 sell-own-players flow).
+  const incomingOffers = club
+    ? await db
+        .select({
+          offerId: transferOffers.id,
+          playerId: transferOffers.playerId,
+          buyerClubId: transferOffers.buyerClubId,
+          feeEurK: transferOffers.feeEurK,
+          createdAt: transferOffers.createdAt,
+          playerFirstName: players.firstName,
+          playerLastName: players.lastName,
+          playerPosition: players.position,
+          playerSkill: players.skill,
+          buyerClubName: clubs.name,
+        })
+        .from(transferOffers)
+        .innerJoin(players, eq(players.id, transferOffers.playerId))
+        .innerJoin(clubs, eq(clubs.id, transferOffers.buyerClubId))
+        .where(
+          and(
+            eq(transferOffers.sellerClubId, club.id),
+            eq(transferOffers.status, 'pending'),
+          ),
+        )
+    : [];
+
+  return { hasPlaythrough: true, club: club ?? null, pool, ownRoster, incomingOffers };
 };
 
 export const actions = {
@@ -92,6 +118,25 @@ export const actions = {
       return fail(res.status, { action: 'scout', error: body.error ?? 'unknown', playerId });
     }
     return { action: 'scout' as const, success: true, ...body };
+  },
+
+  respondOffer: async ({ request, fetch, locals }) => {
+    if (!locals.user) return fail(401, { error: 'unauthorized' });
+    const data = await request.formData();
+    const clubId = String(data.get('clubId') ?? '');
+    const offerId = String(data.get('offerId') ?? '');
+    const action = String(data.get('responseAction') ?? '') as 'accept' | 'reject';
+
+    const res = await fetch('/api/scouting/respond-offer', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ clubId, offerId, action }),
+    });
+    const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!res.ok) {
+      return fail(res.status, { action: 'respondOffer', error: body.error ?? 'unknown', offerId });
+    }
+    return { action: 'respondOffer' as const, success: true, offerId, ...body };
   },
 
   offer: async ({ request, fetch, locals }) => {

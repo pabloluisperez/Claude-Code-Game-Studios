@@ -10,6 +10,7 @@
  */
 
 import {
+  boolean,
   index,
   integer,
   jsonb,
@@ -92,6 +93,12 @@ export const players = pgTable(
     weeksUnsigned: integer('weeks_unsigned').notNull().default(0),
     /** Wage expectation (€K/week) — used by F2 free agent acceptance. */
     wageExpectationEurKWeek: integer('wage_expectation_eur_k_week').notNull().default(5),
+    /**
+     * Marked for sale by the owning club (v1.2 Sprint 26-5). When true, the
+     * advance pipeline generates one deterministic AI offer per window
+     * which the player can accept or reject. Toggled via the /squad UI.
+     */
+    transferListed: boolean('transfer_listed').notNull().default(false),
 
     // Lifecycle
     availability: text('availability').notNull().default('available'),

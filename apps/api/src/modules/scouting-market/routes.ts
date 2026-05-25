@@ -14,7 +14,13 @@ import { eq } from 'drizzle-orm';
 import { db, clubs } from '@smt/db';
 import { requireUser, type AuthEnv } from '../../auth/middleware.js';
 import { logger } from '../../lib/logger.js';
-import { getMarket, scoutPlayer, makeOffer } from './service.js';
+import {
+  getMarket,
+  scoutPlayer,
+  makeOffer,
+  toggleTransferListed,
+  respondToIncomingOffer,
+} from './service.js';
 
 const querySchema = z.object({ clubId: z.string().uuid() });
 const scoutSchema = z.object({
@@ -28,6 +34,18 @@ const offerSchema = z.object({
   feeEurK: z.number().int().min(0),
   wageOfferEurKWeek: z.number().int().min(0),
   contractWeeks: z.number().int().min(1).max(260),
+});
+
+const listForSaleSchema = z.object({
+  clubId: z.string().uuid(),
+  playerId: z.string().uuid(),
+  listed: z.boolean(),
+});
+
+const respondOfferSchema = z.object({
+  clubId: z.string().uuid(),
+  offerId: z.string().uuid(),
+  action: z.enum(['accept', 'reject']),
 });
 
 async function clubBelongsToUser(userId: string, clubId: string): Promise<boolean> {
@@ -105,6 +123,34 @@ export function createScoutingMarketRoutes(): Hono<AuthEnv> {
       logger.error({ clubId: body.clubId, playerId: body.playerId, err: msg }, 'offer route error');
       return c.json({ error: 'INTERNAL', detail: msg }, 500);
     }
+  });
+
+  app.post('/list-for-sale', zValidator('json', listForSaleSchema), async (c) => {
+    const user = c.get('user');
+    const body = c.req.valid('json');
+    if (!(await clubBelongsToUser(user.id, body.clubId))) {
+      return c.json({ error: 'NOT_FOUND' }, 404);
+    }
+    const result = await toggleTransferListed(body);
+    if (result.ok) {
+      logger.info({ clubId: body.clubId, playerId: body.playerId, listed: body.listed }, 'transfer listing toggled');
+      return c.json(result.value, 200);
+    }
+    return c.json({ error: result.error }, errorStatus(result.error));
+  });
+
+  app.post('/respond-offer', zValidator('json', respondOfferSchema), async (c) => {
+    const user = c.get('user');
+    const body = c.req.valid('json');
+    if (!(await clubBelongsToUser(user.id, body.clubId))) {
+      return c.json({ error: 'NOT_FOUND' }, 404);
+    }
+    const result = await respondToIncomingOffer(body);
+    if (result.ok) {
+      logger.info({ clubId: body.clubId, offerId: body.offerId, status: result.value.status }, 'offer response');
+      return c.json(result.value, 200);
+    }
+    return c.json({ error: result.error }, errorStatus(result.error));
   });
 
   return app;

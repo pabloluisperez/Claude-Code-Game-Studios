@@ -348,7 +348,17 @@
               </div>
             </div>
 
-            <div class="modal-action">
+            <div class="modal-action flex-wrap gap-2">
+              <form method="POST" action="?/toggleSale" use:enhance>
+                <input type="hidden" name="playerId" value={selected.id} />
+                <input type="hidden" name="listed" value={selected.transferListed ? 'false' : 'true'} />
+                <button
+                  type="submit"
+                  class={selected.transferListed ? 'btn btn-warning' : 'btn btn-success'}
+                >
+                  {selected.transferListed ? '✗ Quitar de venta' : '💰 Marcar para venta'}
+                </button>
+              </form>
               <button class="btn" onclick={() => (selected = null)}>Cerrar</button>
             </div>
           </div>

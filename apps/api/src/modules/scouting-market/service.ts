@@ -318,6 +318,99 @@ export async function scoutPlayer(params: {
 }
 
 /* ------------------------------------------------------------------ */
+/* Sell-own-players (v1.2 Sprint 26-5)                                */
+/* ------------------------------------------------------------------ */
+
+export type ListForSaleError = 'PLAYER_NOT_FOUND' | 'NOT_OWNED_BY_CLUB';
+
+export async function toggleTransferListed(params: {
+  clubId: string;
+  playerId: string;
+  listed: boolean;
+}): Promise<Result<{ transferListed: boolean }, ListForSaleError>> {
+  return dbClient.transaction(async (tx) => {
+    const [player] = await tx
+      .select({ id: players.id, clubId: players.clubId })
+      .from(players)
+      .where(eq(players.id, params.playerId))
+      .limit(1);
+    if (!player) return err('PLAYER_NOT_FOUND' as const);
+    if (player.clubId !== params.clubId) return err('NOT_OWNED_BY_CLUB' as const);
+
+    await tx
+      .update(players)
+      .set({ transferListed: params.listed })
+      .where(eq(players.id, params.playerId));
+    return ok({ transferListed: params.listed });
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Accept / reject an incoming offer (v1.2 Sprint 26-5)               */
+/* ------------------------------------------------------------------ */
+
+export type RespondError =
+  | 'OFFER_NOT_FOUND'
+  | 'NOT_SELLER'
+  | 'OFFER_ALREADY_RESOLVED';
+
+export async function respondToIncomingOffer(params: {
+  clubId: string;
+  offerId: string;
+  action: 'accept' | 'reject';
+}): Promise<Result<{ status: 'accepted' | 'rejected'; feeEurK?: number }, RespondError>> {
+  return dbClient.transaction(async (tx) => {
+    const [offer] = await tx
+      .select()
+      .from(transferOffers)
+      .where(eq(transferOffers.id, params.offerId))
+      .limit(1);
+    if (!offer) return err('OFFER_NOT_FOUND' as const);
+    if (offer.sellerClubId !== params.clubId) return err('NOT_SELLER' as const);
+    if (offer.status !== 'pending') return err('OFFER_ALREADY_RESOLVED' as const);
+
+    if (params.action === 'reject') {
+      await tx
+        .update(transferOffers)
+        .set({ status: 'rejected', resolvedAt: new Date() })
+        .where(eq(transferOffers.id, params.offerId));
+      return ok({ status: 'rejected' as const });
+    }
+
+    // Accept: credit fee, transfer player ownership (to the buyer club),
+    // unmark transfer_listed.
+    await tx
+      .update(transferOffers)
+      .set({ status: 'accepted', resolvedAt: new Date() })
+      .where(eq(transferOffers.id, params.offerId));
+    await tx
+      .update(players)
+      .set({
+        clubId: offer.buyerClubId,
+        transferListed: false,
+      })
+      .where(eq(players.id, offer.playerId));
+    // Credit the sale fee to the seller's latest worldSnapshot.
+    await tx.execute(
+      sql`UPDATE world_snapshots
+          SET world_state = jsonb_set(
+            world_state,
+            '{financial_balance}',
+            to_jsonb(COALESCE((world_state->>'financial_balance')::numeric, 0) + ${offer.feeEurK})
+          )
+          WHERE id = (
+            SELECT ws.id FROM world_snapshots ws
+            JOIN playthroughs p ON p.id = ws.playthrough_id
+            WHERE p.club_id = ${params.clubId}
+            ORDER BY ws.week DESC, ws.created_at DESC NULLS LAST
+            LIMIT 1
+          )`,
+    );
+    return ok({ status: 'accepted' as const, feeEurK: offer.feeEurK });
+  });
+}
+
+/* ------------------------------------------------------------------ */
 /* Offer service (v1.2 Sprint 25-4)                                   */
 /* ------------------------------------------------------------------ */
 

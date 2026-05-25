@@ -48,6 +48,29 @@ const BUCKET_TO_INDEX: Readonly<Record<string, number>> = {
 };
 
 export const actions: Actions = {
+  toggleSale: async ({ request, fetch, locals }) => {
+    if (!locals.user) throw redirect(303, '/login');
+    const data = await request.formData();
+    const playerId = String(data.get('playerId') ?? '');
+    const listed = data.get('listed') === 'true';
+    const [active] = await db
+      .select({ clubId: playthroughs.clubId })
+      .from(playthroughs)
+      .where(eq(playthroughs.userId, locals.user.id))
+      .orderBy(desc(playthroughs.updatedAt))
+      .limit(1);
+    if (!active) return fail(400, { error: 'No hay carrera activa.' });
+
+    const res = await fetch('/api/scouting/list-for-sale', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ clubId: active.clubId, playerId, listed }),
+    });
+    const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!res.ok) return fail(res.status, { action: 'toggleSale', error: body.error ?? 'unknown' });
+    return { action: 'toggleSale' as const, listed, playerId };
+  },
+
   setIntensity: async ({ request, locals }) => {
     if (!locals.user) throw redirect(303, '/login');
 
