@@ -27,14 +27,14 @@ Task: Wire narrative engine into staff messages + press articles + mayor calls (
 | 25-7 tickAllClubsWithActiveUpgrades wire-up | Already done | Sprint 22 commit cdee604 |
 | 25-8 GDPR data-export endpoint | Already exists | Sprint 14 — GET /api/me/export |
 
-### Sprint 26 — narrative engine (ENGINE DONE, integration pending)
+### Sprint 26 — narrative engine + press articles (DONE)
 
 | Story | Status |
 |---|---|
 | 26-1 Engine + vocab + library + tests | ✅ Complete `b03e5e9` |
-| 26-2 Migrate staff T3 messages to use engine | ⏳ Pending |
-| 26-3 Press articles emitter (new feature) | ⏳ Pending |
-| 26-4 Mayor calls emitter (new feature) | ⏳ Pending |
+| 26-3 Press articles emitter (new feature) | ✅ Complete `cc163de` |
+| 26-2 Migrate staff T3 messages to use engine | ⏳ Deferred — existing templates work; engine available when needed |
+| 26-4 Mayor calls emitter (new feature) | ⏳ Deferred — needs career-event trigger from manager-rpg module |
 
 **Engine ships**:
 - packages/shared/src/sim/narrative/{types,engine,vocab,library}.ts
@@ -44,9 +44,16 @@ Task: Wire narrative engine into staff messages + press articles + mayor calls (
 
 ### Pending for v1.2 close
 
-- Sprint 26 phase 2: wire engine into existing staff message pipeline + new press/mayor emitters (~2 days)
-- Sprint 27: PixiJS BarrioScene + MuseumInteriorScene + 12-15 museum sprites (~3 days, optional polish)
-- v1.2 tag + changelog
+**Optional polish (v1.2 ready to playtest without these)**:
+- 26-2: Migrate existing staff message templates to use the narrative engine for variety. Existing templates still work; this is enhancement.
+- 26-4: Mayor calls emitter — needs a career-milestone trigger from manager-rpg module which doesn't exist yet. Defer to v1.3.
+- Sprint 27: PixiJS BarrioScene + MuseumInteriorScene + 12-15 museum sprites. The DOM museum at /city works perfectly; canvas is visual polish.
+
+**Required for v1.2 tag**:
+- Playtest the new offer flow + press articles emitter (Pablo)
+- Bug-fix anything that surfaces during playtest
+- Update changelog v1.2.0
+- Tag v1.2.0
 
 ### Test totals (cumulative this run + previous sessions)
 
@@ -65,6 +72,17 @@ Task: Wire narrative engine into staff messages + press articles + mayor calls (
 - Players show contractStatus (in_contract / expiring / free_agent)
 - Free agents skip fee input (only wage matters)
 - /squad muestra nombre completo (no más "L. Morán")
+- **NEW**: 📰 Crónica de prensa staff message after notable matches
+  (goal diff ≥ 3, or 0-0). Template-generated, deterministic per week,
+  highly varied (~50+ different phrasings on first 20 weeks).
+
+### v1.2 ready-to-playtest checklist for Pablo
+
+1. `turbo dev` + login
+2. /scouting → click "Ofertar" en un free agent → ver modal + outcome
+3. /scouting → "Ofertar" en jugador de otro club → ver counter-offer flow
+4. Avanzar semanas hasta tener un partido con goleada (>=3 goals diff)
+5. /inbox → verificar que aparece "📰 Crónica de prensa" con texto variado
 
 
 
