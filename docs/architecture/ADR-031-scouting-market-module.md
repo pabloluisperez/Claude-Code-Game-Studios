@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (v1.1 design — 2026-05-24 autonomous authoring)
+Accepted (2026-05-25 — Pablo accept; v1.1 design authored 2026-05-24)
 
 ## Date
 

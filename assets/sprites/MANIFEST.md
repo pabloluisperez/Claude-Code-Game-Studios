@@ -25,7 +25,28 @@ display size: 256×192 px (1/6 of native). For full-screen hero scenes:
 
 ## Inventory
 
-### Stadium Tiers (`stadium-t{0..3}-*.png`)
+### Stadium Visual Levels (`stadium-v{0..9}.png`) — v1.1 canonical
+
+| Asset | `stadium_visual_level` | Description | Source |
+|---|---|---|---|
+| `stadium-v0.png` | 0 | Lowest level — bare/amateur (F1 default for empty state) | Nano Banana 2026-05-24 |
+| `stadium-v1.png` | 1 | Early upgrades visible | Nano Banana 2026-05-24 |
+| `stadium-v2.png` | 2 | Mid-low (T1 stop-gap default) | Nano Banana 2026-05-24 |
+| `stadium-v3.png` | 3 | Local stadium feel | Nano Banana 2026-05-24 |
+| `stadium-v4.png` | 4 | Mid (T2 stop-gap default) | Nano Banana 2026-05-24 |
+| `stadium-v5.png` | 5 | Mid-high, professional appearance | Nano Banana 2026-05-24 |
+| `stadium-v6.png` | 6 | Established (T3 stop-gap default) | Nano Banana 2026-05-24 |
+| `stadium-v7.png` | 7 | High capacity, polished | Nano Banana 2026-05-24 |
+| `stadium-v8.png` | 8 | Premium (T4 stop-gap default) | Nano Banana 2026-05-24 |
+| `stadium-v9.png` | 9 | Maximum — fully upgraded all 3 tracks-Estadio | Nano Banana 2026-05-24 |
+
+All stadium visual levels are 1536×1152 px landscape. F1 in
+`design/gdd/stadium-upgrades.md §4` maps the 3 tracks-Estadio state to a
+`stadium_visual_level: 0..9` integer; story `stadium-upgrades-008` implements
+the live wiring. Until F1 ships, `/stadium` uses a stop-gap tier→v mapping
+(T1→v2, T2→v4, T3→v6, T4→v8) so the visual asset shows growth.
+
+### Stadium Tiers — legacy (`stadium-t{0..3}-*.png`) — deprecated for v1.1
 
 | Asset | Tier | Description | Seed |
 |---|---|---|---|
@@ -36,8 +57,8 @@ display size: 256×192 px (1/6 of native). For full-screen hero scenes:
 | `stadium-t3-night.png` | T3 night | Same T3 bowl under floodlights, starry sky, illuminated crowd | 20260522100 |
 | `stadium-t3-rain.png` | T3 rain | Same T3 bowl in heavy rain, wet pitch, umbrellas in stands | 20260522101 |
 
-All stadium tiers are 1536×1152 px landscape. T3 has 3 variants for
-time-of-day / weather contexts (default day, night with floodlights, rain).
+Kept on disk for fallback / time-of-day / weather variant exploration. Not
+used by `/stadium` route after v1.1 stop-gap wires `stadium-v{0..9}.png`.
 
 ### Buildings (`building-*.png`)
 

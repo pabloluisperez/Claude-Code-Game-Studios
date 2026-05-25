@@ -22,8 +22,16 @@
     return ['', 'Pueblo Olvidado', 'Club Emergente', 'Club Establecido', 'Imperio Local'][t];
   }
 
-  function tierSprite(t: 1 | 2 | 3 | 4): string {
-    return ['', '/sprites/city-hd/stadium-t0-amateur.png', '/sprites/city-hd/stadium-t1-local.png', '/sprites/city-hd/stadium-t2-regional.png', '/sprites/city-hd/stadium-t3-premier.png'][t] ?? '';
+  // Stop-gap: tier → stadium_visual_level until F1 ships in stadium-upgrades-003.
+  // Mapping skews mid-bracket of each tier; v0/v1 and v9 reserved for F1 extremes.
+  // TODO(stadium-upgrades-008): replace with real `data.stadium.visualLevel` from F1.
+  function tierToVisualLevel(t: 1 | 2 | 3 | 4): number {
+    return [0, 2, 4, 6, 8][t] ?? 0;
+  }
+
+  function visualLevelSprite(v: number): string {
+    const clamped = Math.max(0, Math.min(9, Math.floor(v)));
+    return `/sprites/city-hd/stadium-v${clamped}.png`;
   }
 
   function pitchLabel(p: string): string {
@@ -136,10 +144,11 @@
           </div>
         </div>
 
-        <!-- Vista HD del estadio según tier actual -->
+        <!-- Vista HD del estadio según stadium_visual_level (0..9). -->
+        <!-- Stop-gap: derivado de tier hasta que F1 (stadium-upgrades-003) lo compute desde los 3 tracks. -->
         <div class="mt-6 rounded bg-gradient-to-b from-base-200 to-base-300 p-4 text-center overflow-hidden">
           <img
-            src={tierSprite(data.stadium.tier)}
+            src={visualLevelSprite(tierToVisualLevel(data.stadium.tier))}
             alt="Estadio nivel {tierLabel(data.stadium.tier)}"
             class="mx-auto max-w-full h-auto"
             style="image-rendering: pixelated; max-height: 480px;"
