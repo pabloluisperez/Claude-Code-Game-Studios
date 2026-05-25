@@ -141,8 +141,24 @@ export function createStadiumUpgradesRoutes(): Hono<AuthEnv> {
       ...(body.activeOfferId !== undefined ? { activeOfferId: body.activeOfferId } : {}),
     });
     if (result.ok) {
-      logger.info({ clubId: body.clubId, itemSlug: body.itemSlug, costPaid: result.value.costPaid }, 'stadium-upgrades buy');
-      return c.json({ itemId: result.value.itemId, costPaid: result.value.costPaid, durationWeeks: result.value.durationWeeks }, 200);
+      logger.info(
+        {
+          clubId: body.clubId,
+          itemSlug: body.itemSlug,
+          totalCost: result.value.totalCost,
+          installmentEurK: result.value.installmentEurK,
+        },
+        'stadium-upgrades buy',
+      );
+      return c.json(
+        {
+          itemId: result.value.itemId,
+          totalCost: result.value.totalCost,
+          durationWeeks: result.value.durationWeeks,
+          installmentEurK: result.value.installmentEurK,
+        },
+        200,
+      );
     }
     logger.warn({ clubId: body.clubId, itemSlug: body.itemSlug, error: result.error }, 'stadium-upgrades buy denied');
     return c.json({ error: result.error }, errorStatus(result.error));

@@ -109,7 +109,7 @@ describeDB('stadium-upgrades routes (integration)', () => {
     expect(res.status).toBe(404);
   });
 
-  it('test_buy_happy_path_returns_200', async () => {
+  it('test_buy_happy_path_returns_200_with_total_and_installment', async () => {
     const env = await setupEnv({ budget: 10000 });
     const res = await app.fetch(
       new Request('http://x/buy', {
@@ -119,9 +119,11 @@ describeDB('stadium-upgrades routes (integration)', () => {
       }),
     );
     expect(res.status).toBe(200);
-    const body = await res.json() as { itemId: string; costPaid: number };
+    const body = await res.json() as { itemId: string; totalCost: number; installmentEurK: number; durationWeeks: number };
     expect(body.itemId).toBeTruthy();
-    expect(body.costPaid).toBe(21);
+    expect(body.totalCost).toBe(21);
+    expect(body.installmentEurK).toBe(11);
+    expect(body.durationWeeks).toBe(2);
   });
 
   it('test_buy_zod_fail_returns_400', async () => {
@@ -223,7 +225,9 @@ describeDB('stadium-upgrades routes (integration)', () => {
     expect(res.status).toBe(200);
   });
 
-  it('test_cancel_happy_path_returns_200_with_refund', async () => {
+  it('test_cancel_before_tick_refunds_zero', async () => {
+    // Per installment design: cancelling before any tick has paid 0,
+    // so refund=0 (50% of 0).
     const env = await setupEnv({ budget: 10000 });
     const buyRes = await app.fetch(
       new Request('http://x/buy', {
@@ -243,7 +247,7 @@ describeDB('stadium-upgrades routes (integration)', () => {
     );
     expect(res.status).toBe(200);
     const body = await res.json() as { refundEurK: number };
-    expect(body.refundEurK).toBe(11);
+    expect(body.refundEurK).toBe(0);
   });
 
   it('test_cancel_unknown_id_returns_404', async () => {

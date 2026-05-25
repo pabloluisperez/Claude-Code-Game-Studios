@@ -62,6 +62,15 @@ export type BuyError =
   | 'INSUFFICIENT_BALANCE'
   | 'CRITICAL_BALANCE_WARNING';
 
+/** Compute the per-tick installment for an obra. Rounds to integer EUR-K.
+ *  Pablo 2026-05-25 design tweak: reforms are charged week-by-week, not
+ *  upfront. The installment is the smallest payable unit; the final tick
+ *  pays the remainder so rounding never under/over-charges the player. */
+export function installmentEurK(totalCostEurK: number, durationWeeks: number): number {
+  if (durationWeeks <= 0) return totalCostEurK;
+  return Math.round(totalCostEurK / durationWeeks);
+}
+
 export type CancelError = 'NOT_FOUND' | 'NOT_IN_PROGRESS';
 
 export type Result<T, E> =
@@ -147,7 +156,17 @@ function counterFieldForTrack(track: Track): 'stadium_upgrade_count' | 'training
 export async function buy(
   params: BuyParams,
   deps: ServiceDeps = {},
-): Promise<Result<{ itemId: string; costPaid: number; durationWeeks: number }, BuyError>> {
+): Promise<
+  Result<
+    {
+      itemId: string;
+      totalCost: number;
+      durationWeeks: number;
+      installmentEurK: number;
+    },
+    BuyError
+  >
+> {
   return dbClient.transaction(async (tx) => {
     // 1. Look up the catalog item
     const item = getCatalog().find((i) => i.slug === params.itemSlug);
@@ -161,7 +180,7 @@ export async function buy(
     const active = await repo.getActive(tx, params.clubId);
     if (active) return err('SLOT_OCCUPIED' as const);
 
-    // 4. Compute cost with modifiers
+    // 4. Compute total cost with modifiers
     const construction = deps.hasConstructionSkill
       ? await deps.hasConstructionSkill(params.clubId, tx)
       : false;
@@ -174,22 +193,29 @@ export async function buy(
     };
     const cost = costOfItem({ tier: item.tier as ItemTier, track: item.track as Track }, modifiers);
 
-    // 5. Balance check
-    const balance = await readClubBudget(tx, params.clubId);
-    if (balance < cost) return err('INSUFFICIENT_BALANCE' as const);
-
-    // 5b. Critical-balance UX guard (soft block, requires acceptRisk to bypass)
-    if (!params.acceptRisk && balance - cost < EN_RIESGO_BALANCE_THRESHOLD) {
-      return err('CRITICAL_BALANCE_WARNING' as const);
-    }
-
-    // 6. Compute duration with director modifier
+    // 5. Compute duration with director modifier
     const directorSkill = deps.getDirectorSkill
       ? await deps.getDirectorSkill(params.clubId, tx)
       : null;
     const dur = durationWeeks({ tier: item.tier as ItemTier }, directorSkill);
+    const weeklyInstallment = installmentEurK(cost, dur);
 
-    // 7. Insert in_progress (DB partial unique index also enforces queue)
+    // 6. Balance check — at least the first weekly installment must be payable.
+    // (Pablo 2026-05-25 design tweak: reforms charge week-by-week, not upfront.
+    //  The player commits to the total cost; if balance drops mid-build the
+    //  bankruptcy pause in tickClub() halts charges.)
+    const balance = await readClubBudget(tx, params.clubId);
+    if (balance < weeklyInstallment) return err('INSUFFICIENT_BALANCE' as const);
+
+    // 6b. Critical-balance UX guard: based on TOTAL commitment, not just the
+    //     first installment — the player should be informed if the obra will
+    //     put them under the en-riesgo threshold over its lifetime.
+    if (!params.acceptRisk && balance - cost < EN_RIESGO_BALANCE_THRESHOLD) {
+      return err('CRITICAL_BALANCE_WARNING' as const);
+    }
+
+    // 7. Insert in_progress. costPaidEurK stores the total committed cost
+    //    (the column name is legacy — actual debits happen in tickClub).
     const newId = await repo.insertInProgress(tx, {
       clubId: params.clubId,
       itemSlug: item.slug,
@@ -201,10 +227,9 @@ export async function buy(
       directorSkillSnapshot: directorSkill,
     });
 
-    // 8. Debit balance
-    await debitClubBudget(tx, params.clubId, cost);
+    // 8. Do NOT debit upfront. Installments charged in tickClub().
 
-    return ok({ itemId: newId, costPaid: cost, durationWeeks: dur });
+    return ok({ itemId: newId, totalCost: cost, durationWeeks: dur, installmentEurK: weeklyInstallment });
   });
 }
 
@@ -221,14 +246,21 @@ export async function cancel(
     if (!item || item.clubId !== params.clubId) return err('NOT_FOUND' as const);
     if (item.status !== 'in_progress') return err('NOT_IN_PROGRESS' as const);
 
-    const refund = Math.round(item.costPaidEurK * 0.5);
+    // Refund 50% of the AMOUNT ALREADY PAID (not 50% of the total commitment).
+    // Pablo 2026-05-25: with installment billing, cancelling early should
+    // refund half of what the player has actually paid so far, not half of
+    // a future obligation.
+    const weekly = installmentEurK(item.costPaidEurK, item.durationWeeks);
+    const weeksPaid = item.durationWeeks - (item.weeksRemaining ?? 0);
+    const paidToDate = weekly * Math.max(0, weeksPaid);
+    const refund = Math.round(paidToDate * 0.5);
 
     await repo.updateStatus(tx, item.id, 'cancelled', { cancelledAt: new Date() });
-    await creditClubBudget(tx, params.clubId, refund);
+    if (refund > 0) {
+      await creditClubBudget(tx, params.clubId, refund);
+    }
     // Refund classification: per ADR-014 + GDD §5.16, this is
-    // stadium_refund_extraordinary. We do not have a transactions table yet;
-    // budget delta is the audit trail. Story 22-NH2 propagates this to
-    // economy.md F-revenue-flow doc.
+    // stadium_refund_extraordinary.
 
     return ok({ refundEurK: refund });
   });
@@ -241,8 +273,8 @@ export async function cancel(
 export type TickResult =
   | { kind: 'no_active' }
   | { kind: 'bankruptcy_pause' }
-  | { kind: 'decremented'; weeksRemaining: number }
-  | { kind: 'completed'; itemId: string; tierUp: boolean };
+  | { kind: 'decremented'; weeksRemaining: number; installmentPaid: number }
+  | { kind: 'completed'; itemId: string; tierUp: boolean; finalPaid: number };
 
 export async function tickClub(clubId: string, deps: ServiceDeps = {}): Promise<TickResult> {
   // Result emitted after tx commits so Socket.IO emit happens once.
@@ -255,11 +287,34 @@ export async function tickClub(clubId: string, deps: ServiceDeps = {}): Promise<
       return { kind: 'bankruptcy_pause' as const };
     }
 
+    // Weekly installment math (Pablo 2026-05-25): debit per-tick instead of
+    // upfront in buy(). On the final tick, pay the rounding remainder so the
+    // total paid equals exactly active.costPaidEurK.
+    const weekly = installmentEurK(active.costPaidEurK, active.durationWeeks);
+    const weeksPaid = active.durationWeeks - (active.weeksRemaining ?? 0);
+    const alreadyPaid = weekly * weeksPaid;
+
     const current = active.weeksRemaining ?? 0;
     const next = current - 1;
     if (next > 0) {
+      // Mid-build tick: charge one installment.
+      if (balance < weekly) {
+        // Can't afford this week's installment — pause (no decrement, no debit)
+        return { kind: 'bankruptcy_pause' as const };
+      }
+      await debitClubBudget(tx, clubId, weekly);
       await repo.decrementWeeksRemaining(tx, active.id);
-      return { kind: 'decremented' as const, weeksRemaining: next };
+      return { kind: 'decremented' as const, weeksRemaining: next, installmentPaid: weekly };
+    }
+
+    // Final tick: pay the rounding remainder so player gets charged exactly
+    // active.costPaidEurK in total (e.g. 21€K / 2 weeks = 11/10 split).
+    const finalPaid = Math.max(0, active.costPaidEurK - alreadyPaid);
+    if (balance < finalPaid) {
+      return { kind: 'bankruptcy_pause' as const };
+    }
+    if (finalPaid > 0) {
+      await debitClubBudget(tx, clubId, finalPaid);
     }
 
     // Transition to Complete + side effects in the same transaction.
@@ -296,7 +351,7 @@ export async function tickClub(clubId: string, deps: ServiceDeps = {}): Promise<
       tierUp = verdict.tierUp;
     }
 
-    return { kind: 'completed' as const, itemId: active.id, tierUp };
+    return { kind: 'completed' as const, itemId: active.id, tierUp, finalPaid };
   });
 
   // Post-tx side effect (Socket.IO emit).

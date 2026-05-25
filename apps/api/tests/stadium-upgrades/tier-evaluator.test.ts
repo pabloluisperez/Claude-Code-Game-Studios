@@ -162,7 +162,11 @@ describeDB('tier-up doble-gate evaluator', () => {
     expect(verdict.tierUp).toBe(true);
   });
 
-  it('test_tick_all_clubs_processes_only_clubs_with_in_progress', async () => {
+  it('test_tick_all_clubs_decrements_active_items_for_known_clubs', async () => {
+    // Note: tickAllClubsWithActiveUpgrades() touches every club with an
+    // in_progress item across the whole DB. Vitest may run other test files
+    // in parallel against the same Postgres, so we don't assert an absolute
+    // count — we assert that OUR 2 known clubs got ticked correctly.
     const a = await setupClub({ budget: 10000 });
     const b = await setupClub({ budget: 10000 });
     const c = await setupClub();
@@ -175,14 +179,16 @@ describeDB('tier-up doble-gate evaluator', () => {
     await buy({ clubId: b.clubId, itemSlug: 'gradas-n1-norte' });
 
     const result = await tickAllClubsWithActiveUpgrades();
-    expect(result.ticked).toBe(2);
+    expect(result.ticked).toBeGreaterThanOrEqual(2);
 
-    // Both a + b's items should have weeksRemaining decremented
+    // Both a + b's items should have weeksRemaining decremented to 1
     const items = await db.select().from(stadiumUpgradeItems).where(eq(stadiumUpgradeItems.status, 'in_progress'));
     const aItems = items.filter((i) => i.clubId === a.clubId);
     const bItems = items.filter((i) => i.clubId === b.clubId);
+    const cItems = items.filter((i) => i.clubId === c.clubId);
     expect(aItems[0]!.weeksRemaining).toBe(1);
     expect(bItems[0]!.weeksRemaining).toBe(1);
+    expect(cItems).toHaveLength(0); // c never bought anything
   });
 
   it('test_tick_determinism_same_state_same_outcome', async () => {

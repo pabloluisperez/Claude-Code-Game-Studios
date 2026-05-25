@@ -99,7 +99,7 @@ describeDB('stadium-upgrades service (integration)', () => {
     createdPlaythroughs.push(env.playthroughId);
   }
 
-  it('test_buy_happy_path_returns_ok_debits_balance_inserts_row', async () => {
+  it('test_buy_happy_path_returns_total_and_installment_no_upfront_debit', async () => {
     const env = await createTestEnv({ budget: 10000 });
     track(env);
 
@@ -108,11 +108,13 @@ describeDB('stadium-upgrades service (integration)', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.itemId).toBeTruthy();
-    expect(result.value.costPaid).toBe(21); // 15 × 1.4 = 21
+    expect(result.value.totalCost).toBe(21); // 15 × 1.4 = 21
     expect(result.value.durationWeeks).toBe(2); // T1 base, no director
+    expect(result.value.installmentEurK).toBe(11); // round(21 / 2) = 11 (final tick pays remainder 10)
 
+    // Pablo 2026-05-25 design: NO upfront debit. Budget unchanged after buy().
     const [club] = await db.select({ budget: clubs.budget }).from(clubs).where(eq(clubs.id, env.clubId));
-    expect(club!.budget).toBe(10000 - 21);
+    expect(club!.budget).toBe(10000);
 
     const items = await db.select().from(stadiumUpgradeItems).where(eq(stadiumUpgradeItems.clubId, env.clubId));
     expect(items).toHaveLength(1);
@@ -187,7 +189,7 @@ describeDB('stadium-upgrades service (integration)', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     // 15 × 1.4 × 0.85 = 17.85 → round 18
-    expect(result.value.costPaid).toBe(18);
+    expect(result.value.totalCost).toBe(18);
   });
 
   it('test_buy_with_subsidy_offer_applies_discount', async () => {
@@ -204,10 +206,13 @@ describeDB('stadium-upgrades service (integration)', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     // 15 × 1.4 × 0.5 = 10.5 → round 11
-    expect(result.value.costPaid).toBe(11);
+    expect(result.value.totalCost).toBe(11);
   });
 
-  it('test_cancel_happy_path_refunds_50_percent', async () => {
+  it('test_cancel_before_any_tick_refunds_zero', async () => {
+    // Pablo 2026-05-25 design: refunds are based on paid-to-date (installments
+    // already debited), not 50% of the future total. Cancelling before any
+    // installment is paid yields refund=0.
     const env = await createTestEnv({ budget: 10000 });
     track(env);
 
@@ -218,13 +223,36 @@ describeDB('stadium-upgrades service (integration)', () => {
     const result = await cancel({ clubId: env.clubId, itemId: bought.value.itemId });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.value.refundEurK).toBe(11); // round(21 × 0.5) = 11
+    expect(result.value.refundEurK).toBe(0);
 
+    // Budget unchanged: no upfront debit, no refund.
     const [club] = await db.select({ budget: clubs.budget }).from(clubs).where(eq(clubs.id, env.clubId));
-    expect(club!.budget).toBe(10000 - 21 + 11);
+    expect(club!.budget).toBe(10000);
 
     const items = await db.select().from(stadiumUpgradeItems).where(eq(stadiumUpgradeItems.id, bought.value.itemId));
     expect(items[0]!.status).toBe('cancelled');
+  });
+
+  it('test_cancel_after_one_tick_refunds_half_of_paid_to_date', async () => {
+    // Tick once (charges installment=11). Then cancel: refund = round(11 × 0.5) = 6.
+    const env = await createTestEnv({ budget: 10000 });
+    track(env);
+
+    const bought = await buy({ clubId: env.clubId, itemSlug: 'gradas-n1-norte' });
+    expect(bought.ok).toBe(true);
+    if (!bought.ok) return;
+
+    await tickClub(env.clubId); // installment=11 debited; weeksRemaining 2 → 1
+
+    const result = await cancel({ clubId: env.clubId, itemId: bought.value.itemId });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // paid-to-date = 11. refund = round(11 × 0.5) = 6
+    expect(result.value.refundEurK).toBe(6);
+
+    const [club] = await db.select({ budget: clubs.budget }).from(clubs).where(eq(clubs.id, env.clubId));
+    // 10000 - 11 (installment) + 6 (refund) = 9995
+    expect(club!.budget).toBe(9995);
   });
 
   it('test_cancel_unknown_id_returns_not_found', async () => {
@@ -282,7 +310,7 @@ describeDB('stadium-upgrades service (integration)', () => {
     expect(result.kind).toBe('no_active');
   });
 
-  it('test_tick_decrements_weeks_remaining', async () => {
+  it('test_tick_decrements_weeks_remaining_and_debits_installment', async () => {
     const env = await createTestEnv({ budget: 10000 });
     track(env);
 
@@ -294,6 +322,10 @@ describeDB('stadium-upgrades service (integration)', () => {
     expect(result.kind).toBe('decremented');
     if (result.kind !== 'decremented') return;
     expect(result.weeksRemaining).toBe(1);
+    expect(result.installmentPaid).toBe(11); // round(21 / 2) = 11
+
+    const [club] = await db.select({ budget: clubs.budget }).from(clubs).where(eq(clubs.id, env.clubId));
+    expect(club!.budget).toBe(10000 - 11);
   });
 
   it('test_tick_at_one_week_remaining_completes_with_side_effects', async () => {
@@ -304,10 +336,10 @@ describeDB('stadium-upgrades service (integration)', () => {
     expect(bought.ok).toBe(true);
     if (!bought.ok) return;
 
-    // First tick — decrement to 1
+    // First tick — decrement to 1 + debit 11
     await tickClub(env.clubId);
 
-    // Second tick — should Complete
+    // Second tick — should Complete + pay final remainder (21 - 11 = 10)
     const cascadeSpy = vi.fn(async () => undefined);
     const tierSpy = vi.fn(async () => ({ tierUp: false }));
     const emitSpy = vi.fn();
@@ -318,9 +350,15 @@ describeDB('stadium-upgrades service (integration)', () => {
     });
 
     expect(result.kind).toBe('completed');
+    if (result.kind !== 'completed') return;
+    expect(result.finalPaid).toBe(10); // 21 total - 11 first installment = 10 final
     expect(cascadeSpy).toHaveBeenCalledWith(env.clubId, 'stadium_upgrade_count', 1, expect.anything());
     expect(tierSpy).toHaveBeenCalledWith(env.clubId, expect.anything());
     expect(emitSpy).toHaveBeenCalledWith(env.clubId, bought.value.itemId);
+
+    // Total paid across ticks = 21 (matches totalCost exactly)
+    const [club] = await db.select({ budget: clubs.budget }).from(clubs).where(eq(clubs.id, env.clubId));
+    expect(club!.budget).toBe(10000 - 21);
 
     // World snapshot counter incremented
     const [snap] = await db.select().from(worldSnapshots).where(eq(worldSnapshots.id, env.snapshotId));

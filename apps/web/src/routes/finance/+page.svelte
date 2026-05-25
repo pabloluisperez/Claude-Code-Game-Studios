@@ -91,6 +91,17 @@
     : $page.url.searchParams.get('tab') === 'abonos' ? 'abonos'
     : 'resumen',
   );
+  // Bug 2026-05-25 (Pablo): RecoveryLeversPanel links to /finance?tab=… via
+  // <a href>. SvelteKit client-side nav updates $page but the activeTab state
+  // initializer above only runs once. Sync activeTab whenever the URL changes
+  // so the linked tab actually shows. User-driven button clicks set activeTab
+  // directly (no URL change), so this $effect doesn't fight them.
+  $effect(() => {
+    const t = $page.url.searchParams.get('tab');
+    if (t === 'patrocinadores' || t === 'abonos' || t === 'resumen') {
+      activeTab = t;
+    }
+  });
 </script>
 
 <div class="space-y-6">

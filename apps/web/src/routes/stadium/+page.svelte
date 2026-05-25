@@ -47,6 +47,24 @@
     return `${amount} €`;
   }
 
+  // Estimated cost lookup (server should ideally provide; for v1.1 we hard-code
+  // the same formula as F4 with no modifiers for display only — the actual
+  // charge runs through service.buy() which applies modifiers server-side).
+  const BASE_COST_TIER: Record<number, number> = { 1: 15, 2: 55, 3: 130, 4: 340 };
+  const TRACK_MULT: Record<string, number> = {
+    gradas: 1.4, pitch: 0.8, servicios: 0.9, training: 1.1, academy: 1.0,
+  };
+  function estimatedTotalEurK(track: string, tier: number): number {
+    return Math.round((BASE_COST_TIER[tier] ?? 0) * (TRACK_MULT[track] ?? 1));
+  }
+  function estimatedDurationWeeks(tier: number): number {
+    return ({ 1: 2, 2: 4, 3: 6, 4: 8 } as Record<number, number>)[tier] ?? 0;
+  }
+  function estimatedWeeklyEurK(track: string, tier: number): number {
+    const dur = estimatedDurationWeeks(tier);
+    return dur > 0 ? Math.round(estimatedTotalEurK(track, tier) / dur) : 0;
+  }
+
   // Build the grid grouped by (track, tier).
   type Item = NonNullable<PageData['catalog']>['items'][number];
   const grouped = $derived.by(() => {
@@ -183,11 +201,16 @@
 
     {#if form?.action === 'cancel' && 'refundEurK' in form}
       <div class="alert alert-info mb-4">
-        Obra cancelada — recuperado {formatEur(Number(form.refundEurK) * 1000)}.
+        Obra cancelada — recuperado {Number(form.refundEurK)} k€ (50% de lo ya pagado).
       </div>
     {/if}
     {#if form?.action === 'buy' && 'itemId' in form}
-      <div class="alert alert-success mb-4">Obra encolada. Trabajos en marcha.</div>
+      {@const f = form as unknown as { installmentEurK?: number; durationWeeks?: number; totalCost?: number }}
+      <div class="alert alert-success mb-4">
+        Obra encolada. Se cobrarán <span class="font-mono">{f.installmentEurK ?? 0} k€</span>
+        cada semana durante <span class="font-mono">{f.durationWeeks ?? 0}</span> semanas
+        (total <span class="font-mono">{f.totalCost ?? 0} k€</span>).
+      </div>
     {/if}
 
     <!-- Catalog grid -->
@@ -204,6 +227,9 @@
                   <p class="text-sm opacity-70 mb-2">Nivel {tier}</p>
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {#each tiers[tier] as item (item.slug)}
+                      {@const totalK = estimatedTotalEurK(item.track, item.tier)}
+                      {@const weeks = estimatedDurationWeeks(item.tier)}
+                      {@const weeklyK = estimatedWeeklyEurK(item.track, item.tier)}
                       <article class="rounded border border-base-300 p-3 bg-base-50 flex flex-col gap-2">
                         <div class="flex items-start gap-2">
                           <h4 class="font-semibold flex-1">{item.name}</h4>
@@ -220,15 +246,29 @@
                         </div>
                         <p class="text-xs opacity-70 flex-1">{item.description}</p>
                         {#if item.state === 'Available'}
+                          <div class="text-xs space-y-0.5">
+                            <div class="flex justify-between">
+                              <span class="opacity-70">Coste total:</span>
+                              <span class="font-mono font-semibold">{totalK} k€</span>
+                            </div>
+                            <div class="flex justify-between">
+                              <span class="opacity-70">Cuota semanal:</span>
+                              <span class="font-mono">{weeklyK} k€ × {weeks} sem</span>
+                            </div>
+                          </div>
                           <form method="POST" action="?/buy" use:enhance>
                             <input type="hidden" name="clubId" value={data.club?.id ?? ''} />
                             <input type="hidden" name="itemSlug" value={item.slug} />
-                            <button type="submit" class="btn btn-primary btn-sm w-full">Comprar</button>
+                            <button type="submit" class="btn btn-primary btn-sm w-full">Comprar — {weeklyK} k€/sem</button>
                           </form>
                         {:else if item.state === 'InProgress'}
-                          <p class="text-xs font-mono">Quedan {item.weeksRemaining} sem.</p>
+                          <p class="text-xs font-mono">Quedan {item.weeksRemaining} sem · {weeklyK} k€/sem</p>
                         {:else if item.state === 'Locked'}
                           <p class="text-xs opacity-50 italic">Requiere un item del nivel anterior.</p>
+                        {:else if item.state === 'Queued'}
+                          <p class="text-xs opacity-60">{totalK} k€ total · espera turno</p>
+                        {:else if item.state === 'Complete'}
+                          <p class="text-xs opacity-60">✓ Pagado {totalK} k€</p>
                         {/if}
                       </article>
                     {/each}
