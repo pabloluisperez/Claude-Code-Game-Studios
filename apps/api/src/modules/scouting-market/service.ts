@@ -26,11 +26,15 @@ import {
   staff,
   worldSnapshots,
   playthroughs,
+  transferOffers,
 } from '@smt/db';
 import {
   scoutActionCost,
   stripFieldsForTier,
   visibilityTierOf,
+  freeAgentAcceptance,
+  aiClubAcceptance,
+  type AuctionResult,
   type ManagerScoutState,
   type PoolPlayer,
   type ScoutAction,
@@ -301,5 +305,137 @@ export async function scoutPlayer(params: {
       .returning({ id: scoutingActions.id });
 
     return ok({ costPaid: cost, actionId: inserted!.id });
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Offer service (v1.2 Sprint 25-4)                                   */
+/* ------------------------------------------------------------------ */
+
+export type OfferError =
+  | 'PLAYER_NOT_FOUND'
+  | 'OWN_PLAYER_BLOCKED'
+  | 'ALREADY_PENDING_OFFER'
+  | 'INSUFFICIENT_BALANCE'
+  | 'INVALID_OFFER';
+
+export type OfferOutcome =
+  | { kind: 'accepted'; offerId: string; feeEurK: number; finalWageEurKWeek: number }
+  | { kind: 'counter'; offerId: string; counterOfferEurK: number }
+  | { kind: 'rejected'; offerId: string; reason: 'hard_reject' | 'wage_low' };
+
+export type MakeOfferParams = {
+  clubId: string;
+  playerId: string;
+  feeEurK: number;
+  wageOfferEurKWeek: number;
+  contractWeeks: number;
+  windowId?: string;
+};
+
+export async function makeOffer(
+  params: MakeOfferParams,
+): Promise<Result<OfferOutcome, OfferError>> {
+  const windowId = params.windowId ?? '00000000-0000-0000-0000-000000000001';
+  if (params.feeEurK < 0 || params.wageOfferEurKWeek < 0 || params.contractWeeks < 1) {
+    return err('INVALID_OFFER' as const);
+  }
+
+  return dbClient.transaction(async (tx) => {
+    const [player] = await tx
+      .select({
+        id: players.id,
+        clubId: players.clubId,
+        skill: players.skill,
+        contractStatus: players.contractStatus,
+        wageExpectationEurKWeek: players.wageExpectationEurKWeek,
+        weeksUnsigned: players.weeksUnsigned,
+      })
+      .from(players)
+      .where(eq(players.id, params.playerId))
+      .limit(1);
+    if (!player) return err('PLAYER_NOT_FOUND' as const);
+    if (player.clubId === params.clubId) return err('OWN_PLAYER_BLOCKED' as const);
+
+    const existing = await tx
+      .select({ id: transferOffers.id })
+      .from(transferOffers)
+      .where(
+        and(
+          eq(transferOffers.buyerClubId, params.clubId),
+          eq(transferOffers.playerId, params.playerId),
+          eq(transferOffers.windowId, windowId),
+          eq(transferOffers.status, 'pending'),
+        ),
+      )
+      .limit(1);
+    if (existing[0]) return err('ALREADY_PENDING_OFFER' as const);
+
+    const totalCommitment = params.feeEurK + params.wageOfferEurKWeek * params.contractWeeks;
+    const balance = await readBalance(tx, params.clubId);
+    if (balance < totalCommitment) return err('INSUFFICIENT_BALANCE' as const);
+
+    const transferValueEurK = player.skill * 10;
+    let dbStatus: 'accepted' | 'rejected' | 'countered';
+    let counterFee: number | null = null;
+    type OutcomeShape =
+      | { kind: 'accepted'; feeEurK: number; finalWageEurKWeek: number }
+      | { kind: 'counter'; counterOfferEurK: number }
+      | { kind: 'rejected'; reason: 'hard_reject' | 'wage_low' };
+    let outcomeShape: OutcomeShape;
+
+    if (player.contractStatus === 'free_agent') {
+      const accepted = freeAgentAcceptance(params.wageOfferEurKWeek, {
+        wageExpectationEurKWeek: player.wageExpectationEurKWeek,
+        weeksUnsigned: player.weeksUnsigned,
+      });
+      if (accepted) {
+        outcomeShape = { kind: 'accepted', feeEurK: 0, finalWageEurKWeek: params.wageOfferEurKWeek };
+        dbStatus = 'accepted';
+      } else {
+        outcomeShape = { kind: 'rejected', reason: 'wage_low' };
+        dbStatus = 'rejected';
+      }
+    } else {
+      const auction: AuctionResult = aiClubAcceptance(
+        params.feeEurK,
+        { transferValueEurK },
+        { bargainFactor: 1.0, needFactor: 0.5 },
+      );
+      if (auction.accepted === true) {
+        outcomeShape = {
+          kind: 'accepted',
+          feeEurK: params.feeEurK,
+          finalWageEurKWeek: params.wageOfferEurKWeek,
+        };
+        dbStatus = 'accepted';
+      } else if ('counterOfferEurK' in auction) {
+        counterFee = auction.counterOfferEurK;
+        outcomeShape = { kind: 'counter', counterOfferEurK: counterFee };
+        dbStatus = 'countered';
+      } else {
+        outcomeShape = { kind: 'rejected', reason: 'hard_reject' };
+        dbStatus = 'rejected';
+      }
+    }
+
+    const [inserted] = await tx
+      .insert(transferOffers)
+      .values({
+        buyerClubId: params.clubId,
+        sellerClubId: player.clubId,
+        playerId: player.id,
+        windowId,
+        feeEurK: params.feeEurK,
+        wageOfferEurKWeek: params.wageOfferEurKWeek,
+        contractWeeks: params.contractWeeks,
+        status: dbStatus,
+        counterOfferEurK: counterFee,
+        bidNumber: 1,
+        resolvedAt: new Date(),
+      })
+      .returning({ id: transferOffers.id });
+
+    return ok({ ...outcomeShape, offerId: inserted!.id } as OfferOutcome);
   });
 }
