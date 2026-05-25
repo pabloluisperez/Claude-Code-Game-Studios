@@ -1,11 +1,13 @@
 ---
 Story: STADIUM-UPGRADES-003
-Status: Ready
+Status: Complete
+Last Updated: 2026-05-25
+Completed: 2026-05-25
 Type: Logic
 GDD Requirement: AC-SU-09/10/11/16/17 + F1 + F3 formulas
 Governing ADR: ADR-029, ADR-002 (determinism), city-progression §4.2 superseded
 Control Manifest: 2026-05-19
-Test Evidence: packages/shared/tests/stadium/visual-level.test.ts + infrastructure.test.ts (pending)
+Test Evidence: packages/shared/tests/stadium/{visual-level,infrastructure}.test.ts (14/14 passing)
 ImplementedAt: packages/shared/src/sim/stadium/{types,visual-level,infrastructure}.ts
 ---
 

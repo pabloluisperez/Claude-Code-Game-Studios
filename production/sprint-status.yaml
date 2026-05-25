@@ -43,11 +43,11 @@ stories:
     name: "Formulas F1 (visual_level) + F3 (infrastructure)"
     file: "production/epics/stadium-upgrades/stories/stadium-upgrades-003-formulas-visual-infra.md"
     priority: must-have
-    status: ready-for-dev
-    owner: ""
+    status: done
+    owner: "claude"
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-05-25"
 
   - id: "22-4"
     name: "Formulas F2 + F4 + F5 + F6"
