@@ -1,12 +1,15 @@
 ---
 Story: SCOUTING-MARKET-007
-Status: Ready
+Status: Complete (v1.1 minimal — scouting actions only)
+Last Updated: 2026-05-25
+Completed: 2026-05-25
 Type: UI
 GDD Requirement: AC-SCM-24/25/26/27/28/29
 Governing ADR: ADR-031 §D3, §D9
 Control Manifest: 2026-05-19
-Test Evidence: apps/web/tests/scouting-page.e2e.ts (playwright)
-ImplementedAt: apps/api/src/modules/scouting-market/routes.ts + apps/web/src/routes/scouting/+page.svelte + +page.server.ts
+Test Evidence: svelte-check 0 errors; /scouting renders pool with tiered visibility + scout actions; Playwright e2e deferred along with offer flow.
+ImplementedAt: apps/api/src/modules/scouting-market/routes.ts (GET /market + POST /scout) + apps/web/src/routes/scouting/+page.{svelte,server.ts} + sidebar entry
+Note: Offer / counter-offer UI deferred to v1.2 along with stories 24-5/24-6.
 ---
 
 # Story: Hono routes + SvelteKit /scouting UI + Socket.IO realtime

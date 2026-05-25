@@ -1,12 +1,14 @@
 ---
 Story: SCOUTING-MARKET-005
-Status: Ready
+Status: Deferred to v1.2
+Last Updated: 2026-05-25
 Type: Logic
 GDD Requirement: AC-SCM-08/09/10/11/12/19/30
 Governing ADR: ADR-031 §D3
 Control Manifest: 2026-05-19
-Test Evidence: apps/api/tests/scouting-offer-service.test.ts
-ImplementedAt: apps/api/src/modules/scouting-market/offer-service.ts
+Test Evidence: F2 / F3 formulas at packages/shared/tests/scouting/{free-agent,auction}.test.ts (11/11 passing). Service+routes wire-up deferred.
+ImplementedAt: not yet (v1.2)
+Note: Offer/auction flow requires (a) a free_agent contractStatus on players (absent in v1.1 schema) and (b) F3 counter-offer state machine wired through routes. F2/F3 formulas exist in @smt/shared with deterministic test coverage; v1.2 plugs them into the offer-service contract.
 ---
 
 # Story: Transfer offer service (free agent + AI club auction)

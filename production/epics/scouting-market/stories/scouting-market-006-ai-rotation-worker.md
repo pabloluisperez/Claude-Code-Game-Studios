@@ -1,12 +1,14 @@
 ---
 Story: SCOUTING-MARKET-006
-Status: Ready
+Status: Deferred to v1.2
+Last Updated: 2026-05-25
 Type: Integration
 GDD Requirement: AC-SCM-15/16/17/18/22
 Governing ADR: ADR-031 §D5, ADR-008
 Control Manifest: 2026-05-19
-Test Evidence: apps/api/tests/scouting-ai-rotation.test.ts (real DB + seeded rng)
-ImplementedAt: apps/api/src/modules/scouting-market/ai-club-rotation.ts + worker.ts
+Test Evidence: F6 logic at packages/shared/tests/scouting/ai-rotation.test.ts (11/11 passing). BullMQ worker bootstrap deferred.
+ImplementedAt: not yet (v1.2)
+Note: BullMQ AI rotation worker requires the transfer_window_open event lifecycle from event-system (out-of-scope v1.1) + free-agent contractStatus. F6 pure-function logic (ai-rotation-logic.ts) is ready with full deterministic coverage.
 ---
 
 # Story: AI club rotation worker + BullMQ trigger on transfer_window_open

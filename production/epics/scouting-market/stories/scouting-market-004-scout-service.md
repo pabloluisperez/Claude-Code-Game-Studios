@@ -1,12 +1,15 @@
 ---
 Story: SCOUTING-MARKET-004
-Status: Ready
+Status: Complete (v1.1 slice — instant completion; full delay countdown deferred to v1.2)
+Last Updated: 2026-05-25
+Completed: 2026-05-25
 Type: Logic
 GDD Requirement: AC-SCM-06/07/20/21
 Governing ADR: ADR-031 §D4
 Control Manifest: 2026-05-19
-Test Evidence: apps/api/tests/scouting-service.test.ts
-ImplementedAt: apps/api/src/modules/scouting-market/{service,repo}.ts
+Test Evidence: svelte-check 0 errors; api 135/135 no regression; manual scout/deep-scout flow at /scouting
+ImplementedAt: apps/api/src/modules/scouting-market/{service,routes}.ts
+Note: v1.1 ships INSTANT completion (no week countdown). The worker-based countdown + Scout Director T2/T3 unlock for true T3 visibility ships in v1.2 alongside story 24-6.
 ---
 
 # Story: Scout actions service + scout delay countdown
