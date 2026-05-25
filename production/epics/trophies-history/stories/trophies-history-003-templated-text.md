@@ -1,11 +1,13 @@
 ---
 Story: TROPHIES-HISTORY-003
-Status: Ready
+Status: Complete
+Last Updated: 2026-05-25
+Completed: 2026-05-25
 Type: Logic
 GDD Requirement: AC-TH-14/15
 Governing ADR: ADR-030 §D6
 Control Manifest: 2026-05-19
-Test Evidence: packages/shared/tests/museum/text-templates.test.ts (pending)
+Test Evidence: packages/shared/tests/museum/text-templates.test.ts (15/15 passing)
 ImplementedAt: packages/shared/src/i18n/museum-templates.ts
 ---
 
