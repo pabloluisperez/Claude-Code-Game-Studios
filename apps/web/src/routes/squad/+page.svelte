@@ -257,6 +257,16 @@
                         💰 Transferible
                       </span>
                     {/if}
+                    {#if p.contractEndWeek - data.currentWeek <= 0}
+                      <span class="badge badge-error badge-sm" title="Contrato expirado">⛔ Expirado</span>
+                    {:else if p.contractEndWeek - data.currentWeek <= 8}
+                      <span
+                        class="badge badge-warning badge-sm gap-1"
+                        title="Contrato termina en {p.contractEndWeek - data.currentWeek} semanas. Considerá renovar."
+                      >
+                        📝 {p.contractEndWeek - data.currentWeek}sem
+                      </span>
+                    {/if}
                   </div>
                 </td>
                 <td><span class="badge badge-outline badge-sm">{posLabel(p.position)}</span></td>

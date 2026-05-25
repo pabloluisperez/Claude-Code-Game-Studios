@@ -225,6 +225,13 @@
       "when": 1779720000000,
       "tag": "0031_transfer_listed",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1779725000000,
+      "tag": "0032_backfill_player_variance",
+      "breakpoints": true
     }
   ]
 }
