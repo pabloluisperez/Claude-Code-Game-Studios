@@ -19,7 +19,21 @@ import {
   durationWeeks,
   type CostModifiers,
 } from '@smt/shared';
-import { EN_RIESGO_BALANCE_THRESHOLD, QUIEBRA_BALANCE_THRESHOLD } from '@smt/shared/sim/economy/constants';
+import { EN_RIESGO_BALANCE_THRESHOLD } from '@smt/shared/sim/economy/constants';
+
+/**
+ * Deep-bankruptcy threshold for halting construction. Per GDD §3.1.7 the
+ * obra is a binding commitment — it keeps progressing even if the player
+ * goes into negative balance. Only ACTUAL technical bankruptcy (a much
+ * deeper negative balance) pauses.
+ *
+ * Pablo bug 2026-05-25: previously used QUIEBRA_BALANCE_THRESHOLD=-200
+ * with an additional per-installment affordability check, which caused
+ * obras to stall whenever the club's balance dipped below ~4 €K (an
+ * "En Riesgo" tier, not a halt condition). Now only true insolvency at
+ * -500 €K pauses the build.
+ */
+const STADIUM_HALT_BALANCE_THRESHOLD = -500;
 import { getCatalog } from './catalog.js';
 import * as repo from './repo.js';
 
@@ -312,7 +326,7 @@ export async function tickClub(clubId: string, deps: ServiceDeps = {}): Promise<
     if (!active) return { kind: 'no_active' as const };
 
     const balance = await readClubBalance(tx, clubId);
-    if (balance < QUIEBRA_BALANCE_THRESHOLD) {
+    if (balance < STADIUM_HALT_BALANCE_THRESHOLD) {
       return { kind: 'bankruptcy_pause' as const };
     }
 
@@ -327,11 +341,8 @@ export async function tickClub(clubId: string, deps: ServiceDeps = {}): Promise<
     const current = active.weeksRemaining ?? 0;
     const next = current - 1;
     if (next > 0) {
-      // Mid-build tick: charge one installment.
-      if (balance < weekly) {
-        // Can't afford this week's installment — pause (no decrement)
-        return { kind: 'bankruptcy_pause' as const };
-      }
+      // Mid-build tick: charge one installment regardless of "En Riesgo" tier
+      // — obras are binding commitments per GDD §3.1.7.
       await repo.decrementWeeksRemaining(tx, active.id);
       return { kind: 'decremented' as const, weeksRemaining: next, installmentPaid: weekly };
     }
@@ -339,9 +350,6 @@ export async function tickClub(clubId: string, deps: ServiceDeps = {}): Promise<
     // Final tick: pay the rounding remainder so player gets charged exactly
     // active.costPaidEurK in total (e.g. 21€K / 2 weeks = 11/10 split).
     const finalPaid = Math.max(0, active.costPaidEurK - alreadyPaid);
-    if (balance < finalPaid) {
-      return { kind: 'bankruptcy_pause' as const };
-    }
 
     // Transition to Complete + side effects in the same transaction.
     await repo.updateStatus(tx, active.id, 'complete', { completedAt: new Date() });

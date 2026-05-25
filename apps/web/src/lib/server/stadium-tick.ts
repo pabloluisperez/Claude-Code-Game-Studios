@@ -13,7 +13,16 @@
 
 import { and, eq, sql, db as dbClient, stadiumUpgradeItems } from '@smt/db';
 
-const QUIEBRA_BALANCE_THRESHOLD = -200; // matches packages/shared/src/sim/economy/constants.ts
+/**
+ * Deep-bankruptcy threshold for halting construction. Per GDD §3.1.7 the
+ * obra is a binding commitment — it keeps progressing even if the player
+ * goes into negative balance. Only ACTUAL technical bankruptcy (a much
+ * deeper negative balance) pauses; the per-installment affordability check
+ * was removed 2026-05-25 after Pablo reported obras stalling for clubs in
+ * the "En Riesgo" tier (balance < 50 €K) — that tier is meant as a warning,
+ * not a pause condition.
+ */
+const STADIUM_HALT_BALANCE_THRESHOLD = -500; // €K; matches GDD §3.1.7
 const STADIUM_TRACK_TO_COUNTER: Record<string, 'stadium_upgrade_count' | 'training_facility_level' | 'youth_academy_level'> = {
   gradas: 'stadium_upgrade_count',
   pitch: 'stadium_upgrade_count',
@@ -63,7 +72,12 @@ export async function tickStadiumForClubInTx(
   const active = activeRows[0];
   if (!active) return { kind: 'no_active' };
 
-  if (currentBalance < QUIEBRA_BALANCE_THRESHOLD) {
+  // Deep-bankruptcy halt: the only condition that pauses an active obra.
+  // Per GDD §3.1.7 the commitment is binding — the player keeps paying even
+  // into negative balance, all the way down to the technical-bankruptcy
+  // floor (-500 €K). At that point the worker fairly pauses; the player
+  // still owns the partial-build and can resume once they recover.
+  if (currentBalance < STADIUM_HALT_BALANCE_THRESHOLD) {
     return { kind: 'bankruptcy_pause' };
   }
 
@@ -75,10 +89,8 @@ export async function tickStadiumForClubInTx(
   const next = current - 1;
 
   if (next > 0) {
-    // Mid-build: charge one installment.
-    if (currentBalance < weekly) {
-      return { kind: 'bankruptcy_pause' };
-    }
+    // Mid-build: charge one installment regardless of "En Riesgo" status —
+    // the obra was a commitment.
     await tx
       .update(stadiumUpgradeItems)
       .set({ weeksRemaining: sql`${stadiumUpgradeItems.weeksRemaining} - 1` })
@@ -88,9 +100,6 @@ export async function tickStadiumForClubInTx(
 
   // Final tick: settle the remainder so total paid equals costPaidEurK exactly.
   const finalPaid = Math.max(0, active.costPaidEurK - alreadyPaid);
-  if (currentBalance < finalPaid) {
-    return { kind: 'bankruptcy_pause' };
-  }
 
   const counter = STADIUM_TRACK_TO_COUNTER[active.track] ?? 'stadium_upgrade_count';
   await tx

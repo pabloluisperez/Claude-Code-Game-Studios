@@ -374,11 +374,13 @@ describeDB('stadium-upgrades service (integration)', () => {
     const bought = await buy({ clubId: env.clubId, itemSlug: 'gradas-n1-norte' });
     expect(bought.ok).toBe(true);
 
-    // Drive balance below QUIEBRA_BALANCE_THRESHOLD = -200 via the worldSnapshot
-    // (which is now the canonical balance source after the 2026-05-25 refactor).
+    // Drive balance below STADIUM_HALT_BALANCE_THRESHOLD = -500 via the
+    // worldSnapshot (the canonical balance source after the 2026-05-25
+    // refactor). Per GDD §3.1.7 obras only halt on deep insolvency, not
+    // when merely in the "En Riesgo" tier.
     await db.execute(sql`
       UPDATE world_snapshots
-      SET world_state = jsonb_set(world_state, '{financial_balance}', '-500')
+      SET world_state = jsonb_set(world_state, '{financial_balance}', '-800')
       WHERE id = ${env.snapshotId}
     `);
 
