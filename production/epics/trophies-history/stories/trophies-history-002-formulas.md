@@ -1,12 +1,14 @@
 ---
 Story: TROPHIES-HISTORY-002
-Status: Ready
+Status: Complete
+Last Updated: 2026-05-25
+Completed: 2026-05-25
 Type: Logic
 GDD Requirement: AC-TH-09 (legendary match), F1-F5
 Governing ADR: ADR-030
 Control Manifest: 2026-05-19
-Test Evidence: packages/shared/tests/museum/formulas.test.ts (pending)
-ImplementedAt: packages/shared/src/sim/museum/formulas.ts
+Test Evidence: packages/shared/tests/museum/formulas.test.ts (18/18 passing)
+ImplementedAt: packages/shared/src/sim/museum/{types,formulas}.ts
 ---
 
 # Story: Museum formulas (F1-F5) + types

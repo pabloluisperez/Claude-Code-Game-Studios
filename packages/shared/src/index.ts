@@ -465,3 +465,25 @@ export {
   tierUpReformasGateSatisfied,
   TIER_UP_GATE_PCT,
 } from './sim/stadium/gate.js';
+
+// Museum / trophies-history v1.1 (Sprint 23)
+export type {
+  MuseumDivision,
+  LegendaryMatchInput,
+  LegendTransferInput,
+  PlayerCareerHistory,
+  MuseumObjectCounts,
+} from './sim/museum/types.js';
+export {
+  legendaryMatchQualifies,
+  topPlayerFlag,
+  legendTransferQualifies,
+  museumObjectsCount,
+  museumDensity,
+  LEGENDARY_THRESHOLD,
+  LANDSLIDE_THRESHOLD,
+  TOP_5_MIN_WEEKS,
+  LEGEND_TRANSFER_THRESHOLD,
+  MUSEUM_FULL_OBJECTS,
+  MUSEUM_PERF_CAP,
+} from './sim/museum/formulas.js';
