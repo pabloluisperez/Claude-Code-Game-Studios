@@ -1,11 +1,13 @@
 ---
 Story: SCOUTING-MARKET-003
-Status: Ready
+Status: Complete
+Last Updated: 2026-05-25
+Completed: 2026-05-25
 Type: Logic
 GDD Requirement: AC-SCM-08/09/10/11/16/17/22
 Governing ADR: ADR-031, ADR-002 (determinism)
 Control Manifest: 2026-05-19
-Test Evidence: packages/shared/tests/scouting/{free-agent,auction,cost,ai-rotation}.test.ts
+Test Evidence: packages/shared/tests/scouting/{free-agent,auction,cost,ai-rotation}.test.ts (27/27 passing)
 ImplementedAt: packages/shared/src/sim/scouting/{free-agent,auction,cost,ai-rotation-logic}.ts
 ---
 

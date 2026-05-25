@@ -1,12 +1,14 @@
 ---
 Story: SCOUTING-MARKET-002
-Status: Ready
+Status: Complete
+Last Updated: 2026-05-25
+Completed: 2026-05-25
 Type: Logic
 GDD Requirement: AC-SCM-01/02/03/04/05/13/14
 Governing ADR: ADR-031 §D6, scouting-market.md F1 + F5
 Control Manifest: 2026-05-19
-Test Evidence: packages/shared/tests/scouting/visibility.test.ts + pool-size.test.ts
-ImplementedAt: packages/shared/src/sim/scouting/{types,visibility,pool-size}.ts
+Test Evidence: packages/shared/tests/scouting/{visibility,pool-size,field-stripping}.test.ts (21/21 passing)
+ImplementedAt: packages/shared/src/sim/scouting/{types,visibility,pool-size,visibility-field-stripping}.ts
 ---
 
 # Story: Domain types + F1 visibility tier + F5 pool size

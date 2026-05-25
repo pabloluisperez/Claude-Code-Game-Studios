@@ -497,3 +497,62 @@ export {
   pickTrophyTemplate,
   SUMMARY_ADJECTIVES,
 } from './i18n/museum-templates.js';
+
+// Scouting & transfer market v1.1 (Sprint 24)
+export type {
+  VisibilityTier,
+  ScoutAction,
+  OfferStatus,
+  ActionStatus,
+  ManagerScoutState,
+  PoolVisibility,
+  PoolPlayer,
+} from './sim/scouting/types.js';
+export {
+  visibilityTierOf,
+  T3_DELAY_WEEKS,
+  T3_SCOUT_DIRECTOR_THRESHOLD_TIER,
+} from './sim/scouting/visibility.js';
+export {
+  poolVisibilitySize,
+  AI_PLAYERS_CURRENT_DIV_BASE,
+  AI_PLAYERS_CURRENT_DIV_PER_LEVEL,
+  AI_PLAYERS_OTHER_DIV_BASE,
+  AI_PLAYERS_OTHER_DIV_PER_LEVEL,
+} from './sim/scouting/pool-size.js';
+export { stripFieldsForTier } from './sim/scouting/visibility-field-stripping.js';
+export {
+  freeAgentAcceptance,
+  DESPERATION_DISCOUNT_PCT,
+  DESPERATION_WEEKS_FULL_DISCOUNT,
+} from './sim/scouting/free-agent.js';
+export {
+  aiClubAcceptance,
+  type AuctionResult,
+  AI_NEED_PREMIUM,
+  AI_COUNTER_OFFER_MARKUP,
+  AI_HARD_REJECT_THRESHOLD,
+} from './sim/scouting/auction.js';
+export {
+  scoutActionCost,
+  SCOUT_COST_EUR_K,
+  DEEP_SCOUT_COST_EUR_K,
+  SCOUT_DIRECTOR_T3_COST_DISCOUNT,
+} from './sim/scouting/cost.js';
+export {
+  generateBargainFactor,
+  shouldMarkForSale,
+  aiTransferBudget,
+  computeSquadGaps,
+  AI_BARGAIN_FACTOR_MIN,
+  AI_BARGAIN_FACTOR_MAX,
+  AGE_DECLINE_THRESHOLD,
+  LOW_MORALE_THRESHOLD,
+  TRANSFER_REQUEST_PROB,
+  MIN_ROSTER_SIZE,
+  TARGET_ROSTER_SIZE,
+  AI_TRANSFER_BUDGET_PCT,
+  FOR_SALE_RATIO_AGE_DECLINE,
+  type MarkForSaleResult,
+  type RngFn,
+} from './sim/scouting/ai-rotation-logic.js';
