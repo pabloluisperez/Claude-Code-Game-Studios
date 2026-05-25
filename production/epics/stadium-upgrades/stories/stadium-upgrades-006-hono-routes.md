@@ -1,12 +1,14 @@
 ---
 Story: STADIUM-UPGRADES-006
-Status: Ready
+Status: Complete
+Last Updated: 2026-05-25
+Completed: 2026-05-25
 Type: Integration
 GDD Requirement: AC-SU-05/06/36 + ADR-029 §D4
 Governing ADR: ADR-029
 Control Manifest: 2026-05-19
-Test Evidence: apps/api/tests/stadium-upgrades-routes.test.ts (pending)
-ImplementedAt: apps/api/src/modules/stadium-upgrades/routes.ts
+Test Evidence: apps/api/tests/stadium-upgrades/routes.test.ts (16/16 passing)
+ImplementedAt: apps/api/src/modules/stadium-upgrades/routes.ts + apps/api/src/server.ts (mount)
 ---
 
 # Story: Hono routes for /api/stadium + Zod validation + 4xx error codes

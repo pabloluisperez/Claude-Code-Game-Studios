@@ -16,6 +16,7 @@ import { createMeRoutes } from './modules/me/routes.js';
 import { createSocketServer } from './socket/index.js';
 import { registerScheduledJobs, matchQueue } from './jobs/queues.js';
 import { loadCatalog as loadStadiumCatalog } from './modules/stadium-upgrades/catalog.js';
+import { createStadiumUpgradesRoutes } from './modules/stadium-upgrades/routes.js';
 
 const app = new Hono()
   .use(
@@ -43,6 +44,7 @@ const app = new Hono()
   .route('/staff', createStaffRoutes())
   .route('/tv', createTVRightsRoutes())
   .route('/me', createMeRoutes())
+  .route('/stadium', createStadiumUpgradesRoutes())
   .get('/health', (c) => c.json({ status: 'ok' }));
 
 export type AppType = typeof app;

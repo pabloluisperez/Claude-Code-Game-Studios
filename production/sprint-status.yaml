@@ -73,11 +73,11 @@ stories:
     name: "Hono routes + Zod validation + 4xx"
     file: "production/epics/stadium-upgrades/stories/stadium-upgrades-006-hono-routes.md"
     priority: must-have
-    status: ready-for-dev
-    owner: ""
+    status: done
+    owner: "claude"
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-05-25"
 
   - id: "22-7"
     name: "World Clock integration + tier-up doble gate hook"
