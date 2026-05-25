@@ -235,7 +235,7 @@
                 <td class="font-semibold">
                   <div class="flex items-center gap-2">
                     <Avatar seed={`player:${p.id}:${p.firstName}${p.lastName}`} size={28} />
-                    <span class="truncate">{p.firstName[0]}. {p.lastName}</span>
+                    <span class="truncate">{p.firstName} {p.lastName}</span>
                     {#if suspended}
                       <!-- Sprint 13 task 13-1: badge "Suspendido N partidos · Vuelve JX" -->
                       <span
