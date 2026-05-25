@@ -1,11 +1,13 @@
 ---
 Story: STADIUM-UPGRADES-005
-Status: Ready
+Status: Complete
+Last Updated: 2026-05-25
+Completed: 2026-05-25
 Type: Logic
 GDD Requirement: AC-SU-04/05/06/07/08/27/28/29/30/35/36
 Governing ADR: ADR-029, ADR-014 (economy refund classification)
 Control Manifest: 2026-05-19
-Test Evidence: apps/api/tests/stadium-upgrades-service.test.ts (pending)
+Test Evidence: apps/api/tests/stadium-upgrades/service.test.ts (20/20 passing)
 ImplementedAt: apps/api/src/modules/stadium-upgrades/{service,repo}.ts
 ---
 

@@ -420,3 +420,48 @@ export {
   calculateFanAttendanceEffective,
   applyFanLoyaltyRejection,
 } from './sim/tv-rights/index.js';
+
+// Stadium upgrades v1.1 (Sprint 22)
+export type {
+  Track as StadiumTrack,
+  ItemTier as StadiumItemTier,
+  ItemStatus as StadiumItemStatus,
+  CompletedItemsByTrack,
+  StadiumState,
+} from './sim/stadium/types.js';
+export { STADIUM_TRACKS } from './sim/stadium/types.js';
+export {
+  stadiumVisualLevel,
+  G_MAX as STADIUM_GRADAS_MAX,
+  P_MAX as STADIUM_PITCH_MAX,
+  S_MAX as STADIUM_SERVICIOS_MAX,
+} from './sim/stadium/visual-level.js';
+export {
+  infrastructureLevel,
+  STADIUM_ITEMS_MAX,
+  TRAINING_ITEMS_MAX,
+  ACADEMY_ITEMS_MAX,
+} from './sim/stadium/infrastructure.js';
+export {
+  costOfItem,
+  BASE_COST_TIER,
+  TRACK_MULTIPLIER,
+  CONSTRUCTION_SKILL_DISCOUNT,
+  type CostModifiers,
+} from './sim/stadium/cost.js';
+export {
+  durationWeeks,
+  DURATION_BASE,
+  DUR_MIN,
+  DUR_MAX,
+} from './sim/stadium/duration.js';
+export {
+  stadiumCapacity,
+  STADIUM_CAPACITY_BASE,
+  CAPACITY_PER_GRADA_ITEM,
+} from './sim/stadium/capacity.js';
+export {
+  itemsRequiredForLevel,
+  tierUpReformasGateSatisfied,
+  TIER_UP_GATE_PCT,
+} from './sim/stadium/gate.js';

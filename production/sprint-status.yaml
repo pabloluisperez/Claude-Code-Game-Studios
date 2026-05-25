@@ -63,11 +63,11 @@ stories:
     name: "Service + FSM + transactions"
     file: "production/epics/stadium-upgrades/stories/stadium-upgrades-005-service-fsm.md"
     priority: must-have
-    status: ready-for-dev
-    owner: ""
+    status: done
+    owner: "claude"
     estimate_days: 1.5
     blocker: ""
-    completed: ""
+    completed: "2026-05-25"
 
   - id: "22-6"
     name: "Hono routes + Zod validation + 4xx"
