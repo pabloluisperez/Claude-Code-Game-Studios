@@ -1,12 +1,14 @@
 ---
 Story: TROPHIES-HISTORY-001
-Status: Ready
+Status: Complete
+Last Updated: 2026-05-25
+Completed: 2026-05-25
 Type: Integration
 GDD Requirement: AC-TH-05/08/10/11/12/13/22/25/26
 Governing ADR: ADR-030 §D3, D4
 Control Manifest: 2026-05-19
-Test Evidence: apps/api/tests/museum-routes.test.ts (pending)
-ImplementedAt: apps/api/src/modules/museum/{routes,service,repo}.ts
+Test Evidence: apps/api/tests/museum/routes.test.ts (6/6 passing)
+ImplementedAt: apps/api/src/modules/museum/{routes,service,repo}.ts + server.ts mount
 ---
 
 # Story: Backend museum aggregator API + read-only invariant
