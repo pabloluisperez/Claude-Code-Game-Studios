@@ -99,6 +99,18 @@ export const players = pgTable(
      * which the player can accept or reject. Toggled via the /squad UI.
      */
     transferListed: boolean('transfer_listed').notNull().default(false),
+    /**
+     * Individual training focus (Pablo 2026-05-25). One of:
+     *   'velocidad' | 'resistencia' | 'agresividad' | 'calidad' | NULL
+     *
+     * NULL = not enrolled in individual training. Number of players that can
+     * be simultaneously enrolled equals the active fitness_coach's qualityTier
+     * (1/2/3), enforced server-side at assignment time.
+     *
+     * Phase 8e of advance-orchestrator applies +1 to the matching attribute
+     * per advance tick (capped at 95).
+     */
+    trainingFocus: text('training_focus'),
 
     // Lifecycle
     availability: text('availability').notNull().default('available'),

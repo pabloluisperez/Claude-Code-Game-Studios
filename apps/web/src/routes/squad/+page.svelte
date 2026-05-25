@@ -122,6 +122,11 @@
       sortDir = 'desc';
     }
   }
+
+  // Pablo 2026-05-25 individual training: count assigned players to enforce cap.
+  const trainingAssignedCount = $derived(
+    data.hasPlaythrough ? data.players.filter((p) => p.trainingFocus != null).length : 0,
+  );
 </script>
 
 <div class="space-y-6">
@@ -225,6 +230,14 @@
               <th class="cursor-pointer text-right border-l border-base-300" title="Forma" onclick={() => toggleSort('form')}>FOR</th>
               <th class="cursor-pointer text-right" title="Moral" onclick={() => toggleSort('morale')}>MOR</th>
               <th class="cursor-pointer text-right" title="Fitness" onclick={() => toggleSort('fitness')}>FIT</th>
+              <th class="border-l border-base-300" title="Entrenamiento individual">
+                Entrena
+                {#if data.fitnessCoach}
+                  <span class="block text-xs opacity-60 font-normal">
+                    {trainingAssignedCount}/{data.trainingCap}
+                  </span>
+                {/if}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -278,6 +291,25 @@
                 <td class="text-right font-mono opacity-70 border-l border-base-300">{p.form}</td>
                 <td class="text-right font-mono opacity-70">{p.morale}</td>
                 <td class="text-right font-mono opacity-70">{p.fitness}</td>
+                <td class="border-l border-base-300" onclick={(e) => e.stopPropagation()}>
+                  <form method="POST" action="?/setTrainingFocus" use:enhance>
+                    <input type="hidden" name="playerId" value={p.id} />
+                    <select
+                      name="focus"
+                      class="select select-xs select-bordered w-full max-w-[140px]"
+                      value={p.trainingFocus ?? ''}
+                      disabled={!data.fitnessCoach || (!p.trainingFocus && trainingAssignedCount >= data.trainingCap)}
+                      onchange={(e) => (e.currentTarget.form as HTMLFormElement).requestSubmit()}
+                      title={!data.fitnessCoach ? 'Contrata un preparador físico para activar entrenamientos individuales' : (!p.trainingFocus && trainingAssignedCount >= data.trainingCap ? `Cap ${data.trainingCap} alcanzado` : '')}
+                    >
+                      <option value="">—</option>
+                      <option value="velocidad">🏃 VEL</option>
+                      <option value="resistencia">💪 RES</option>
+                      <option value="agresividad">🔥 AGR</option>
+                      <option value="calidad">⚽ CAL</option>
+                    </select>
+                  </form>
+                </td>
               </tr>
             {/each}
           </tbody>

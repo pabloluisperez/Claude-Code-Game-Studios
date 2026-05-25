@@ -917,6 +917,44 @@ export async function runAdvanceTickFull(
     // Renewal generation must never block the advance pipeline.
   }
 
+  // ── Phase 8e: individual training application (Pablo 2026-05-25) ───────
+  // For every player on user's club with a training_focus assigned, +1 to the
+  // matching attribute per advance tick. Capped at 95. Requires an active
+  // fitness_coach (cap was enforced at assignment time; we still tolerate
+  // mid-week coach firing — players just stop progressing).
+  try {
+    const trainees = await db
+      .select({
+        id: players.id,
+        trainingFocus: players.trainingFocus,
+        velocidad: players.velocidad,
+        resistencia: players.resistencia,
+        agresividad: players.agresividad,
+        calidad: players.calidad,
+      })
+      .from(players)
+      .where(
+        and(
+          eq(players.clubId, active.clubId),
+          sql`${players.trainingFocus} IS NOT NULL`,
+        ),
+      );
+
+    const ATTR_CAP = 95;
+    for (const p of trainees) {
+      if (!p.trainingFocus) continue;
+      const attr = p.trainingFocus as 'velocidad' | 'resistencia' | 'agresividad' | 'calidad';
+      const current = p[attr];
+      if (current === null || current === undefined || current >= ATTR_CAP) continue;
+      await db
+        .update(players)
+        .set({ [attr]: Math.min(ATTR_CAP, current + 1) })
+        .where(eq(players.id, p.id));
+    }
+  } catch {
+    // Training application is decorative — never block the advance pipeline.
+  }
+
   // ── Phase 9: season rollover ────────────────────────────────────────────
   const rollover = await checkAndRolloverSeason({
     playthroughId: active.id,
