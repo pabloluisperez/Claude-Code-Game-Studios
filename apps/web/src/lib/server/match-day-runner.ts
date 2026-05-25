@@ -18,6 +18,7 @@ import {
   players,
   staffMessages,
   staff,
+  clubs,
   eq,
   and,
   sql,
@@ -84,6 +85,18 @@ async function simulateFixture(
     (p) => (p.suspendedMatchesRemaining ?? 0) <= 0,
   );
 
+  // Pablo 2026-05-25: pull manual XI selections from clubs (NULL → auto top 11).
+  // Suspended IDs are silently dropped by quickSimulateMatch's resolveStarters
+  // since they're not in the roster passed here.
+  const [homeClubRow] = await tx
+    .select({ ids: clubs.startingLineupPlayerIds })
+    .from(clubs)
+    .where(eq(clubs.id, args.homeClubId));
+  const [awayClubRow] = await tx
+    .select({ ids: clubs.startingLineupPlayerIds })
+    .from(clubs)
+    .where(eq(clubs.id, args.awayClubId));
+
   return quickSimulateMatch({
     homeRoster: homeRoster.map((p) => ({
       ...p,
@@ -93,6 +106,8 @@ async function simulateFixture(
       ...p,
       position: p.position as 'GK' | 'DEF' | 'MID' | 'FWD',
     })),
+    homeStarterIds: homeClubRow?.ids ?? null,
+    awayStarterIds: awayClubRow?.ids ?? null,
     rng: createSeededRng(args.seed),
   });
 }
@@ -213,6 +228,18 @@ export async function runMatchDay(args: {
         homeClubId: fx.homeClubId,
         awayClubId: fx.awayClubId,
         events: result.events,
+      });
+
+      // Pablo 2026-05-25: post-match fatigue + morale for starters vs bench.
+      // Starters lose 8..15 fitness, bench recover 5..10. Morale shifts by result.
+      // Deterministic per-fixture by reusing the same seed for the random jitter.
+      await applyMatchEffects(tx, {
+        seed: `${seed}:fx-effects`,
+        homeClubId: fx.homeClubId,
+        awayClubId: fx.awayClubId,
+        homeStarterIds: result.homeStarterIds,
+        awayStarterIds: result.awayStarterIds,
+        winner: result.winner,
       });
 
       results.push({
@@ -383,6 +410,95 @@ async function applySuspensions(
           isRead: false,
         });
       }
+    }
+  }
+}
+
+// ── Post-match effects ───────────────────────────────────────────────────────
+
+/**
+ * Pablo 2026-05-25: starters get tired but earn morale; bench recovers fitness.
+ *
+ * Per-side rules (applied after each fixture):
+ *   STARTERS (the 11 who played):
+ *     fitness  -= 8 + rng×7   (so 8..15)
+ *     morale   += +3 win / +1 draw / -2 loss
+ *   BENCH (rest of the roster):
+ *     fitness  += 5 + rng×5   (so 5..10, capped at 100)
+ *     morale   += +1 win / 0 draw / -1 loss
+ *
+ * Clamps: fitness 0..100, morale 30..95 (we don't want full-mental-collapse
+ * or impossible-to-buy euphoria after a single match).
+ *
+ * Deterministic via seeded RNG so same seed → same effects.
+ */
+async function applyMatchEffects(
+  tx: Tx,
+  args: {
+    seed: string;
+    homeClubId: string;
+    awayClubId: string;
+    homeStarterIds: readonly string[];
+    awayStarterIds: readonly string[];
+    winner: QuickMatchResult['winner'];
+  },
+): Promise<void> {
+  const rng = createSeededRng(args.seed);
+
+  // Pull full roster for both clubs.
+  const roster = await tx
+    .select({
+      id: players.id,
+      clubId: players.clubId,
+      fitness: players.fitness,
+      morale: players.morale,
+    })
+    .from(players)
+    .where(inArray(players.clubId, [args.homeClubId, args.awayClubId]));
+
+  const homeStarters = new Set(args.homeStarterIds);
+  const awayStarters = new Set(args.awayStarterIds);
+
+  function moraleDelta(side: 'home' | 'away', isStarter: boolean): number {
+    const won =
+      (side === 'home' && args.winner === 'home') ||
+      (side === 'away' && args.winner === 'away');
+    const lost =
+      (side === 'home' && args.winner === 'away') ||
+      (side === 'away' && args.winner === 'home');
+    if (isStarter) return won ? +3 : args.winner === 'draw' ? +1 : lost ? -2 : 0;
+    return won ? +1 : args.winner === 'draw' ? 0 : lost ? -1 : 0;
+  }
+
+  const FATIGUE_MIN = 8;
+  const FATIGUE_RANGE = 7; // 8..15
+  const RECOVERY_MIN = 5;
+  const RECOVERY_RANGE = 5; // 5..10
+  const MORALE_FLOOR = 30;
+  const MORALE_CEIL = 95;
+
+  for (const p of roster) {
+    const side: 'home' | 'away' = p.clubId === args.homeClubId ? 'home' : 'away';
+    const isStarter = side === 'home' ? homeStarters.has(p.id) : awayStarters.has(p.id);
+
+    let nextFit = p.fitness;
+    if (isStarter) {
+      nextFit -= FATIGUE_MIN + Math.floor(rng() * (FATIGUE_RANGE + 1));
+    } else {
+      nextFit += RECOVERY_MIN + Math.floor(rng() * (RECOVERY_RANGE + 1));
+    }
+    if (nextFit < 0) nextFit = 0;
+    if (nextFit > 100) nextFit = 100;
+
+    let nextMor = p.morale + moraleDelta(side, isStarter);
+    if (nextMor < MORALE_FLOOR) nextMor = MORALE_FLOOR;
+    if (nextMor > MORALE_CEIL) nextMor = MORALE_CEIL;
+
+    if (nextFit !== p.fitness || nextMor !== p.morale) {
+      await tx
+        .update(players)
+        .set({ fitness: Math.round(nextFit), morale: Math.round(nextMor) })
+        .where(eq(players.id, p.id));
     }
   }
 }

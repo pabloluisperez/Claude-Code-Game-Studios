@@ -48,6 +48,10 @@ export interface QuickMatchResult {
   readonly homeStrength: number;
   readonly awayStrength: number;
   readonly events: readonly QuickMatchEvent[];
+  /** IDs of the 11 home starters actually used in the sim (manual or auto). */
+  readonly homeStarterIds: readonly string[];
+  /** IDs of the 11 away starters actually used in the sim (manual or auto). */
+  readonly awayStarterIds: readonly string[];
 }
 
 const TOP_N = 11;
@@ -66,11 +70,52 @@ function pickTopN(roster: readonly QuickPlayerInput[]): QuickPlayerInput[] {
   return [...roster].sort((a, b) => b.skill - a.skill).slice(0, TOP_N);
 }
 
-function aggregates(roster: readonly QuickPlayerInput[]): TeamAggregates {
-  if (roster.length === 0) {
+/**
+ * Resolve the 11 starters for a side. If the manager has chosen a manual XI
+ * (`manualIds`), use those players in the order specified — but only players
+ * present in `roster` (filters out IDs that aren't on the squad anymore,
+ * e.g. transferred out). If fewer than 11 valid IDs remain (e.g. some
+ * were suspended and excluded upstream), top up from `roster` sorted by
+ * skill so we always field 11 if possible.
+ *
+ * Falls back to pickTopN by skill when `manualIds` is null/undefined or empty.
+ */
+function resolveStarters(
+  roster: readonly QuickPlayerInput[],
+  manualIds: readonly string[] | null | undefined,
+): QuickPlayerInput[] {
+  if (!manualIds || manualIds.length === 0) return pickTopN(roster);
+  const byId = new Map(roster.filter((p) => p.id).map((p) => [p.id!, p]));
+  const out: QuickPlayerInput[] = [];
+  const used = new Set<string>();
+  for (const id of manualIds) {
+    const p = byId.get(id);
+    if (p) {
+      out.push(p);
+      used.add(p.id!);
+      if (out.length >= TOP_N) break;
+    }
+  }
+  if (out.length < TOP_N) {
+    const filler = [...roster]
+      .filter((p) => !p.id || !used.has(p.id))
+      .sort((a, b) => b.skill - a.skill);
+    for (const p of filler) {
+      out.push(p);
+      if (out.length >= TOP_N) break;
+    }
+  }
+  return out;
+}
+
+function aggregates(
+  roster: readonly QuickPlayerInput[],
+  starters: readonly QuickPlayerInput[],
+): TeamAggregates {
+  if (roster.length === 0 || starters.length === 0) {
     return { strength: 0, aggMean: 50, formMean: 60 };
   }
-  const top = pickTopN(roster);
+  const top = starters;
   const meanVel = top.reduce((s, p) => s + (p.velocidad ?? p.skill), 0) / top.length;
   const meanRes = top.reduce((s, p) => s + (p.resistencia ?? p.skill), 0) / top.length;
   const meanAgg = top.reduce((s, p) => s + (p.agresividad ?? p.skill), 0) / top.length;
@@ -134,10 +179,15 @@ function playerLabel(p: QuickPlayerInput): string {
 export function quickSimulateMatch(args: {
   readonly homeRoster: readonly QuickPlayerInput[];
   readonly awayRoster: readonly QuickPlayerInput[];
+  /** Optional manual XI. If omitted, auto-pick top 11 by skill. */
+  readonly homeStarterIds?: readonly string[] | null;
+  readonly awayStarterIds?: readonly string[] | null;
   readonly rng: () => number;
 }): QuickMatchResult {
-  const home = aggregates(args.homeRoster);
-  const away = aggregates(args.awayRoster);
+  const homeStarters = resolveStarters(args.homeRoster, args.homeStarterIds);
+  const awayStarters = resolveStarters(args.awayRoster, args.awayStarterIds);
+  const home = aggregates(args.homeRoster, homeStarters);
+  const away = aggregates(args.awayRoster, awayStarters);
 
   const homeXg = Math.max(0, BASE_XG + STRENGTH_TO_XG * (home.strength - 50) + HOME_ADVANTAGE);
   const awayXg = Math.max(0, BASE_XG + STRENGTH_TO_XG * (away.strength - 50) - HOME_ADVANTAGE * 0.4);
@@ -153,8 +203,9 @@ export function quickSimulateMatch(args: {
 
   // Eligible scorers: FWD + MID (and DEF rarely, but we exclude GK).
   // Weight by calidad — premier finishers score more often.
-  const homeOutfield = args.homeRoster.filter((p) => p.position !== 'GK');
-  const awayOutfield = args.awayRoster.filter((p) => p.position !== 'GK');
+  // 2026-05-25: events now come from STARTERS only — bench players can't score.
+  const homeOutfield = homeStarters.filter((p) => p.position !== 'GK');
+  const awayOutfield = awayStarters.filter((p) => p.position !== 'GK');
 
   for (let i = 0; i < homeScore; i++) {
     const scorer = pickWeighted(
@@ -205,14 +256,14 @@ export function quickSimulateMatch(args: {
       });
     }
   }
-  cardsFor('home', args.homeRoster, home.aggMean);
-  cardsFor('away', args.awayRoster, away.aggMean);
+  cardsFor('home', homeStarters, home.aggMean);
+  cardsFor('away', awayStarters, away.aggMean);
 
   // Injuries — weighted by (100 − resistencia).
   const combinedAgg = (home.aggMean + away.aggMean) / 2;
   const injuryProb = 0.05 + Math.max(0, (combinedAgg - 50) / 100);
   function pickInjury(team: 'home' | 'away') {
-    const roster = team === 'home' ? args.homeRoster : args.awayRoster;
+    const roster = team === 'home' ? homeStarters : awayStarters;
     const victim = pickWeighted(
       roster,
       (p) => Math.max(1, 100 - (p.resistencia ?? p.skill)),
@@ -238,5 +289,7 @@ export function quickSimulateMatch(args: {
     homeStrength: home.strength,
     awayStrength: away.strength,
     events,
+    homeStarterIds: homeStarters.map((p) => p.id ?? '').filter(Boolean),
+    awayStarterIds: awayStarters.map((p) => p.id ?? '').filter(Boolean),
   };
 }

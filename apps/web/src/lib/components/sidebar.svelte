@@ -24,6 +24,7 @@
   const links = [
     { href: '/dashboard',  icon: '📊', label: 'Dashboard' },
     { href: '/squad',      icon: '👥', label: 'Plantilla' },
+    { href: '/lineup',     icon: '⚽', label: 'XI titular' },
     { href: '/staff',      icon: '🧑‍💼', label: 'Staff' },
     { href: '/scouting',   icon: '🔍', label: 'Scouting' },
     { href: '/finance',    icon: '💰', label: 'Finanzas' },

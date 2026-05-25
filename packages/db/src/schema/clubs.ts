@@ -1,4 +1,4 @@
-import { integer, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { users } from './users.js';
 
@@ -41,6 +41,14 @@ export const clubs = pgTable('clubs', {
    * abono. Drips up each week of pretemporada + first 3 matchdays.
    */
   seasonTicketHoldersCollected: integer('season_ticket_holders_collected').notNull().default(0),
+  /**
+   * Manager's chosen starting XI — array of player IDs (typically 11).
+   * NULL means auto-pick top 11 by skill (legacy behaviour).
+   * Pablo 2026-05-25 — manual XI selection.
+   */
+  startingLineupPlayerIds: jsonb('starting_lineup_player_ids').$type<string[] | null>(),
+  /** Preferred formation for quick-sim and match-session start. */
+  preferredFormation: text('preferred_formation').notNull().default('4-4-2'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 });
