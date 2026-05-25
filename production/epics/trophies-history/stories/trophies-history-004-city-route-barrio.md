@@ -1,12 +1,15 @@
 ---
 Story: TROPHIES-HISTORY-004
-Status: Ready
+Status: Complete
+Last Updated: 2026-05-25
+Completed: 2026-05-25
 Type: UI
 GDD Requirement: AC-TH-01/02/03/22
 Governing ADR: ADR-030 §D1, ADR-021, ADR-023
 Control Manifest: 2026-05-19
-Test Evidence: apps/web/tests/city-route.e2e.ts (playwright, pending)
-ImplementedAt: apps/web/src/routes/city/+page.svelte (refactor) + apps/web/src/routes/city/+page.server.ts
+Test Evidence: apps/web/src/routes/city/+page.svelte (manual walkthrough); svelte-check 0 errors; web tests 220/220 (no regression)
+ImplementedAt: apps/web/src/routes/city/+page.svelte (full rewrite, DOM-first) + apps/web/src/routes/city/+page.server.ts (loads /api/museum/contents)
+Deviation: PixiJS BarrioScene + canvas-based scene swap deferred to v1.2+. v1.1 ships a DOM-first museum (fully accessible by default, mobile-friendly). Stories 23-4/5/6 merged into one delivery.
 ---
 
 # Story: /city route refactor — barrio scene (museum + stadium ext + manager office ext)

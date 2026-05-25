@@ -487,3 +487,13 @@ export {
   MUSEUM_FULL_OBJECTS,
   MUSEUM_PERF_CAP,
 } from './sim/museum/formulas.js';
+export {
+  trophyTemplates,
+  bannerTemplates,
+  transferTemplates,
+  milestoneTemplates,
+  stadiumHistoryTemplate,
+  pickAdjective,
+  pickTrophyTemplate,
+  SUMMARY_ADJECTIVES,
+} from './i18n/museum-templates.js';
