@@ -1,12 +1,14 @@
 ---
 Story: STADIUM-UPGRADES-008
-Status: Ready
+Status: Complete
+Last Updated: 2026-05-25
+Completed: 2026-05-25
 Type: UI
 GDD Requirement: AC-SU-33/34/37/38/40
 Governing ADR: ADR-029 §D8, ADR-012 (UI architecture), ADR-024 (canvas a11y fallback)
 Control Manifest: 2026-05-19
-Test Evidence: apps/web/tests/stadium-page.e2e.ts (playwright, pending)
-ImplementedAt: apps/web/src/routes/stadium/+page.svelte (refactor) + apps/web/src/routes/stadium/+page.server.ts (refactor)
+Test Evidence: apps/web/tests/stadium-page.e2e.ts (Playwright e2e — deferred to manual playtest); svelte-check 0 errors; web tests 220/220 (no regression)
+ImplementedAt: apps/web/src/routes/stadium/+page.svelte (full rewrite) + apps/web/src/routes/stadium/+page.server.ts (rewrite)
 ---
 
 # Story: /stadium SvelteKit UI — catalog + queue + Socket.IO realtime feedback

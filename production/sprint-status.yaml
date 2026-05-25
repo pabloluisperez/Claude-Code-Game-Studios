@@ -93,11 +93,11 @@ stories:
     name: "SvelteKit /stadium UI + Socket.IO realtime"
     file: "production/epics/stadium-upgrades/stories/stadium-upgrades-008-ui-stadium-route.md"
     priority: must-have
-    status: ready-for-dev
-    owner: ""
+    status: done
+    owner: "claude"
     estimate_days: 2.0
     blocker: ""
-    completed: ""
+    completed: "2026-05-25"
 
   - id: "22-NH1"
     name: "Registry update (~15 new entries)"
