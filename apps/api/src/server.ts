@@ -18,6 +18,7 @@ import { registerScheduledJobs, matchQueue } from './jobs/queues.js';
 import { loadCatalog as loadStadiumCatalog } from './modules/stadium-upgrades/catalog.js';
 import { createStadiumUpgradesRoutes } from './modules/stadium-upgrades/routes.js';
 import { createMuseumRoutes } from './modules/museum/routes.js';
+import { createScoutingMarketRoutes } from './modules/scouting-market/routes.js';
 
 const app = new Hono()
   .use(
@@ -47,6 +48,7 @@ const app = new Hono()
   .route('/me', createMeRoutes())
   .route('/stadium', createStadiumUpgradesRoutes())
   .route('/museum', createMuseumRoutes())
+  .route('/scouting', createScoutingMarketRoutes())
   .get('/health', (c) => c.json({ status: 'ok' }));
 
 export type AppType = typeof app;
