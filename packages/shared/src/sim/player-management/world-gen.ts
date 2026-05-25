@@ -172,31 +172,32 @@ function pickAge(rng: () => number): number {
 }
 
 /**
- * Salary calculation per ADR-016 simplified:
- *   salaryEurK = SALARY_BASE × (skill/50) × ageBias × jitter
+ * Salary calculation. Retuned 2026-05-25 (Pablo: "muy difícil compensar pérdidas"
+ * + "como un equipo real, paquetes cobrando mucho y buenos cobrando poco").
  *
- * Retuned 2026-05-21 (Sprint 9 economy-tuning playtest finding): base
- * dropped 6 → 3. At D5/Quinta default skill (~25-30) the previous 6 €K
- * produced ~2 €K/wk avg per player; the new 3 €K produces ~1 €K/wk avg.
- * Combined with DEFAULT_ROSTER_SIZE drop 40→25, total wage bill goes
- * from 80 €K/wk (unsustainable) to 25 €K/wk (matchable vs ~22 €K/wk
- * income avg). Higher divisions still get realistic raises through the
- * skill multiplier — a D1 star (skill 90) earns ~5.4 €K/wk under the
- * new formula, vs ~11 €K under the old one.
+ *   salaryEurK = max(1, min(20, round(skill × 0.04 × variation)))
+ *   variation = 0.3 + rng() × 2.2 → range [0.3, 2.5], mean ~1.4
  *
- * ageBias peaks 1.2× at age 27.
+ * Wide variation produces "anomalies" the manager can exploit:
+ *   - skill=70 × 0.4 → 1.1 €K (a chollo — high skill, low salary)
+ *   - skill=50 × 2.3 → 4.6 €K (a paquete — average skill, high salary)
+ * Mean @ skill=55 → ~3 €K/sem (≈ 12K€/month = realistic Quinta wage).
+ * Max @ skill=80 × 2.5 → 8 €K/sem (≈ 32K€/month = top Segunda B).
+ *
+ * Lineage:
+ *   - SALARY_BASE 6 (original, unsustainable)
+ *   - 2026-05-21: SALARY_BASE 6 → 3 + narrow jitter [0.9, 1.1]
+ *     (predictable but no realism)
+ *   - 2026-05-25: skill × 0.04 × wide variation [0.3, 2.5]
+ *     (adds paquete/chollo dynamic AND keeps Quinta scale)
+ *
+ * ageBias dropped — variation swing dwarfs ±20% age effect, and Pablo's
+ * "como un equipo real" prioritizes skill anomalies over age curves.
  */
-function computeSalary(rng: () => number, skill: number, age: number): number {
-  const SALARY_BASE = 3;
-  const ageBias =
-    age >= 25 && age <= 29 ? 1.2 :
-    age >= 22 && age <= 24 ? 1.0 :
-    age >= 30 && age <= 32 ? 0.9 :
-    age >= 33                ? 0.7 :
-                               0.8; // young 16-21
-  const jitter = 0.9 + rng() * 0.2; // [0.9, 1.1]
-  const raw = SALARY_BASE * (skill / 50) * ageBias * jitter;
-  return Math.max(1, Math.round(raw));
+function computeSalary(rng: () => number, skill: number, _age: number): number {
+  const variation = 0.3 + rng() * 2.2; // [0.3, 2.5]
+  const raw = skill * 0.04 * variation;
+  return Math.max(1, Math.min(20, Math.round(raw)));
 }
 
 /**
