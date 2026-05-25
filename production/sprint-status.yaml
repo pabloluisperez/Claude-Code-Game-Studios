@@ -53,11 +53,11 @@ stories:
     name: "Formulas F2 + F4 + F5 + F6"
     file: "production/epics/stadium-upgrades/stories/stadium-upgrades-004-formulas-cost-duration-capacity-gate.md"
     priority: must-have
-    status: ready-for-dev
-    owner: ""
+    status: done
+    owner: "claude"
     estimate_days: 1.0
     blocker: ""
-    completed: ""
+    completed: "2026-05-25"
 
   - id: "22-5"
     name: "Service + FSM + transactions"

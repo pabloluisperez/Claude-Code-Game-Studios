@@ -1,11 +1,13 @@
 ---
 Story: STADIUM-UPGRADES-004
-Status: Ready
+Status: Complete
+Last Updated: 2026-05-25
+Completed: 2026-05-25
 Type: Logic
 GDD Requirement: AC-SU-12/13/14/15/18/19/20/21/22/23
 Governing ADR: ADR-029, economy.md F1
 Control Manifest: 2026-05-19
-Test Evidence: packages/shared/tests/stadium/{cost,duration,capacity,gate}.test.ts (pending)
+Test Evidence: packages/shared/tests/stadium/{cost,duration,capacity,gate}.test.ts (26/26 passing)
 ImplementedAt: packages/shared/src/sim/stadium/{cost,duration,capacity,gate}.ts
 ---
 
