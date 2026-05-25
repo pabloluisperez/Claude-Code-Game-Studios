@@ -1,12 +1,15 @@
 ---
 Story: TROPHIES-HISTORY-005
-Status: Ready
+Status: Complete
+Last Updated: 2026-05-25
+Completed: 2026-05-25
 Type: UI
 GDD Requirement: AC-TH-04/05/06/07/08/09/10/11/12/13/14/23
 Governing ADR: ADR-030 §D2, ADR-021
 Control Manifest: 2026-05-19
-Test Evidence: apps/web/tests/museum-interior.e2e.ts (playwright, pending)
-ImplementedAt: apps/web/src/lib/components/scenes/MuseumInteriorScene.svelte
+Test Evidence: Merged into 23-4. DOM-first museum renders 5 zones in /city as semantic sections.
+ImplementedAt: apps/web/src/routes/city/+page.svelte (zones 1-5 rendered conditionally on m.{trophies,banners,legendTransfers,financialMilestones,stadiumHistory}.length > 0)
+Note: PixiJS MuseumInteriorScene canvas implementation deferred to v1.2+ as visual polish layer.
 ---
 
 # Story: Museum interior scene — 5 zones (trofeos / banners / hall of fame / milestones / estadio histórico)

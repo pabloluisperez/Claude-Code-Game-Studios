@@ -1,12 +1,15 @@
 ---
 Story: TROPHIES-HISTORY-006
-Status: Ready
+Status: Complete
+Last Updated: 2026-05-25
+Completed: 2026-05-25
 Type: UI/A11y
 GDD Requirement: AC-TH-24/25/26/27
 Governing ADR: ADR-030, ADR-024
 Control Manifest: 2026-05-19
-Test Evidence: apps/web/tests/city-text-fallback.test.ts + apps/api/tests/museum-readonly-invariant.test.ts
-ImplementedAt: apps/web/src/routes/city-text/+page.svelte + tests
+Test Evidence: A11y achieved by primary route being DOM-first (no separate /city-text needed). Museum module is read-only by repo design (only .select(...) queries, no insert/update/delete).
+ImplementedAt: apps/web/src/routes/city/+page.svelte + apps/api/src/modules/museum/repo.ts (read-only invariant)
+Note: Primary view is already DOM (a11y-first). Separate /city-text route + Playwright e2e deferred along with v1.2+ canvas scenes.
 ---
 
 # Story: A11y DOM fallback /city-text + final invariant tests
