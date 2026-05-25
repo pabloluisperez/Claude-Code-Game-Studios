@@ -1,12 +1,14 @@
 ---
 Story: STADIUM-UPGRADES-007
-Status: Ready
+Status: Complete
+Last Updated: 2026-05-25
+Completed: 2026-05-25
 Type: Integration
 GDD Requirement: AC-SU-22/24/25/26 + ADR-029 §D5
 Governing ADR: ADR-029, ADR-008 (world clock)
 Control Manifest: 2026-05-19
-Test Evidence: apps/api/tests/stadium-upgrades-tick.test.ts (pending)
-ImplementedAt: apps/api/src/modules/advance/run-tick.ts (modified) + apps/api/src/modules/city-progression/tier-evaluator.ts
+Test Evidence: apps/api/tests/stadium-upgrades/tier-evaluator.test.ts (8/8 passing)
+ImplementedAt: apps/api/src/modules/stadium-upgrades/tier-evaluator.ts (+ tickAllClubsWithActiveUpgrades entrypoint)
 ---
 
 # Story: World Clock tick integration + tier-up doble gate hook
