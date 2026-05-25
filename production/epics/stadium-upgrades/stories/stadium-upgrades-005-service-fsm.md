@@ -170,6 +170,46 @@ In `apps/api/src/modules/stadium-upgrades/staff-messages.ts` (separate small fil
 - Use vitest `describe.concurrent` for race condition test (AC 18)
 - Mock economy + cascade-engine + cityProgression + staffSystem + managerRpg services where dependencies aren't ready yet (use thin mocks)
 
+## QA Test Cases
+
+Source: `production/qa/qa-plan-sprint-22-2026-05-25.md §22-5`.
+
+**Test file**: `apps/api/tests/stadium-upgrades-service.test.ts` — ~20 integration tests (real DB via testcontainers or isolated schema).
+
+**NOTE**: Although story declares `Type: Logic`, this story IS classified Integration in the QA plan (real DB + service spans modules). Both classifications stand.
+
+**buy() cases**:
+1. Happy path → `ok({itemId})`, balance debit, row in DB as `in_progress`
+2. No prereq → `err('INVALID_PREREQ')`, verify no DB write (SELECT count unchanged)
+3. Active item present → `err('SLOT_OCCUPIED')` from service AND DB constraint blocks
+4. Insufficient balance → `err('INSUFFICIENT_BALANCE')`
+5. `balance - cost < CRITICAL_THRESHOLD` AND not `acceptRisk` → `err('CRITICAL_BALANCE_WARNING')`
+6. Same balance fail + `acceptRisk: true` → succeeds
+7. Construction skill T3+ → discount 15% applied
+8. Valid event offer → subsidy applied multiplicatively
+
+**cancel() cases**:
+9. Happy path → cancelled, refund 50%, classified `stadium_refund_extraordinary` (audit query)
+10. Non-existent / wrong-club → `err('NOT_FOUND')`
+11. Already-complete item → `err('NOT_IN_PROGRESS')`
+
+**tickClub() cases**:
+12. Decrements `weeks_remaining` by 1
+13. Bankruptcy state (balance < BANKRUPTCY_BALANCE_FLOOR) → no decrement (pause)
+14. `weeks_remaining=1` → Complete + 8 side effects: status, counter, cascade-engine delta, tier-up eval, Socket.IO emit, staff message
+15. Counter increments correct field per track (gradas/pitch/servicios → `stadium_upgrade_count`; training → `training_facility_level`; academy → `youth_academy_level`)
+
+**Race + atomicity**:
+16. AC-SU-29: 2 simultaneous `buy()` same club (`describe.concurrent`) → one OK, one SLOT_OCCUPIED
+17. 2 clubs simultaneous buy → both succeed
+18. Mid-tx failure (mock `cascadeEngine.applyDelta` throw) → DB unchanged on rollback
+
+**Edge cases**:
+19. `buy()` then immediate `cancel()` in same tx — not allowed (separate calls)
+20. `tickClub()` for club with no active item → no-op (no error)
+
+**Manual evidence**: None — fully automatable.
+
 ## Dependencies
 
 - **Upstream**: 001 (schema), 002 (catalog), 003 (F1+F3), 004 (F2+F4+F5+F6)

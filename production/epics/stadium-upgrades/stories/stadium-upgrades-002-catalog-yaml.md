@@ -139,6 +139,30 @@ Invoke `loadCatalog()` from the Hono server boot sequence (in `apps/api/src/inde
 - `getCatalog()` before load → throws
 - Repeated `loadCatalog()` returns same data (cached)
 
+## QA Test Cases
+
+Source: `production/qa/qa-plan-sprint-22-2026-05-25.md §22-2`.
+
+**Test file**: `apps/api/tests/stadium-upgrades-catalog.test.ts` (~10 tests)
+
+Cases:
+1. Load real YAML → exactly 40 items
+2. Per-track count: each of 5 tracks = 8 items
+3. Per (track, tier) count = 2
+4. All slugs unique
+5. All slugs match regex `^[a-z0-9-]+$`
+6. Spot-check: `gradas-n3-norte-cubierta`, `pitch-n4-cesped-premium`, `academy-n4-residencial` present
+7. Mock 39-item gradas → invariant error with descriptive message
+8. Mock duplicate slug → error names the duplicate
+9. Mock invalid track enum (`'guarderia'`) → Zod parse error
+10. Mock tier=5 → Zod error (tier must be 1..4)
+11. `getCatalog()` before load → throws "not loaded"
+12. `loadCatalog()` twice → cache hit, same reference returned
+
+**Manual evidence**:
+- [ ] Visual diff between YAML and GDD §3.1.2 (no rewording without GDD update)
+- [ ] Spanish naming consistent (no English leakage)
+
 ## Dependencies
 
 - **Upstream**: 001 (schema for track / tier values)

@@ -8,111 +8,113 @@
 #   review         ↔  In Review
 #   done           ↔  Complete
 #   blocked        ↔  Blocked
+#
+# Sprint 14 (Release v1.0) closed — see production/sprints/sprint-14.md for archive.
 
-sprint: 14
-goal: "Release — rate limiting + legal pages + build verification final + go/no-go v1.0"
-start: "2026-11-04"
-end: "2026-11-17"
-generated: "2026-05-21"
-updated: "2026-05-21"
+sprint: 22
+goal: "Entregar epic stadium-upgrades completo (8 stories): schema + catalog + F1-F6 + service/FSM + routes + World Clock + UI con realtime."
+start: "2026-05-25"
+end: "2026-06-05"
+generated: "2026-05-25"
+updated: "2026-05-25"
 
 stories:
-  - id: "14-1"
-    name: "Rate limiting — /api/advance + /api/match"
-    file: "apps/api/src/lib/rate-limit.ts"
+  - id: "22-1"
+    name: "Drizzle schema + migration 0027 (renumbered from 0025 — see commit)"
+    file: "production/epics/stadium-upgrades/stories/stadium-upgrades-001-schema-migration.md"
     priority: must-have
     status: done
     owner: "web-backend-specialist"
-    estimate_days: 1.5
+    estimate_days: 0.5
     blocker: ""
-    completed: "2026-05-21"
+    completed: "2026-05-25"
 
-  - id: "14-2"
-    name: "Legal pages — /terms + /privacy"
-    file: "apps/web/src/routes/terms/+page.svelte"
+  - id: "22-2"
+    name: "Catalog YAML + Zod loader"
+    file: "production/epics/stadium-upgrades/stories/stadium-upgrades-002-catalog-yaml.md"
     priority: must-have
-    status: done
-    owner: "web-frontend-specialist"
-    estimate_days: 1.5
-    blocker: ""
-    completed: "2026-05-21"
-
-  - id: "14-3"
-    name: "Build verification final"
-    file: "production/releases/build-verification-sprint-14.md"
-    priority: must-have
-    status: done
-    owner: "qa-lead"
+    status: ready-for-dev
+    owner: ""
     estimate_days: 1.0
     blocker: ""
-    completed: "2026-05-21"
+    completed: ""
 
-  - id: "14-4"
-    name: "Copy review + tooltips + onboarding walkthrough"
-    file: "production/qa/evidence/copy-review-sprint-14.md"
+  - id: "22-3"
+    name: "Formulas F1 (visual_level) + F3 (infrastructure)"
+    file: "production/epics/stadium-upgrades/stories/stadium-upgrades-003-formulas-visual-infra.md"
     priority: must-have
-    status: done
-    owner: "ux-designer"
+    status: ready-for-dev
+    owner: ""
     estimate_days: 1.0
     blocker: ""
-    completed: "2026-05-21"
+    completed: ""
 
-  - id: "14-5"
-    name: "Go/No-Go release gate + release-checklist sign-off"
-    file: "production/releases/go-no-go-v1.0.md"
+  - id: "22-4"
+    name: "Formulas F2 + F4 + F5 + F6"
+    file: "production/epics/stadium-upgrades/stories/stadium-upgrades-004-formulas-cost-duration-capacity-gate.md"
     priority: must-have
-    status: in-progress
-    owner: "release-manager"
+    status: ready-for-dev
+    owner: ""
+    estimate_days: 1.0
+    blocker: ""
+    completed: ""
+
+  - id: "22-5"
+    name: "Service + FSM + transactions"
+    file: "production/epics/stadium-upgrades/stories/stadium-upgrades-005-service-fsm.md"
+    priority: must-have
+    status: ready-for-dev
+    owner: ""
+    estimate_days: 1.5
+    blocker: ""
+    completed: ""
+
+  - id: "22-6"
+    name: "Hono routes + Zod validation + 4xx"
+    file: "production/epics/stadium-upgrades/stories/stadium-upgrades-006-hono-routes.md"
+    priority: must-have
+    status: ready-for-dev
+    owner: ""
+    estimate_days: 1.0
+    blocker: ""
+    completed: ""
+
+  - id: "22-7"
+    name: "World Clock integration + tier-up doble gate hook"
+    file: "production/epics/stadium-upgrades/stories/stadium-upgrades-007-world-clock-integration.md"
+    priority: must-have
+    status: ready-for-dev
+    owner: ""
+    estimate_days: 1.0
+    blocker: ""
+    completed: ""
+
+  - id: "22-8"
+    name: "SvelteKit /stadium UI + Socket.IO realtime"
+    file: "production/epics/stadium-upgrades/stories/stadium-upgrades-008-ui-stadium-route.md"
+    priority: must-have
+    status: ready-for-dev
+    owner: ""
+    estimate_days: 2.0
+    blocker: ""
+    completed: ""
+
+  - id: "22-NH1"
+    name: "Registry update (~15 new entries)"
+    file: ""
+    priority: nice-to-have
+    status: backlog
+    owner: ""
     estimate_days: 0.5
     blocker: ""
     completed: ""
 
-  - id: "14-6"
-    name: "Store / hosting metadata"
-    file: "production/releases/release-checklist.md"
-    priority: should-have
-    status: done
-    owner: "community-manager"
-    estimate_days: 1.0
-    blocker: ""
-    completed: "2026-05-21"
-
-  - id: "14-7"
-    name: "Sentry error tracking + DB backup config"
-    file: "apps/api/src/lib/observability.ts"
-    priority: should-have
-    status: done
-    owner: "web-backend-specialist"
-    estimate_days: 0.5
-    blocker: ""
-    completed: "2026-05-21"
-
-  - id: "14-8"
-    name: "Changelog v1.0 player-facing"
-    file: "production/releases/changelog-v1.0.md"
-    priority: should-have
-    status: done
-    owner: "writer"
-    estimate_days: 0.5
-    blocker: ""
-    completed: "2026-05-21"
-
-  - id: "14-9"
-    name: "Rollback plan + asset attributions"
-    file: "production/releases/rollback-plan.md"
+  - id: "22-NH2"
+    name: "Propagation: economy.md F-revenue-flow refund classification"
+    file: ""
     priority: nice-to-have
-    status: done
-    owner: "release-manager"
-    estimate_days: 0.5
+    status: backlog
+    owner: ""
+    estimate_days: 0.3
     blocker: ""
-    completed: "2026-05-21"
-
-  - id: "14-10"
-    name: "Playtest adicional (match polish + suspensión)"
-    file: "production/stories/14-10-playtest.md"
-    priority: nice-to-have
-    status: blocked
-    owner: "pablo"
-    estimate_days: 0.5
-    blocker: "Requires human playtester (Pablo) — schedule pre-tag v1.0"
     completed: ""

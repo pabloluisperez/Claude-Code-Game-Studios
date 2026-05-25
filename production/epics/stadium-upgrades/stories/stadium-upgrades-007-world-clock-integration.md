@@ -90,6 +90,35 @@ Also implement `stadiumUpgradesService.getCompletedItemsCountByLevel()` in story
 - Test the integration: kick the world clock advance pipeline, verify stadium-upgrades behavior changes
 - Mock or use real `evaluateTierUp` depending on how city-progression module is structured
 
+## QA Test Cases
+
+Source: `production/qa/qa-plan-sprint-22-2026-05-25.md §22-7`.
+
+**Test file**: `apps/api/tests/stadium-upgrades-tick.test.ts` (~15 tests) — Real DB. Trigger world clock advance via service entrypoint.
+
+**Tick pipeline**:
+1. Week-tick triggers `stadiumUpgradesService.tickClub()` for each club (spy assertion)
+2. `tickClub()` runs in same tx as other per-club steps (atomicity)
+3. `weeks_remaining=5` + 1 tick → `weeks_remaining=4`
+4. `weeks_remaining=1` + 1 tick → status `complete` + all 8 side effects
+5. `evaluateTierUp` called once as part of side effects
+6. Bankruptcy: tickClub skips decrement (pause)
+7. Multi-club: 2 clubs simultaneous → no cross-club state leak
+8. **Determinism (AC-SU-26)**: same fixture × 10 runs → same final state
+
+**Doble gate**:
+9. Métricas OK + reformas not → `{tierUp: false, reason: 'REFORMAS_NOT_MET'}`, no tier change
+10. Reformas OK + métricas not → `{tierUp: false, reason: 'METRICS_NOT_MET'}`
+11. Both OK → `{tierUp: true, newTier}`, `world_state_snapshots.city_tier` incremented
+
+**Edge cases**:
+12. Club at `cityTier=4` (max) → `{tierUp: false, reason: 'AT_MAX'}`
+13. Club with no active item → no-op
+14. Tier-up from old save where `stadium_upgrade_count=0` for tier ≥ 2 → gate fails (intentional v1.1)
+15. Advance with 0 clubs → no-op cleanly
+
+**Manual evidence**: None — fully automatable.
+
 ## Dependencies
 
 - **Upstream**: 005 (service has `tickClub`), 004 (gate function), 003 (formulas)

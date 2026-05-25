@@ -112,6 +112,31 @@ Plus a shared `clamp(n, min, max)` helper in `packages/shared/src/sim/util.ts` (
 - Property test: 1000 random `StadiumState` with bounds → output in `[0, 100]`
 - Verify pitch surface thresholds align (input that produces 25 → Patchy zone per city-progression §3.3)
 
+## QA Test Cases
+
+Source: `production/qa/qa-plan-sprint-22-2026-05-25.md §22-3`.
+
+**Test files**: `packages/shared/tests/stadium/{visual-level,infrastructure}.test.ts` (~14 tests)
+
+**F1 visual-level cases**:
+1. Spot AC-SU-10: `stadiumVisualLevel({gradas:4, pitch:6, servicios:2}) === 5`
+2. Spot: `stadiumVisualLevel({gradas:0, pitch:0, servicios:0}) === 0`
+3. Spot: `stadiumVisualLevel({gradas:8, pitch:8, servicios:8}) === 9`
+4. **Property — 1000 random** inputs in `[0..8]³` → output ∈ `[0, 9]`
+5. **Property — monotonicity** (AC-SU-11): `s'.x >= s.x` ∀ tracks → `f(s') >= f(s)`
+6. Determinism: same input × 100 runs → same output
+7. Edge: F1 `× 9.99` invariant — `f({8,8,8})` returns 9, NOT 10
+
+**F3 infrastructure cases**:
+1. Spot: `infrastructureLevel({stadium_upgrade_count:24, training_facility_level:4, youth_academy_level:2}) === 69`
+2. Spot: `infrastructureLevel({0,0,0}) === 0`
+3. Spot: `infrastructureLevel({24,8,8}) === 100`
+4. **Property — 1000 random** inputs within bounds → output ∈ `[0, 100]`
+5. Cross-check: input producing infrastructure=25 → Patchy zone per city-progression §3.3
+6. Defensive: negative inputs (should never receive) → clamp behavior
+
+**Manual evidence**: None — pure-function suite.
+
 ## Dependencies
 
 - **Upstream**: 001 (StadiumState shape mirrors WorldState columns), 002 (catalog defines max counts)

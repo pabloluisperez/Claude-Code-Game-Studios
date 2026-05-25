@@ -627,6 +627,18 @@ Production → Polish gate addressed at least partially.
 <!-- QA-PLAN: 2026-05-21 | System: sprint-11 | Plan written: production/qa/qa-plan-sprint-11-2026-05-21.md -->
 <!-- QA-PLAN: 2026-05-21 | System: sprint-12 | Plan written: production/qa/qa-plan-sprint-12-2026-05-21.md -->
 <!-- QA-PLAN: 2026-05-21 | System: sprint-13 | Plan written: production/qa/qa-plan-sprint-13-2026-05-21.md -->
+<!-- QA-PLAN: 2026-05-25 | System: sprint-22 | Plan written: production/qa/qa-plan-sprint-22-2026-05-25.md -->
+
+## Session Extract — /dev-story 2026-05-25 — Story 22-1 implemented
+
+- Story: `production/epics/stadium-upgrades/stories/stadium-upgrades-001-schema-migration.md` — Drizzle schema + migration
+- Files changed: `packages/db/src/schema/stadium-upgrades.ts` (new), `packages/db/src/schema/index.ts`, `packages/db/src/schema/playthroughs.ts` (3 columns added to worldSnapshots), `packages/db/drizzle/0027_stadium_upgrades.sql` (new, hand-authored), `packages/db/drizzle/0028_stadium_world_state_backfill.sql` (new, idempotent), `packages/db/drizzle/meta/_journal.json` (added 0027+0028), `packages/db/package.json` (test script + vitest dep), `pnpm-lock.yaml`
+- Test written: `packages/db/tests/stadium-upgrades-schema.test.ts` — **8 integration tests, ALL PASSING with live DB**
+- Total tests now: **1296/1296** (was 1288/1288 — +8, 0 regressions)
+- Migrations applied: 0027 + 0028 to local Postgres on 5433
+- Deviations: (1) story said migrations 0025+0026 but those are taken (GDPR + tier_history) — used 0027+0028; (2) story said `packages/db/migrations/` but actual location is `packages/db/drizzle/` per `drizzle.config.ts`; (3) hand-authored SQL because pre-existing drizzle-kit snapshot drift blocks `db:generate` interactively (unrelated to this story — see follow-up below)
+- Pre-existing drift surfaced (NOT created by this story): drizzle-kit `generate` interactively asks about a `suspended_until_week → suspended_matches_remaining` rename from migration 0024 — suggests someone hand-edited the migration without regenerating snapshots. Future story: reset snapshots to bring drizzle-kit back to clean state.
+- Next: `/code-review packages/db/src/schema/stadium-upgrades.ts packages/db/drizzle/0027_stadium_upgrades.sql packages/db/drizzle/0028_stadium_world_state_backfill.sql packages/db/tests/stadium-upgrades-schema.test.ts` then `/story-done`
 
 ---
 

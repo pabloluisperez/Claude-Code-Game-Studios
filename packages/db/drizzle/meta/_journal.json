@@ -190,6 +190,20 @@
       "when": 1779379700000,
       "tag": "0026_tier_history",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1779696000000,
+      "tag": "0027_stadium_upgrades",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1779696060000,
+      "tag": "0028_stadium_world_state_backfill",
+      "breakpoints": true
     }
   ]
 }

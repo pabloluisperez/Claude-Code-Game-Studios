@@ -1,12 +1,14 @@
 ---
 Story: STADIUM-UPGRADES-001
-Status: Ready
+Status: Complete
+Last Updated: 2026-05-25
+Completed: 2026-05-25
 Type: Logic
 GDD Requirement: AC-SU-04/05/06/07/08 (FSM preconditions — schema shape)
 Governing ADR: ADR-029 §D2, ADR-005
 Control Manifest: 2026-05-19
-Test Evidence: packages/db/tests/stadium-upgrades-schema.test.ts (pending)
-ImplementedAt: packages/db/src/schema/stadium-upgrades.ts + packages/db/migrations/0025_stadium_upgrades.sql
+Test Evidence: packages/db/tests/stadium-upgrades-schema.test.ts (8/8 passing)
+ImplementedAt: packages/db/src/schema/stadium-upgrades.ts + packages/db/drizzle/0027_stadium_upgrades.sql + packages/db/drizzle/0028_stadium_world_state_backfill.sql
 ---
 
 # Story: Drizzle schema + migration 0025 (stadium_upgrade_items + WorldState extends)
@@ -60,6 +62,26 @@ In `packages/db/migrations/0026_world_state_backfill.sql` (separate migration):
 - INSERT 2nd row with same `club_id` + `status='in_progress'` → expect constraint violation
 - INSERT 1st row `in_progress`, UPDATE to `complete`, then INSERT 2nd `in_progress` → succeeds (constraint only blocks parallel `in_progress`)
 - Verify `world_state_snapshots` has new columns + default 0 on freshly created row
+
+## QA Test Cases
+
+Source: `production/qa/qa-plan-sprint-22-2026-05-25.md §22-1`.
+
+**Test file**: `packages/db/tests/stadium-upgrades-schema.test.ts` (~8 tests)
+
+Cases:
+1. INSERT + SELECT round-trip on `stadium_upgrade_items` — verify shape matches Drizzle types
+2. FK violation: INSERT with non-existent `club_id` → expect FK error
+3. Partial unique index: INSERT 2 `in_progress` rows for same club → expect constraint violation
+4. Sequential lifecycle OK: INSERT A `in_progress`, UPDATE A to `complete`, INSERT B `in_progress` for same club → succeeds
+5. `world_state_snapshots`: 3 new columns exist with default 0 on freshly-inserted row
+6. Backfill migration 0026 idempotent — run twice, no errors
+7. Edge: `status='cancelled'` does NOT block unique index (only `in_progress` blocks)
+8. Edge: 2 different clubs each `in_progress` → both succeed (per-club constraint)
+
+**Manual evidence**:
+- [ ] Migration replay against local-dev DB copy: `drizzle-kit push --dry-run` shows expected diff
+- [ ] Output captured in `production/qa/evidence/22-1-migration-replay.txt`
 
 ## Dependencies
 

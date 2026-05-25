@@ -128,6 +128,24 @@ export const worldSnapshots = pgTable(
      * text (JSON.stringify of seedrandom().state()).
      */
     seedState: text('seed_state'),
+    /**
+     * Denormalized count of completed stadium upgrades for the club at this
+     * snapshot. Recomputed on each CompleteUpgrade transaction (ADR-029 §D2).
+     * Default 0 for rows inserted before stadium-upgrades v1.1.
+     */
+    stadiumUpgradeCount: integer('stadium_upgrade_count').notNull().default(0),
+    /**
+     * Denormalized level of the Training track (completed items count).
+     * Recomputed on each CompleteUpgrade transaction (ADR-029 §D2).
+     * Default 0 for rows inserted before stadium-upgrades v1.1.
+     */
+    trainingFacilityLevel: integer('training_facility_level').notNull().default(0),
+    /**
+     * Denormalized level of the Academy track (completed items count).
+     * Recomputed on each CompleteUpgrade transaction (ADR-029 §D2).
+     * Default 0 for rows inserted before stadium-upgrades v1.1.
+     */
+    youthAcademyLevel: integer('youth_academy_level').notNull().default(0),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

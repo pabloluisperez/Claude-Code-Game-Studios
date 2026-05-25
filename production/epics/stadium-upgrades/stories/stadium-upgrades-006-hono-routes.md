@@ -130,6 +130,41 @@ app.route('/api/stadium', stadiumRoutes);
 - Use auth fixture (session token for test user)
 - Mock service layer responses for clean unit tests; OR use real DB for integration variant
 
+## QA Test Cases
+
+Source: `production/qa/qa-plan-sprint-22-2026-05-25.md §22-6`.
+
+**Test file**: `apps/api/tests/stadium-upgrades-routes.test.ts` (~15 tests) — Hono `app.fetch` API. Service mocked OR real DB for full integration variant.
+
+**Catalog route**:
+1. `GET /api/stadium/catalog` + valid session → 200 + `{items: [...40 with state], active: ...}`
+2. `GET /api/stadium/catalog` without session → 401
+
+**Buy route**:
+3. Happy path → 200 `{itemId}`
+4. Zod failure (empty body / missing itemSlug) → 400
+5. Invalid slug regex (uppercase, special chars) → 400
+6. Service returns `INVALID_PREREQ` → 400 `{error}`
+7. Service returns `SLOT_OCCUPIED` → 409
+8. Service returns `INSUFFICIENT_BALANCE` → 402
+9. Service returns `CRITICAL_BALANCE_WARNING` → 409 (NOT 400 — client confirms)
+10. `acceptRisk: true` after warning → 200
+
+**Cancel route**:
+11. Happy path → 200 `{refundEurK}`
+12. Non-existent itemId → 404
+13. Wrong-club itemId → 404 (security: don't leak existence — NOT 403)
+
+**History route**:
+14. `GET /api/stadium/history` → 200 + chronological array
+
+**Cross-cutting**:
+15. All responses `content-type: application/json`
+16. Pino structured log captured on every error path (assert log fixture)
+
+**Manual evidence**:
+- [ ] curl smoke against `localhost:3001`, output captured to `production/qa/evidence/22-6-curl-smoke.txt`
+
 ## Dependencies
 
 - **Upstream**: 005 (service)

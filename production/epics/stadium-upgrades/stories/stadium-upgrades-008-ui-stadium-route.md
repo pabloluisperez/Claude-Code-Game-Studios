@@ -137,6 +137,36 @@ Document this in a TODO comment and an art-asset story (separate from this story
 
 Plus manual playwright recording for visual review (AC 9-10).
 
+## QA Test Cases
+
+Source: `production/qa/qa-plan-sprint-22-2026-05-25.md §22-8`.
+
+**Test file**: `apps/web/tests/stadium-page.e2e.ts` (Playwright, ~10 e2e tests).
+
+**E2E happy paths**:
+1. Login + navigate `/stadium` → 40 catalog items rendered (count by selector)
+2. Each item shows correct status badge (Locked/Available/Queued/InProgress/Complete)
+3. Click "Comprar" on T1 Available → form action POSTs → refresh → item now InProgress + active widget visible
+4. Cancel active obra → confirm dialog → form action POSTs → refund reflected in balance
+5. **Critical-balance flow**: broke user tries T2 buy → 409 warning modal → click "Acepto riesgo" → re-POST with `acceptRisk: true` → buy succeeds
+6. **Socket.IO realtime**: 2 tabs same user → complete item via API in tab A → tab B catalog auto-invalidates + updates
+7. Sprite `src` matches `stadium-v{N}.png` for the current `stadium_visual_level`
+8. DOM fallback: canvas-disabled context → text `[Estadio nivel visual: N]` rendered
+9. Page-load < 500ms (AC-SU-37) — Playwright timing API
+10. Keyboard-only: Tab through catalog cards, Enter to buy
+
+**Edge cases**:
+- Fresh club (0 completed): all T1 Available, T2+ Locked with prereq tooltip
+- All 40 complete: no "Comprar" buttons available
+- Active obra cancelled in another tab → Socket.IO syncs both tabs
+- Rapid double-click "Comprar" → only 1 POST (form action debounce)
+
+**Manual evidence** (BLOCKING — story is `Type: UI`):
+- [ ] **10 screenshots** of the stadium hero at each `stadium_visual_level: 0..9` → `production/qa/evidence/22-8-visual-levels/*.png`
+- [ ] Video: buy flow end-to-end (Available → InProgress → Complete with sprite swap) → `production/qa/evidence/22-8-buy-flow.mp4`
+- [ ] Video: critical-balance warning flow (warning → confirm → buy) → `production/qa/evidence/22-8-critical-balance-flow.mp4`
+- [ ] **Playtest** ~45 min, returning player + fresh player → `production/playtests/[date]-sprint-22-stadium.md`
+
 ## Dependencies
 
 - **Upstream**: 006 (routes), 002 (catalog), 003 (visualLevel formula for sprite mapping)

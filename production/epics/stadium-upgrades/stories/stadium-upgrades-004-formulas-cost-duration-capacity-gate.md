@@ -127,6 +127,46 @@ export function tierUpReformasGateSatisfied(level: ItemTier, completedCount: num
 - Edge: 0 items in level → `itemsRequiredForLevel(0) === 0` → gate trivially satisfied
 - Property: monotonic in totalInLevel
 
+## QA Test Cases
+
+Source: `production/qa/qa-plan-sprint-22-2026-05-25.md §22-4`.
+
+**Test files**: `packages/shared/tests/stadium/{cost,duration,capacity,gate}.test.ts` (~24 tests)
+
+**F4 cost (6 tests)**:
+1. AC-SU-18: T2 Gradas = 77 (55 × 1.40)
+2. AC-SU-19a: T4 Gradas + Construction = 405 (476 × 0.85)
+3. AC-SU-19b: T4 Gradas + 30% subsidy + Construction = 283
+4. All 20 (5 × 4) combinations produce values in expected range `[12, 476]`
+5. Modifier composition: subsidy × construction multiplicative (not additive)
+6. Edge: subsidy=1.0 (100%) → cost=0 (free obra — flag note for 22-5)
+
+**F2 duration (6 tests)**:
+1. AC-SU-12: T3 + skill 80 → 5
+2. AC-SU-13: T4 + skill 15 → 10
+3. AC-SU-14: T1 + no director → 2
+4. AC-SU-15: T1 + skill 100 → 2 (no DUR_MIN clamp needed)
+5. Property: any skill in `[0..100]` → integer in `[DUR_MIN, DUR_MAX]`
+6. Edge: skill=50 → multiplier=1.0 exactly (no rounding bias)
+
+**F5 capacity (6 tests)**:
+1. AC-SU-20: D2 + no upgrades = 6000
+2. AC-SU-21: D1 + all 8 gradas = 25000
+3. D2 + all 8 gradas = 19000
+4. N1-only contribution: 2 × 700 = 1400
+5. Each tier adds exactly `CAPACITY_PER_GRADA_ITEM[tier]`
+6. Defensive: negative gradas count → `Math.max(0, …)`
+
+**F6 gate (6 tests)**:
+1. AC-SU-23: `itemsRequiredForLevel(10) === 7`
+2. AC-SU-24: `tierUpReformasGateSatisfied(2, 7, 10) === true`
+3. AC-SU-25: `tierUpReformasGateSatisfied(2, 6, 10) === false`
+4. Edge: 0 items in level → trivially satisfied
+5. Property: monotonic in `totalInLevel`
+6. Property: monotonic in `completedCount`
+
+**Manual evidence**: None — pure-function suite.
+
 ## Dependencies
 
 - **Upstream**: 001 (schema), 002 (catalog for max counts), 003 (types)
