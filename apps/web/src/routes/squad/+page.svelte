@@ -252,6 +252,11 @@
                         🟨 {p.yellowCardsSeason}
                       </span>
                     {/if}
+                    {#if p.transferListed}
+                      <span class="badge badge-success badge-sm gap-1" title="Jugador transferible — abierto a ofertas">
+                        💰 Transferible
+                      </span>
+                    {/if}
                   </div>
                 </td>
                 <td><span class="badge badge-outline badge-sm">{posLabel(p.position)}</span></td>
@@ -356,7 +361,7 @@
                   type="submit"
                   class={selected.transferListed ? 'btn btn-warning' : 'btn btn-success'}
                 >
-                  {selected.transferListed ? '✗ Quitar de venta' : '💰 Marcar para venta'}
+                  {selected.transferListed ? '✗ Quitar transferible' : '💰 Jugador transferible'}
                 </button>
               </form>
               <button class="btn" onclick={() => (selected = null)}>Cerrar</button>
