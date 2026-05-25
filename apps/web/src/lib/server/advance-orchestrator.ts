@@ -664,10 +664,120 @@ export async function runAdvanceTickFull(
   });
 
   // ── Phase 8: career milestone detection ─────────────────────────────────
-  await detectAndPersistMilestones({
+  const newMilestones = await detectAndPersistMilestones({
     playthroughId: active.id,
     clubId: active.clubId,
   });
+
+  // ── Phase 8b: mayor call on first major career milestone (v1.2 Sprint 26-4) ──
+  // When the manager hits 10 matches at the club, the alcalde calls to
+  // congratulate. Pure-template generated, deterministic, visible in /inbox.
+  try {
+    if (newMilestones?.includes('ten_matches')) {
+      const [clubRow] = await db
+        .select({ name: clubs.name, city: clubs.city })
+        .from(clubs)
+        .where(eq(clubs.id, active.clubId))
+        .limit(1);
+      const [headCoach] = await db
+        .select({ id: staff.id })
+        .from(staff)
+        .where(
+          and(
+            eq(staff.playthroughId, active.id),
+            eq(staff.role, 'head_coach'),
+            eq(staff.status, 'active'),
+          ),
+        )
+        .limit(1);
+
+      if (clubRow && headCoach) {
+        const { renderNarrative, mayorCallTemplates } = await import('@smt/shared');
+        const body = renderNarrative(mayorCallTemplates, {
+          seed: nextWeek * 7919, // distinct seed family from press articles
+          variables: { city: clubRow.city, clubName: clubRow.name },
+        });
+        await db.insert(staffMessages).values({
+          playthroughId: active.id,
+          staffId: headCoach.id,
+          week: nextWeek,
+          season: tvCurrentSeason,
+          priority: 'ROUTINE',
+          templateKey: 'mayor:career_milestone',
+          content: `🏛 Llamada del alcalde — ${body}`,
+          isRead: false,
+        });
+      }
+    }
+  } catch {
+    // Mayor call is decorative — never block the advance pipeline.
+  }
+
+  // ── Phase 8c: weekly finance commentary (v1.2 Sprint 26-2 lite) ──────────
+  // Adds a finance director ambient comment styled by the narrative engine
+  // when the club is in 'En Riesgo' or 'Crisis' tier, or just crossed into
+  // 'Sano'. Pure-template, variable phrasing per week.
+  try {
+    const financialStatus = Number(
+      (eco.patchedState as Record<string, number>)['financial_status'] ?? 0,
+    );
+    const balanceK = Math.round(
+      (eco.patchedState as Record<string, number>)['financial_balance'] ?? 0,
+    );
+
+    if (financialStatus >= 1 || balanceK > 1000) {
+      const [financeDir] = await db
+        .select({ id: staff.id, name: staff.name })
+        .from(staff)
+        .where(
+          and(
+            eq(staff.playthroughId, active.id),
+            eq(staff.role, 'finance_director'),
+            eq(staff.status, 'active'),
+          ),
+        )
+        .limit(1);
+
+      if (financeDir) {
+        const { renderNarrative, financialPositiveTemplates, financialWarningTemplates } = await import(
+          '@smt/shared'
+        );
+        const templates =
+          financialStatus >= 1 ? financialWarningTemplates : financialPositiveTemplates;
+        const body = renderNarrative(templates, {
+          seed: nextWeek * 13 + active.clubId.charCodeAt(0),
+          variables: { balanceEurK: balanceK, week: nextWeek },
+        });
+        // De-dup: only insert if we don't already have a finance:weekly_commentary
+        // for this week.
+        const existing = await db
+          .select({ id: staffMessages.id })
+          .from(staffMessages)
+          .where(
+            and(
+              eq(staffMessages.playthroughId, active.id),
+              eq(staffMessages.week, nextWeek),
+              eq(staffMessages.templateKey, 'finance:weekly_commentary'),
+            ),
+          )
+          .limit(1);
+        if (!existing[0]) {
+          await db.insert(staffMessages).values({
+            playthroughId: active.id,
+            staffId: financeDir.id,
+            week: nextWeek,
+            season: tvCurrentSeason,
+            priority: financialStatus >= 2 ? 'URGENT' : 'ROUTINE',
+            templateKey: 'finance:weekly_commentary',
+            content: `💼 ${financeDir.name.split(' ')[0]} (Director financiero): ${body}`,
+            isRead: false,
+          });
+        }
+      }
+    }
+  } catch {
+    // Finance commentary is decorative — never block the advance pipeline.
+  }
 
   // ── Phase 9: season rollover ────────────────────────────────────────────
   const rollover = await checkAndRolloverSeason({
