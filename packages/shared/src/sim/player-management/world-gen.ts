@@ -26,20 +26,20 @@ import { pickName } from './name-pool.js';
  * Pre-retune: 40 × ~2 €K avg = 80 €K/wk wages → unsustainable vs ~22 €K/wk
  * income. Post-retune: 25 × ~1 €K = 25 €K/wk → matchable.
  */
-export const DEFAULT_ROSTER_SIZE = 25;
+export const DEFAULT_ROSTER_SIZE = 22;
 /**
- * Retuned 2026-05-21 with DEFAULT_ROSTER_SIZE 40 → 25.
- * Quotas sum to 25 to keep the scaling math consistent.
+ * Retuned 2026-05-25 (Pablo: "al empezar liga 22 jugadores").
+ * Quotas sum to 22:
  *   GK: 3 (1 starter + 2 backup)
- *   DEF: 8 (4 starters + 4 backup)
- *   MID: 8 (4 starters + 4 backup)
- *   FWD: 6 (3 starters + 3 backup)
+ *   DEF: 7 (4 starters + 3 backup)
+ *   MID: 7 (4 starters + 3 backup)
+ *   FWD: 5 (3 starters + 2 backup)
  */
 export const POSITION_QUOTAS: Readonly<Record<Position, number>> = Object.freeze({
   GK: 3,
-  DEF: 8,
-  MID: 8,
-  FWD: 6,
+  DEF: 7,
+  MID: 7,
+  FWD: 5,
 });
 export const WEEKS_PER_SEASON = 52;
 export const INITIAL_CONTRACT_WEEKS = 104;

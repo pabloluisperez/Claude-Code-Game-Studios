@@ -101,15 +101,15 @@ describe('generateRoster — determinism', () => {
 // ── Position distribution ────────────────────────────────────────────────────
 
 describe('generateRoster — position distribution', () => {
-  it('test_position_quota_default_size_25', () => {
+  it('test_position_quota_default_size_22', () => {
     const roster = generateRoster({
       ctx: makeCtx('pos-quota'),
       clubBaseSkill: 60,
       clubSlug: 'club',
       currentWeek: 1000,
     });
-    // Retuned 2026-05-21: DEFAULT_ROSTER_SIZE 40 → 25 (economy-tuning playtest).
-    expect(roster.length).toBe(25);
+    // Retuned 2026-05-25: DEFAULT_ROSTER_SIZE 25 → 22 (Pablo playtest realism).
+    expect(roster.length).toBe(22);
     const counts = { GK: 0, DEF: 0, MID: 0, FWD: 0 };
     for (const p of roster) counts[p.position]++;
     expect(counts.GK).toBe(POSITION_QUOTAS.GK);
