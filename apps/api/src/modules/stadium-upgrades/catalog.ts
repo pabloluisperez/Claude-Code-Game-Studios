@@ -12,7 +12,9 @@
  */
 
 import { readFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 
 export const TRACKS = ['gradas', 'pitch', 'servicios', 'training', 'academy'] as const;
@@ -41,7 +43,27 @@ const EXPECTED_ITEMS_PER_TRACK_TIER = 2;
 
 let catalogCache: readonly CatalogItem[] | null = null;
 
+/**
+ * Locate `design/data/stadium-upgrades-catalog.json` regardless of process.cwd().
+ *
+ * Strategy: walk up from this module's directory looking for a parent that
+ * contains `design/data/stadium-upgrades-catalog.json`. This works when the
+ * API is launched from any cwd (apps/api, monorepo root, dist/, …) AND when
+ * tests run from inside apps/api or from the workspace root.
+ */
 function defaultCatalogPath(): string {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  // Walk up at most 10 levels — enough for any plausible monorepo layout.
+  let dir = here;
+  for (let i = 0; i < 10; i++) {
+    const candidate = path.join(dir, 'design', 'data', 'stadium-upgrades-catalog.json');
+    if (existsSync(candidate)) return candidate;
+    const parent = path.dirname(dir);
+    if (parent === dir) break; // reached filesystem root
+    dir = parent;
+  }
+  // Fallback to the legacy cwd-based path so the error message points the
+  // operator at the expected location.
   return path.resolve(process.cwd(), 'design/data/stadium-upgrades-catalog.json');
 }
 
