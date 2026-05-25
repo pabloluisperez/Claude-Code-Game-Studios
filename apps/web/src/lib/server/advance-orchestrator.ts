@@ -45,6 +45,7 @@ import {
   seasons,
   leagues,
   calendarEvents,
+  players,
   eq,
   and,
   or,
@@ -832,6 +833,88 @@ export async function runAdvanceTickFull(
     }
   } catch {
     // Finance commentary is decorative — never block the advance pipeline.
+  }
+
+  // ── Phase 8d: contract renewal scans (Pablo 2026-05-25) ────────────────
+  // Players whose contract ends in exactly 8 weeks generate a renewal event.
+  // One-shot trigger window (== 8) so we don't re-spam every week. Player's
+  // demanded salary scales with skill / form / age — manager picks
+  // accept / counter / reject in /calendar.
+  try {
+    const renewalCandidates = await db
+      .select({
+        id: players.id,
+        firstName: players.firstName,
+        lastName: players.lastName,
+        position: players.position,
+        skill: players.skill,
+        form: players.form,
+        birthWeek: players.birthWeek,
+        salaryEurK: players.salaryEurK,
+        contractEndWeek: players.contractEndWeek,
+      })
+      .from(players)
+      .where(
+        and(
+          eq(players.clubId, active.clubId),
+          eq(players.contractEndWeek, nextWeek + 8),
+        ),
+      );
+
+    for (const p of renewalCandidates) {
+      // Idempotency: skip if a pending renewal event for this player exists.
+      const [{ count = 0 } = { count: 0 }] = await db
+        .select({ count: sql<number>`COUNT(*)::int` })
+        .from(calendarEvents)
+        .where(
+          and(
+            eq(calendarEvents.playthroughId, active.id),
+            eq(calendarEvents.type, 'contract_renewal'),
+            eq(calendarEvents.status, 'pending'),
+            sql`(${calendarEvents.metadata} ->> 'playerId') = ${p.id}`,
+          ),
+        );
+      if (Number(count) > 0) continue;
+
+      const ageYears = Math.floor((nextWeek - p.birthWeek) / 52);
+
+      // Demand formula:
+      //   baseline = current salary
+      //   skill multiplier: >75 → ×1.6; 60-75 → ×1.3; 45-60 → ×1.1; else ×1.0
+      //   form multiplier: >70 → ×1.2; <40 → ×0.9
+      //   age multiplier: <25 → ×1.15 (rising star); >32 → ×0.85 (winding down)
+      //   contract length: 52 weeks default for under-30, 26 for 30+
+      const skillMul = p.skill > 75 ? 1.6 : p.skill > 60 ? 1.3 : p.skill > 45 ? 1.1 : 1.0;
+      const formMul = p.form > 70 ? 1.2 : p.form < 40 ? 0.9 : 1.0;
+      const ageMul = ageYears < 25 ? 1.15 : ageYears > 32 ? 0.85 : 1.0;
+      const demanded = Math.max(3, Math.round(p.salaryEurK * skillMul * formMul * ageMul));
+      const contractWeeks = ageYears < 30 ? 52 : 26;
+
+      await db.insert(calendarEvents).values({
+        playthroughId: active.id,
+        week: nextWeek,
+        season: tvCurrentSeason,
+        type: 'contract_renewal',
+        priority: 'STOP',
+        status: 'pending',
+        consumed: false,
+        metadata: {
+          kind: 'contract_renewal',
+          playerId: p.id,
+          playerName: `${p.firstName} ${p.lastName}`,
+          position: p.position,
+          age: ageYears,
+          skill: p.skill,
+          form: p.form,
+          currentSalaryEurK: p.salaryEurK,
+          demandedSalaryEurK: demanded,
+          proposedContractWeeks: contractWeeks,
+          contractEndWeek: p.contractEndWeek,
+        } as Record<string, unknown>,
+      });
+    }
+  } catch {
+    // Renewal generation must never block the advance pipeline.
   }
 
   // ── Phase 9: season rollover ────────────────────────────────────────────

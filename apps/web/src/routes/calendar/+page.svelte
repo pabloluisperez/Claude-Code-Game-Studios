@@ -248,9 +248,33 @@
         : openEvent.status === 'expired'
         ? 'expirado'
         : openEvent.status}
-      {@const meta = openEvent.metadata as { options?: Record<string, { label: string; description: string }>; brand?: string; weeklyAmountEurK?: number; contractWeeks?: number; description?: string } | null}
+      {@const meta = openEvent.metadata as {
+        options?: Record<string, { label: string; description: string }>;
+        brand?: string;
+        weeklyAmountEurK?: number;
+        contractWeeks?: number;
+        description?: string;
+        // Contract renewal fields (Pablo 2026-05-25)
+        kind?: string;
+        playerName?: string;
+        position?: string;
+        age?: number;
+        skill?: number;
+        form?: number;
+        currentSalaryEurK?: number;
+        demandedSalaryEurK?: number;
+        proposedContractWeeks?: number;
+        resolvedOutcome?: string;
+        resolvedFinalSalaryEurK?: number;
+      } | null}
+      {@const isRenewal = meta?.kind === 'contract_renewal'}
       {@const optEntries = (meta?.options
         ? Object.entries(meta.options)
+        : isRenewal
+        ? [
+            ['accept', { label: `Aceptar (€${meta?.demandedSalaryEurK}K/sem)`, description: 'Aceptar las condiciones que pide el jugador.' }],
+            ['reject', { label: 'Rechazar', description: 'No le renovamos — termina su contrato y se marcha libre.' }],
+          ]
         : [
             ['accept', { label: 'Aceptar', description: 'Aceptar la propuesta tal cual.' }],
             ['reject', { label: 'Rechazar', description: 'Rechazar la propuesta.' }],
@@ -281,6 +305,54 @@
             </div>
           {/if}
 
+          <!-- Contract renewal context (Pablo 2026-05-25) -->
+          {#if isRenewal && meta}
+            <div class="alert alert-info py-3 mt-3 text-sm">
+              <div class="w-full">
+                <div class="font-semibold text-base mb-1">
+                  {meta.playerName} <span class="opacity-60 text-xs">({meta.position} · {meta.age} años)</span>
+                </div>
+                <div class="grid grid-cols-3 gap-2 text-xs mt-2">
+                  <div class="bg-base-200/60 rounded p-2">
+                    <div class="opacity-60">Skill</div>
+                    <div class="font-mono font-bold text-base">{meta.skill ?? '—'}</div>
+                  </div>
+                  <div class="bg-base-200/60 rounded p-2">
+                    <div class="opacity-60">Forma</div>
+                    <div class="font-mono font-bold text-base">{meta.form ?? '—'}</div>
+                  </div>
+                  <div class="bg-base-200/60 rounded p-2">
+                    <div class="opacity-60">Duración</div>
+                    <div class="font-mono font-bold text-base">{meta.proposedContractWeeks}sem</div>
+                  </div>
+                </div>
+                <div class="mt-3 flex items-center justify-between gap-3">
+                  <div>
+                    <div class="text-xs opacity-60">Ahora cobra</div>
+                    <div class="font-mono font-bold">€{meta.currentSalaryEurK}K/sem</div>
+                  </div>
+                  <div class="text-xl opacity-40">→</div>
+                  <div>
+                    <div class="text-xs opacity-60">Pide</div>
+                    <div class="font-mono font-bold text-warning">€{meta.demandedSalaryEurK}K/sem</div>
+                  </div>
+                </div>
+                {#if openEvent.status === 'resolved' && meta.resolvedOutcome}
+                  <div class="mt-3 p-2 rounded {meta.resolvedOutcome === 'renewed' ? 'bg-success/20' : 'bg-error/20'}">
+                    <div class="text-xs font-bold uppercase tracking-wide">
+                      {meta.resolvedOutcome === 'renewed' ? '✓ Renovado' : '✗ Se marcha libre'}
+                    </div>
+                    {#if meta.resolvedOutcome === 'renewed' && meta.resolvedFinalSalaryEurK}
+                      <div class="text-sm font-mono mt-1">
+                        Nuevo sueldo: €{meta.resolvedFinalSalaryEurK}K/sem · {meta.proposedContractWeeks} semanas
+                      </div>
+                    {/if}
+                  </div>
+                {/if}
+              </div>
+            </div>
+          {/if}
+
           {#if openEvent.status === 'pending' && eventNeedsAction(openEvent.type, openEvent.priority)}
             <div class="flex flex-col gap-2 mt-4">
               {#each optEntries as [optKey, opt]}
@@ -298,9 +370,40 @@
                   </button>
                 </form>
               {/each}
+
+              <!-- Counter-offer form for contract renewals (Pablo 2026-05-25) -->
+              {#if isRenewal && meta?.demandedSalaryEurK}
+                <form method="POST" action="?/decide" use:enhance class="card bg-base-200 p-3 mt-1">
+                  <input type="hidden" name="eventId" value={openEvent.id} />
+                  <input type="hidden" name="choice" value="counter" />
+                  <div class="text-xs font-semibold uppercase tracking-wide opacity-70 mb-2">
+                    💬 Contraoferta
+                  </div>
+                  <p class="text-xs opacity-70 mb-2">
+                    Si ofrecés ≥ €{meta.demandedSalaryEurK}K/sem acepta. Entre el 70% y 100% del pedido (≥ €{Math.round(meta.demandedSalaryEurK * 0.7)}K),
+                    se la juega — puede aceptar o marcharse. Menos del 70% lo rechaza seguro.
+                  </p>
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm">€</span>
+                    <input
+                      type="number"
+                      name="counterSalaryEurK"
+                      class="input input-sm input-bordered w-24"
+                      min="1"
+                      max={meta.demandedSalaryEurK * 2}
+                      value={Math.round((meta.currentSalaryEurK ?? 0) + ((meta.demandedSalaryEurK ?? 0) - (meta.currentSalaryEurK ?? 0)) / 2)}
+                      required
+                    />
+                    <span class="text-sm opacity-70">K/sem</span>
+                    <button type="submit" class="btn btn-sm btn-warning ml-auto">
+                      Enviar contraoferta
+                    </button>
+                  </div>
+                </form>
+              {/if}
             </div>
             <p class="text-xs opacity-60 mt-3">
-              La opción por defecto se aplicará pasados 24h si no decides.
+              {isRenewal ? 'Si rechazás o no decidís, el jugador acaba contrato y se va libre.' : 'La opción por defecto se aplicará pasados 24h si no decides.'}
             </p>
           {:else if openEvent.status === 'pending'}
             <p class="text-xs opacity-60 mt-3 italic">

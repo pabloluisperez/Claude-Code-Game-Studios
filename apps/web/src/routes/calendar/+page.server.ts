@@ -16,6 +16,7 @@ import {
   sponsors,
   fixtures,
   clubs,
+  players,
   playthroughs,
   eq,
   and,
@@ -155,7 +156,20 @@ export const actions: Actions = {
       weeklyAmountEurK?: number;
       contractWeeks?: number;
       qualityDelta?: number;
+      // Contract renewal fields (Pablo 2026-05-25)
+      playerId?: string;
+      playerName?: string;
+      currentSalaryEurK?: number;
+      demandedSalaryEurK?: number;
+      proposedContractWeeks?: number;
+      contractEndWeek?: number;
+      skill?: number;
+      form?: number;
+      age?: number;
     };
+
+    // Counter-offer salary (only relevant for contract_renewal kind).
+    const counterSalaryEurK = Number(form.get('counterSalaryEurK') ?? 0) || 0;
 
     await db.transaction(async (tx) => {
       await tx
@@ -208,6 +222,85 @@ export const actions: Actions = {
               eq(calendarEvents.status, 'pending'),
             ),
           );
+      }
+
+      // Pablo 2026-05-25: contract_renewal side effects.
+      // Negotiation outcome rules:
+      //   accept   → renew at demanded salary, extend by proposedContractWeeks
+      //   counter  → player evaluates counterSalary vs demanded:
+      //                ≥100% → accept
+      //                70-100% (deterministic by player+week hash) → accept ~50%
+      //                <70% → reject (player walks at contract end)
+      //   reject   → mark resolved, player walks at contract end (no extension)
+      if (
+        metadata.kind === 'contract_renewal' &&
+        metadata.playerId &&
+        metadata.demandedSalaryEurK &&
+        metadata.proposedContractWeeks
+      ) {
+        const demanded = metadata.demandedSalaryEurK;
+        const weeks = metadata.proposedContractWeeks;
+
+        let outcome: 'renewed' | 'counter_pending' | 'walked' = 'walked';
+        let finalSalary = metadata.currentSalaryEurK ?? demanded;
+
+        if (choice === 'accept') {
+          outcome = 'renewed';
+          finalSalary = demanded;
+        } else if (choice === 'counter' && counterSalaryEurK > 0) {
+          const ratio = counterSalaryEurK / demanded;
+          if (ratio >= 1.0) {
+            outcome = 'renewed';
+            finalSalary = counterSalaryEurK;
+          } else if (ratio >= 0.7) {
+            // Deterministic 50/50 by (playerId + week) hash modulo 2.
+            const seed = (metadata.playerId + ':' + active.currentWeek).split('').reduce(
+              (a, c) => (a * 31 + c.charCodeAt(0)) & 0xffffffff,
+              7,
+            );
+            if ((Math.abs(seed) & 1) === 1) {
+              outcome = 'renewed';
+              finalSalary = counterSalaryEurK;
+            } else {
+              // Player rejects this counter → walks at end (one-shot, no re-counter).
+              outcome = 'walked';
+            }
+          } else {
+            outcome = 'walked';
+          }
+        } else if (choice === 'reject') {
+          outcome = 'walked';
+        }
+
+        if (outcome === 'renewed') {
+          await tx
+            .update(players)
+            .set({
+              salaryEurK: finalSalary,
+              contractStartWeek: active.currentWeek,
+              contractEndWeek: active.currentWeek + weeks,
+              contractStatus: 'in_contract',
+              weeksUnsigned: 0,
+            })
+            .where(eq(players.id, metadata.playerId));
+        }
+        // For 'walked' outcome we don't touch the player — contract still
+        // expires at contractEndWeek per existing data; downstream lifecycle
+        // logic handles the transition to free agent.
+
+        // Record outcome in event metadata so /calendar shows what happened.
+        await tx
+          .update(calendarEvents)
+          .set({
+            metadata: {
+              ...metadata,
+              resolvedChoice: choice,
+              resolvedOutcome: outcome,
+              resolvedFinalSalaryEurK: finalSalary,
+              resolvedAt: new Date().toISOString(),
+            },
+          })
+          .where(eq(calendarEvents.id, eventId));
       }
     });
 
