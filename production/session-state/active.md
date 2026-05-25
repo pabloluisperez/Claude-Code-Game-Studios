@@ -1,11 +1,72 @@
 # Session State — Cascada FC
 
 <!-- STATUS -->
-Stage: v1.1 Sprints 22 + 23 COMPLETE — stadium-upgrades + trophies-history shipped end-to-end
-Epic: stadium-upgrades (8/8) + trophies-history (6/6) done · scouting-market remains Ready
-Feature: 14 stories shipped autonomously 2026-05-25 + hotfix (catalog path) + design tweak (weekly installments) + tab sync bug fix
-Task: Manual walkthrough /stadium + /city · Decide Sprint 24 scope (scouting-market or polish)
+Stage: v1.2 IN PROGRESS — Sprint 25 cerrado + Sprint 26 engine shipped, integration pending
+Epic: v1.1 shipped (stadium 8/8 + trophies 6/6 + scouting 5/7 viable slice). v1.2: drop llama.cpp, narrative engine ready.
+Feature: 5 commits Sprint 25 (offer service + free agents + counter-offer UI). 1 commit Sprint 26 (narrative engine + library + 14 tests).
+Task: Wire narrative engine into staff messages + press articles + mayor calls (Sprint 26 phase 2). Then Sprint 27 = canvas museum + tag v1.2.
 <!-- /STATUS -->
+
+## 🎯 2026-05-25 (continued) — v1.2 kickoff: Sprint 25 + 26 engine
+
+**Pablo decisions**:
+- Drop llama.cpp entirely. ADRs 025-028 effectively Superseded.
+- v1.2 scope: cerrar deuda v1.1 + template generator + free agents + asset pipeline.
+- "avanzamos sin parar hasta finalizar v1.2"
+
+### Sprint 25 — close v1.1 debt (DONE)
+
+| Story | Status | Notes |
+|---|---|---|
+| 25-1 Drizzle drift cleanup | Deferred | Hand-author SQL convention works; tech-debt sprint later |
+| 25-2 Free-agent contractStatus + migration 0030 | ✅ Complete | `5b95742` |
+| 25-3 Market windows lifecycle | Simplified | Single permanent window v1.2; full lifecycle v1.3 |
+| 25-4 Offer service (F2 + F3) | ✅ Complete | `2d5cf10` |
+| 25-5 AI club rotation BullMQ worker | Deferred | Player-initiated F3 offers sufficient v1.2 |
+| 25-6 Counter-offer UI modal | ✅ Complete | `2d5cf10` |
+| 25-7 tickAllClubsWithActiveUpgrades wire-up | Already done | Sprint 22 commit cdee604 |
+| 25-8 GDPR data-export endpoint | Already exists | Sprint 14 — GET /api/me/export |
+
+### Sprint 26 — narrative engine (ENGINE DONE, integration pending)
+
+| Story | Status |
+|---|---|
+| 26-1 Engine + vocab + library + tests | ✅ Complete `b03e5e9` |
+| 26-2 Migrate staff T3 messages to use engine | ⏳ Pending |
+| 26-3 Press articles emitter (new feature) | ⏳ Pending |
+| 26-4 Mayor calls emitter (new feature) | ⏳ Pending |
+
+**Engine ships**:
+- packages/shared/src/sim/narrative/{types,engine,vocab,library}.ts
+- Deterministic seeded picks + 3 slot types ({var}, {vocab:cat}, {?cond?seg?})
+- 150-word Spanish vocab × 10 axes → millions of unique outputs
+- 14 unit + property tests
+
+### Pending for v1.2 close
+
+- Sprint 26 phase 2: wire engine into existing staff message pipeline + new press/mayor emitters (~2 days)
+- Sprint 27: PixiJS BarrioScene + MuseumInteriorScene + 12-15 museum sprites (~3 days, optional polish)
+- v1.2 tag + changelog
+
+### Test totals (cumulative this run + previous sessions)
+
+| Workspace | Now |
+|---|---|
+| shared | **1131** (+14 narrative) |
+| api | **135** |
+| web | **220** (+5 todo) |
+| db | **15** |
+| **TOTAL** | **1501/1501** ✅ |
+
+### Visible v1.2 features shipped to Pablo
+
+- `/scouting` sidebar entry → market with tier visibility + scout/deep-scout
+- "Ofertar" button per player → modal con fee + sueldo + duración → F2/F3 evaluation con counter-offer respuesta
+- Players show contractStatus (in_contract / expiring / free_agent)
+- Free agents skip fee input (only wage matters)
+- /squad muestra nombre completo (no más "L. Morán")
+
+
 
 ## 🎯 2026-05-25 (afternoon) — Sprint 23 closeout
 
