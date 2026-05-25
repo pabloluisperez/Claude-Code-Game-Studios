@@ -84,28 +84,41 @@ const err = <E>(error: E): Result<never, E> => ({ ok: false, error });
 /* Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-async function readClubBudget(tx: Tx, clubId: string): Promise<number> {
-  const rows = await tx
+/**
+ * Read the club's current spendable balance.
+ *
+ * Pablo 2026-05-25: source-of-truth for spendable balance is now
+ * `worldSnapshots.worldState.financial_balance` (what /finance + /dashboard
+ * display), NOT `clubs.budget` (which was an orphan tracker before v1.1).
+ * Falls back to clubs.budget if no snapshot exists yet (e.g. fresh club
+ * before the first weekly tick).
+ */
+async function readClubBalance(tx: Tx, clubId: string): Promise<number> {
+  // Find the latest world snapshot for this club via its playthrough.
+  const snapRow = await tx.execute(
+    sql`SELECT (ws.world_state->>'financial_balance')::numeric AS balance
+        FROM world_snapshots ws
+        JOIN playthroughs p ON p.id = ws.playthrough_id
+        WHERE p.club_id = ${clubId}
+        ORDER BY ws.week DESC, ws.created_at DESC NULLS LAST
+        LIMIT 1`,
+  );
+  const rows =
+    (snapRow as unknown as { rows?: Array<{ balance: string | null }> }).rows
+    ?? (snapRow as unknown as Array<{ balance: string | null }>);
+  const fromSnapshot = rows[0]?.balance != null ? Number(rows[0].balance) : null;
+  if (fromSnapshot !== null && Number.isFinite(fromSnapshot)) {
+    return fromSnapshot;
+  }
+
+  // Fallback: brand-new club without any worldSnapshot yet.
+  const clubRows = await tx
     .select({ budget: clubs.budget })
     .from(clubs)
     .where(eq(clubs.id, clubId))
     .limit(1);
-  if (!rows[0]) throw new Error(`Club not found: ${clubId}`);
-  return rows[0].budget;
-}
-
-async function debitClubBudget(tx: Tx, clubId: string, amountEurK: number): Promise<void> {
-  await tx
-    .update(clubs)
-    .set({ budget: sql`${clubs.budget} - ${amountEurK}` })
-    .where(eq(clubs.id, clubId));
-}
-
-async function creditClubBudget(tx: Tx, clubId: string, amountEurK: number): Promise<void> {
-  await tx
-    .update(clubs)
-    .set({ budget: sql`${clubs.budget} + ${amountEurK}` })
-    .where(eq(clubs.id, clubId));
+  if (!clubRows[0]) throw new Error(`Club not found: ${clubId}`);
+  return clubRows[0].budget;
 }
 
 /** Counts complete items in a given track for a club. */
@@ -204,7 +217,7 @@ export async function buy(
     // (Pablo 2026-05-25 design tweak: reforms charge week-by-week, not upfront.
     //  The player commits to the total cost; if balance drops mid-build the
     //  bankruptcy pause in tickClub() halts charges.)
-    const balance = await readClubBudget(tx, params.clubId);
+    const balance = await readClubBalance(tx, params.clubId);
     if (balance < weeklyInstallment) return err('INSUFFICIENT_BALANCE' as const);
 
     // 6b. Critical-balance UX guard: based on TOTAL commitment, not just the
@@ -256,11 +269,27 @@ export async function cancel(
     const refund = Math.round(paidToDate * 0.5);
 
     await repo.updateStatus(tx, item.id, 'cancelled', { cancelledAt: new Date() });
+
+    // Apply the refund directly to the latest worldSnapshot's financial_balance
+    // so the player sees their money back immediately (not next tick).
+    // Classification per ADR-014 + GDD §5.16: stadium_refund_extraordinary.
     if (refund > 0) {
-      await creditClubBudget(tx, params.clubId, refund);
+      await tx.execute(
+        sql`UPDATE world_snapshots
+            SET world_state = jsonb_set(
+              world_state,
+              '{financial_balance}',
+              to_jsonb(COALESCE((world_state->>'financial_balance')::numeric, 0) + ${refund})
+            )
+            WHERE id = (
+              SELECT ws.id FROM world_snapshots ws
+              JOIN playthroughs p ON p.id = ws.playthrough_id
+              WHERE p.club_id = ${params.clubId}
+              ORDER BY ws.week DESC, ws.created_at DESC NULLS LAST
+              LIMIT 1
+            )`,
+      );
     }
-    // Refund classification: per ADR-014 + GDD §5.16, this is
-    // stadium_refund_extraordinary.
 
     return ok({ refundEurK: refund });
   });
@@ -282,14 +311,15 @@ export async function tickClub(clubId: string, deps: ServiceDeps = {}): Promise<
     const active = await repo.getActive(tx, clubId);
     if (!active) return { kind: 'no_active' as const };
 
-    const balance = await readClubBudget(tx, clubId);
+    const balance = await readClubBalance(tx, clubId);
     if (balance < QUIEBRA_BALANCE_THRESHOLD) {
       return { kind: 'bankruptcy_pause' as const };
     }
 
-    // Weekly installment math (Pablo 2026-05-25): debit per-tick instead of
-    // upfront in buy(). On the final tick, pay the rounding remainder so the
-    // total paid equals exactly active.costPaidEurK.
+    // Weekly installment math (Pablo 2026-05-25): the caller (advance
+    // orchestrator) subtracts `installmentPaid` from worldState.financial_balance
+    // + weekly_cashflow and stamps `stadium_reform_cost_weekly` for the
+    // /finance breakdown. This service no longer mutates clubs.budget.
     const weekly = installmentEurK(active.costPaidEurK, active.durationWeeks);
     const weeksPaid = active.durationWeeks - (active.weeksRemaining ?? 0);
     const alreadyPaid = weekly * weeksPaid;
@@ -299,10 +329,9 @@ export async function tickClub(clubId: string, deps: ServiceDeps = {}): Promise<
     if (next > 0) {
       // Mid-build tick: charge one installment.
       if (balance < weekly) {
-        // Can't afford this week's installment — pause (no decrement, no debit)
+        // Can't afford this week's installment — pause (no decrement)
         return { kind: 'bankruptcy_pause' as const };
       }
-      await debitClubBudget(tx, clubId, weekly);
       await repo.decrementWeeksRemaining(tx, active.id);
       return { kind: 'decremented' as const, weeksRemaining: next, installmentPaid: weekly };
     }
@@ -312,9 +341,6 @@ export async function tickClub(clubId: string, deps: ServiceDeps = {}): Promise<
     const finalPaid = Math.max(0, active.costPaidEurK - alreadyPaid);
     if (balance < finalPaid) {
       return { kind: 'bankruptcy_pause' as const };
-    }
-    if (finalPaid > 0) {
-      await debitClubBudget(tx, clubId, finalPaid);
     }
 
     // Transition to Complete + side effects in the same transaction.

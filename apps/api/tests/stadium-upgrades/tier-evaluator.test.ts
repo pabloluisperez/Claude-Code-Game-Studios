@@ -181,13 +181,13 @@ describeDB('tier-up doble-gate evaluator', () => {
     const result = await tickAllClubsWithActiveUpgrades();
     expect(result.ticked).toBeGreaterThanOrEqual(2);
 
-    // Both a + b's items should have weeksRemaining decremented to 1
+    // T1 starting weeksRemaining=6 → after 1 tick = 5.
     const items = await db.select().from(stadiumUpgradeItems).where(eq(stadiumUpgradeItems.status, 'in_progress'));
     const aItems = items.filter((i) => i.clubId === a.clubId);
     const bItems = items.filter((i) => i.clubId === b.clubId);
     const cItems = items.filter((i) => i.clubId === c.clubId);
-    expect(aItems[0]!.weeksRemaining).toBe(1);
-    expect(bItems[0]!.weeksRemaining).toBe(1);
+    expect(aItems[0]!.weeksRemaining).toBe(5);
+    expect(bItems[0]!.weeksRemaining).toBe(5);
     expect(cItems).toHaveLength(0); // c never bought anything
   });
 

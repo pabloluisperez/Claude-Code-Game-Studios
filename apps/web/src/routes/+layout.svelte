@@ -51,6 +51,8 @@
       inboxUnread={data.badges?.inboxUnread ?? 0}
       showSidebarToggle={showSidebar}
       onToggleSidebar={toggleSidebar}
+      isPreseason={data.activePlaythrough?.isPreseason ?? false}
+      matchday={data.activePlaythrough?.matchday ?? null}
     />
     <div class="flex flex-1">
       {#if showSidebar}

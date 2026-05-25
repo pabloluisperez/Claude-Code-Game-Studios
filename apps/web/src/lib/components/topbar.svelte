@@ -21,6 +21,13 @@
     inboxUnread?: number;
     showSidebarToggle?: boolean;
     onToggleSidebar?: () => void;
+    /**
+     * Pablo bug 2026-05-25: distinguish preseason from in-season in the
+     * topbar. When isPreseason is true, show "Pretemporada"; otherwise show
+     * "Jornada N" using `matchday`.
+     */
+    isPreseason?: boolean;
+    matchday?: number | null;
   }
   let {
     user,
@@ -31,7 +38,21 @@
     inboxUnread = 0,
     showSidebarToggle = true,
     onToggleSidebar,
+    isPreseason = false,
+    matchday = null,
   }: Props = $props();
+
+  // Compute the label + value for the week/jornada chip.
+  const weekChipLabel = $derived.by(() => {
+    if (isPreseason) return '';
+    if (matchday !== null) return 'Jornada';
+    return 'Semana';
+  });
+  const weekChipValue = $derived.by(() => {
+    if (isPreseason) return 'Pretemporada';
+    if (matchday !== null) return String(matchday);
+    return week === 0 ? 'Pretemporada' : String(week);
+  });
 
   // Color-tier the balance for at-a-glance read.
   // < 0 → red ("debt"); 0..50 €K → warning yellow; > 50 €K → neutral.
@@ -87,8 +108,8 @@
       </div>
     {/if}
     <div class="hidden md:flex flex-col items-end text-xs leading-tight">
-      <span class="opacity-50">{week === 0 ? '' : 'Semana'}</span>
-      <span class="font-mono font-semibold">{week === 0 ? 'Pretemporada' : week}</span>
+      <span class="opacity-50">{weekChipLabel}</span>
+      <span class="font-mono font-semibold">{weekChipValue}</span>
     </div>
     {#if balanceEurK !== null}
       <a

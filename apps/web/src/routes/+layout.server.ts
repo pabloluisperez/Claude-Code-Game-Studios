@@ -6,8 +6,12 @@ import {
   calendarEvents,
   staffMessages,
   worldSnapshots,
+  seasons,
+  leagues,
+  fixtures,
   eq,
   and,
+  or,
   desc,
   sql,
 } from '@smt/db';
@@ -86,12 +90,45 @@ export const load: LayoutServerLoad = async ({ locals }) => {
   // weekToDate(currentDayOfSeason / 7) = anchor + currentDayOfSeason days.
   const dayPrecise = (active.currentDayOfSeason ?? active.currentWeek * 7) / 7;
 
+  // Pablo bug 2026-05-25: topbar should show "Pretemporada" while we're
+  // before the active season's startWeek, then "Jornada N" once the league
+  // is running. Compute both: seasonStartWeek + current matchday.
+  const [activeSeason] = await db
+    .select({ startWeek: seasons.startWeek })
+    .from(seasons)
+    .innerJoin(leagues, eq(leagues.id, seasons.leagueId))
+    .where(and(eq(leagues.playthroughId, active.id), eq(seasons.status, 'active')))
+    .orderBy(desc(seasons.seasonNumber))
+    .limit(1);
+  const seasonStartWeek = activeSeason?.startWeek ?? null;
+  const isPreseason =
+    seasonStartWeek !== null && active.currentWeek < seasonStartWeek;
+  let matchday: number | null = null;
+  if (seasonStartWeek !== null && !isPreseason) {
+    // Lookup the fixture for this week + this club to read the canonical
+    // matchday number. Falls back to (currentWeek - startWeek + 1) if no
+    // fixture row exists yet (e.g. between season-end and next season-start).
+    const [fx] = await db
+      .select({ matchday: fixtures.matchday })
+      .from(fixtures)
+      .where(
+        and(
+          eq(fixtures.week, active.currentWeek),
+          or(eq(fixtures.homeClubId, active.clubId), eq(fixtures.awayClubId, active.clubId)),
+        ),
+      )
+      .limit(1);
+    matchday = fx?.matchday ?? Math.max(1, active.currentWeek - seasonStartWeek + 1);
+  }
+
   return {
     user: locals.user,
     activePlaythrough: {
       ...active,
       date: weekToDate(dayPrecise),
       balanceEurK,
+      isPreseason,
+      matchday,
     },
     badges: {
       pendingStops: Number(pendingStops?.count ?? 0),

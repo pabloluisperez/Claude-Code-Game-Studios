@@ -350,7 +350,8 @@
     {@const totalIncome = incSponsor + incMatchday + incTV + incMerch}
     {@const costStaff = Math.round(stateRead['staff_cost_weekly'] ?? 0)}
     {@const costPlayers = Math.round(stateRead['player_wages_weekly'] ?? 0)}
-    {@const totalCost = costStaff + costPlayers}
+    {@const costStadium = Math.round(stateRead['stadium_reform_cost_weekly'] ?? 0)}
+    {@const totalCost = costStaff + costPlayers + costStadium}
     <section class="card bg-base-100 shadow">
       <div class="card-body">
         <h2 class="card-title text-base">Desglose del cashflow semanal</h2>
@@ -395,6 +396,12 @@
                 <tr>
                   <td>Salarios del staff</td>
                   <td class="text-right font-mono text-error">−{formatEurK(costStaff)}</td>
+                </tr>
+                <tr>
+                  <td>Reformas del estadio</td>
+                  <td class="text-right font-mono {costStadium > 0 ? 'text-error' : 'opacity-40'}">
+                    {costStadium > 0 ? '−' : ''}{formatEurK(costStadium)}
+                  </td>
                 </tr>
               </tbody>
             </table>

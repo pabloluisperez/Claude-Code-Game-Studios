@@ -122,8 +122,8 @@ describeDB('stadium-upgrades routes (integration)', () => {
     const body = await res.json() as { itemId: string; totalCost: number; installmentEurK: number; durationWeeks: number };
     expect(body.itemId).toBeTruthy();
     expect(body.totalCost).toBe(21);
-    expect(body.installmentEurK).toBe(11);
-    expect(body.durationWeeks).toBe(2);
+    expect(body.installmentEurK).toBe(4); // realistic durations: T1=6 weeks
+    expect(body.durationWeeks).toBe(6);
   });
 
   it('test_buy_zod_fail_returns_400', async () => {
@@ -188,7 +188,8 @@ describeDB('stadium-upgrades routes (integration)', () => {
   });
 
   it('test_buy_insufficient_balance_returns_402', async () => {
-    const env = await setupEnv({ budget: 5 });
+    // Budget < installment (4). With realistic T1=6, installment=4.
+    const env = await setupEnv({ budget: 1 });
     const res = await app.fetch(
       new Request('http://x/buy', {
         method: 'POST',

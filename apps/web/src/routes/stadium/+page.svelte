@@ -142,9 +142,15 @@
             </p>
           </div>
           <div>
-            <h2 class="text-sm uppercase opacity-60 mb-1">Presupuesto disponible</h2>
-            <p class="text-2xl font-bold font-mono">{formatEur(data.stadium.budget)}</p>
-            <p class="text-xs opacity-50">para reformas</p>
+            <h2 class="text-sm uppercase opacity-60 mb-1">Balance del club</h2>
+            <p class="text-2xl font-bold font-mono">{data.stadium.budget.toLocaleString('es-ES')} k€</p>
+            {#if data.stadium.reformCostThisWeek > 0}
+              <p class="text-xs text-warning">
+                Esta semana se cobraron <span class="font-mono">{data.stadium.reformCostThisWeek} k€</span> por la obra en curso
+              </p>
+            {:else}
+              <p class="text-xs opacity-50">disponible para reformas</p>
+            {/if}
           </div>
         </div>
 

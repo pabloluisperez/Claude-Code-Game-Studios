@@ -83,7 +83,9 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
     .from(clubs)
     .where(eq(clubs.id, ctx.playthrough.clubId));
 
-  // Read latest snapshot counters (drive F1 + F3 + F5).
+  // Read latest snapshot counters (drive F1 + F3 + F5) AND financial_balance
+  // (source-of-truth for spendable balance per Pablo 2026-05-25 — supersedes
+  // clubs.budget which is an orphan tracker).
   const [snapshot] = await db
     .select({
       stadiumUpgradeCount: worldSnapshots.stadiumUpgradeCount,
@@ -95,6 +97,13 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
     .where(eq(worldSnapshots.playthroughId, ctx.playthrough.id))
     .orderBy(desc(worldSnapshots.week))
     .limit(1);
+
+  const financialBalance = snapshot
+    ? Number((snapshot.worldState as Record<string, number>)['financial_balance'] ?? club?.budget ?? 0)
+    : club?.budget ?? 0;
+  const stadiumReformCostWeekly = snapshot
+    ? Number((snapshot.worldState as Record<string, number>)['stadium_reform_cost_weekly'] ?? 0)
+    : 0;
 
   // Count completed Gradas items per tier for F5 stadium_capacity.
   const completed = await db
@@ -142,7 +151,8 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
       capacity,
       infrastructureLevel: infra,
       pitchSurface: pitchSurface(infra),
-      budget: club?.budget ?? 0,
+      budget: financialBalance,
+      reformCostThisWeek: stadiumReformCostWeekly,
     },
     catalog: catalogPayload,
   };

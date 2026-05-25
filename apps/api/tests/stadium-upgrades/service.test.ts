@@ -11,7 +11,7 @@
 
 import { describe, it, expect, beforeAll, afterEach, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
-import { db, users, clubs, playthroughs, worldSnapshots, stadiumUpgradeItems, eq } from '@smt/db';
+import { db, users, clubs, playthroughs, worldSnapshots, stadiumUpgradeItems, eq, sql } from '@smt/db';
 import { loadCatalog, _resetCatalogCacheForTests } from '../../src/modules/stadium-upgrades/catalog.js';
 import { buy, cancel, tickClub, type ServiceDeps } from '../../src/modules/stadium-upgrades/service.js';
 import path from 'node:path';
@@ -109,17 +109,17 @@ describeDB('stadium-upgrades service (integration)', () => {
     if (!result.ok) return;
     expect(result.value.itemId).toBeTruthy();
     expect(result.value.totalCost).toBe(21); // 15 × 1.4 = 21
-    expect(result.value.durationWeeks).toBe(2); // T1 base, no director
-    expect(result.value.installmentEurK).toBe(11); // round(21 / 2) = 11 (final tick pays remainder 10)
+    expect(result.value.durationWeeks).toBe(6); // T1 base, no director (post realistic-duration change)
+    expect(result.value.installmentEurK).toBe(4); // round(21 / 6) = 4 (final tick settles remainder)
 
-    // Pablo 2026-05-25 design: NO upfront debit. Budget unchanged after buy().
+    // Pablo 2026-05-25 design: NO upfront debit. clubs.budget unchanged.
     const [club] = await db.select({ budget: clubs.budget }).from(clubs).where(eq(clubs.id, env.clubId));
     expect(club!.budget).toBe(10000);
 
     const items = await db.select().from(stadiumUpgradeItems).where(eq(stadiumUpgradeItems.clubId, env.clubId));
     expect(items).toHaveLength(1);
     expect(items[0]!.status).toBe('in_progress');
-    expect(items[0]!.weeksRemaining).toBe(2);
+    expect(items[0]!.weeksRemaining).toBe(6);
   });
 
   it('test_buy_invalid_prereq_returns_error_no_db_write', async () => {
@@ -150,10 +150,11 @@ describeDB('stadium-upgrades service (integration)', () => {
   });
 
   it('test_buy_insufficient_balance_returns_error', async () => {
-    const env = await createTestEnv({ budget: 5 });
+    // Budget < installment (4 k€). With realistic durations T1=6, installment=4.
+    const env = await createTestEnv({ budget: 1 });
     track(env);
 
-    const result = await buy({ clubId: env.clubId, itemSlug: 'gradas-n1-norte' }); // costs 21
+    const result = await buy({ clubId: env.clubId, itemSlug: 'gradas-n1-norte' });
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error).toBe('INSUFFICIENT_BALANCE');
@@ -234,7 +235,7 @@ describeDB('stadium-upgrades service (integration)', () => {
   });
 
   it('test_cancel_after_one_tick_refunds_half_of_paid_to_date', async () => {
-    // Tick once (charges installment=11). Then cancel: refund = round(11 × 0.5) = 6.
+    // T1 cost=21, duration=6, installment=4. One tick → paid=4 → refund=2.
     const env = await createTestEnv({ budget: 10000 });
     track(env);
 
@@ -242,17 +243,13 @@ describeDB('stadium-upgrades service (integration)', () => {
     expect(bought.ok).toBe(true);
     if (!bought.ok) return;
 
-    await tickClub(env.clubId); // installment=11 debited; weeksRemaining 2 → 1
+    await tickClub(env.clubId); // weeksRemaining 6 → 5
 
     const result = await cancel({ clubId: env.clubId, itemId: bought.value.itemId });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    // paid-to-date = 11. refund = round(11 × 0.5) = 6
-    expect(result.value.refundEurK).toBe(6);
-
-    const [club] = await db.select({ budget: clubs.budget }).from(clubs).where(eq(clubs.id, env.clubId));
-    // 10000 - 11 (installment) + 6 (refund) = 9995
-    expect(club!.budget).toBe(9995);
+    // paid-to-date = 4 (one installment of 4). refund = round(4 × 0.5) = 2
+    expect(result.value.refundEurK).toBe(2);
   });
 
   it('test_cancel_unknown_id_returns_not_found', async () => {
@@ -310,7 +307,9 @@ describeDB('stadium-upgrades service (integration)', () => {
     expect(result.kind).toBe('no_active');
   });
 
-  it('test_tick_decrements_weeks_remaining_and_debits_installment', async () => {
+  it('test_tick_decrements_weeks_remaining_and_returns_installment', async () => {
+    // Pablo refactor 2026-05-25: service no longer mutates clubs.budget.
+    // Returns installmentPaid so the orchestrator can fold it into worldState.
     const env = await createTestEnv({ budget: 10000 });
     track(env);
 
@@ -321,14 +320,17 @@ describeDB('stadium-upgrades service (integration)', () => {
     const result = await tickClub(env.clubId);
     expect(result.kind).toBe('decremented');
     if (result.kind !== 'decremented') return;
-    expect(result.weeksRemaining).toBe(1);
-    expect(result.installmentPaid).toBe(11); // round(21 / 2) = 11
+    expect(result.weeksRemaining).toBe(5); // started at 6, decremented
+    expect(result.installmentPaid).toBe(4); // round(21 / 6) = 4
 
+    // clubs.budget MUST NOT be mutated by the service anymore — the orchestrator
+    // applies the debit via worldState.financial_balance.
     const [club] = await db.select({ budget: clubs.budget }).from(clubs).where(eq(clubs.id, env.clubId));
-    expect(club!.budget).toBe(10000 - 11);
+    expect(club!.budget).toBe(10000);
   });
 
-  it('test_tick_at_one_week_remaining_completes_with_side_effects', async () => {
+  it('test_tick_at_final_week_completes_with_side_effects', async () => {
+    // Realistic-durations T1=6. Tick down to 1, then the 6th tick completes.
     const env = await createTestEnv({ budget: 10000 });
     track(env);
 
@@ -336,10 +338,10 @@ describeDB('stadium-upgrades service (integration)', () => {
     expect(bought.ok).toBe(true);
     if (!bought.ok) return;
 
-    // First tick — decrement to 1 + debit 11
-    await tickClub(env.clubId);
+    // 5 mid-build ticks (weeksRemaining 6 → 1)
+    for (let i = 0; i < 5; i++) await tickClub(env.clubId);
 
-    // Second tick — should Complete + pay final remainder (21 - 11 = 10)
+    // 6th tick — Complete. final paid = 21 - 5×4 = 21 - 20 = 1
     const cascadeSpy = vi.fn(async () => undefined);
     const tierSpy = vi.fn(async () => ({ tierUp: false }));
     const emitSpy = vi.fn();
@@ -351,14 +353,10 @@ describeDB('stadium-upgrades service (integration)', () => {
 
     expect(result.kind).toBe('completed');
     if (result.kind !== 'completed') return;
-    expect(result.finalPaid).toBe(10); // 21 total - 11 first installment = 10 final
+    expect(result.finalPaid).toBe(1); // 21 - 5 × 4 = 1
     expect(cascadeSpy).toHaveBeenCalledWith(env.clubId, 'stadium_upgrade_count', 1, expect.anything());
     expect(tierSpy).toHaveBeenCalledWith(env.clubId, expect.anything());
     expect(emitSpy).toHaveBeenCalledWith(env.clubId, bought.value.itemId);
-
-    // Total paid across ticks = 21 (matches totalCost exactly)
-    const [club] = await db.select({ budget: clubs.budget }).from(clubs).where(eq(clubs.id, env.clubId));
-    expect(club!.budget).toBe(10000 - 21);
 
     // World snapshot counter incremented
     const [snap] = await db.select().from(worldSnapshots).where(eq(worldSnapshots.id, env.snapshotId));
@@ -376,16 +374,21 @@ describeDB('stadium-upgrades service (integration)', () => {
     const bought = await buy({ clubId: env.clubId, itemSlug: 'gradas-n1-norte' });
     expect(bought.ok).toBe(true);
 
-    // Drive balance below QUIEBRA_BALANCE_THRESHOLD = -200
-    await db.update(clubs).set({ budget: -500 }).where(eq(clubs.id, env.clubId));
+    // Drive balance below QUIEBRA_BALANCE_THRESHOLD = -200 via the worldSnapshot
+    // (which is now the canonical balance source after the 2026-05-25 refactor).
+    await db.execute(sql`
+      UPDATE world_snapshots
+      SET world_state = jsonb_set(world_state, '{financial_balance}', '-500')
+      WHERE id = ${env.snapshotId}
+    `);
 
     const result = await tickClub(env.clubId);
     expect(result.kind).toBe('bankruptcy_pause');
 
-    // weeks_remaining unchanged
+    // weeks_remaining unchanged (still 6, the starting value for T1 realistic)
     if (!bought.ok) return;
     const items = await db.select().from(stadiumUpgradeItems).where(eq(stadiumUpgradeItems.id, bought.value.itemId));
-    expect(items[0]!.weeksRemaining).toBe(2);
+    expect(items[0]!.weeksRemaining).toBe(6);
   });
 
   it('test_tick_complete_routes_counter_per_track', async () => {
@@ -395,9 +398,8 @@ describeDB('stadium-upgrades service (integration)', () => {
     // Complete one item in the academy track to test counter routing.
     const bought = await buy({ clubId: env.clubId, itemSlug: 'academy-n1-aula' });
     expect(bought.ok).toBe(true);
-    // Tick down to 0
-    await tickClub(env.clubId); // 2 → 1 (wait — durationWeeks for T1 no director = 2)
-    await tickClub(env.clubId); // 1 → complete
+    // Tick down to 0 — T1 is 6 weeks with realistic durations.
+    for (let i = 0; i < 6; i++) await tickClub(env.clubId);
 
     const [snap] = await db.select().from(worldSnapshots).where(eq(worldSnapshots.id, env.snapshotId));
     expect(snap!.youthAcademyLevel).toBe(1);

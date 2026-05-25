@@ -49,6 +49,7 @@ import {
   and,
   or,
   desc,
+  sql,
 } from '@smt/db';
 import {
   CASCADA_FC_GRAPH,
@@ -66,6 +67,7 @@ import { runTVPostPhase, runTVPrePhase, persistTVTickEffects } from './tv-rights
 import { maybeDripSeasonTickets } from './season-tickets';
 import { runMatchDay } from './match-day-runner';
 import { applyEconomyTick } from './economy-tick';
+import { tickStadiumForClubInTx } from './stadium-tick';
 import { checkAndRolloverSeason } from './season-rollover';
 import { detectAndPersistMilestones } from './milestones';
 import { grantWeeklyManagerXp } from './manager-xp';
@@ -354,6 +356,40 @@ export async function runAdvanceTickFull(
     fanLoyalty: tvPre.fanLoyalty,
   });
 
+  // ── Phase 3b: stadium-upgrades tick (Pablo bug 2026-05-25) ──────────────
+  // Run the per-club stadium FSM and fold any installment debit into the
+  // worldState patch so the cashflow breakdown reflects it. If the obra
+  // completes this tick we also bump the corresponding WorldState counter
+  // (stadium_upgrade_count / training_facility_level / youth_academy_level)
+  // for F1 / F3 to pick up immediately on the /stadium UI.
+  const balanceForStadiumTick =
+    (eco.patchedState as Record<string, number>)['financial_balance'] ?? 0;
+  const stadiumTick = await tickStadiumForClubInTx(db, active.clubId, balanceForStadiumTick);
+  let stadiumCostThisTick = 0;
+  if (stadiumTick.kind === 'decremented') {
+    stadiumCostThisTick = stadiumTick.installmentPaid;
+  } else if (stadiumTick.kind === 'completed') {
+    stadiumCostThisTick = stadiumTick.finalPaid;
+  }
+  if (stadiumCostThisTick > 0) {
+    const prevBalance = Number(
+      (eco.patchedState as Record<string, number>)['financial_balance'] ?? 0,
+    );
+    const prevCashflow = Number(
+      (eco.patchedState as Record<string, number>)['weekly_cashflow'] ?? 0,
+    );
+    (eco.patchedState as Record<string, number>)['financial_balance'] =
+      prevBalance - stadiumCostThisTick;
+    (eco.patchedState as Record<string, number>)['weekly_cashflow'] =
+      prevCashflow - stadiumCostThisTick;
+    (eco.patchedState as Record<string, number>)['stadium_reform_cost_weekly'] =
+      stadiumCostThisTick;
+  } else {
+    // Stamp 0 explicitly so the cashflow breakdown shows the row but with
+    // a neutral value when no obra is active this week.
+    (eco.patchedState as Record<string, number>)['stadium_reform_cost_weekly'] = 0;
+  }
+
   // ── Phase 4: atomic persistence ─────────────────────────────────────────
   // ADR-020 invariant: currentDayOfSeason = currentWeek * 7 (Option B —
   // weekly batches advance both columns in lockstep). Sprint 12+ will
@@ -367,6 +403,19 @@ export async function runAdvanceTickFull(
       cascadeLog: tickResult.log as unknown as Record<string, unknown>[],
       thresholdCrossings: tickResult.thresholdCrossings as unknown as Record<string, unknown>[],
     });
+
+    // If the obra completed this tick, bump the denormalized WorldState
+    // counter on this same fresh snapshot row so F1/F3 + /stadium UI pick
+    // up the new visual_level + infrastructure immediately.
+    if (stadiumTick.kind === 'completed') {
+      const counterField = stadiumTick.counterField;
+      await tx.execute(
+        sql.raw(
+          `UPDATE world_snapshots SET ${counterField} = COALESCE(${counterField}, 0) + 1
+           WHERE playthrough_id = '${active.id}' AND week = ${nextWeek}`,
+        ),
+      );
+    }
     await tx
       .update(playthroughs)
       .set({

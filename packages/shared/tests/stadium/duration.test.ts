@@ -12,24 +12,24 @@ import {
 import type { ItemTier } from '../../src/sim/stadium/types.js';
 
 describe('F2 durationWeeks', () => {
-  it('test_duration_t3_skill_80_returns_5', () => {
-    // AC-SU-12: round(6 × (1.0 - 30 × 0.20 / 50)) = round(6 × 0.88) = round(5.28) = 5
-    expect(durationWeeks({ tier: 3 }, 80)).toBe(5);
+  it('test_duration_t3_skill_80_returns_18', () => {
+    // round(20 × (1.0 - 30 × 0.20 / 50)) = round(20 × 0.88) = round(17.6) = 18
+    expect(durationWeeks({ tier: 3 }, 80)).toBe(18);
   });
 
-  it('test_duration_t4_skill_15_returns_10', () => {
-    // AC-SU-13: round(8 × (1.0 + 35 × 0.30 / 50)) = round(8 × 1.21) = round(9.68) = 10
-    expect(durationWeeks({ tier: 4 }, 15)).toBe(10);
+  it('test_duration_t4_skill_15_returns_44', () => {
+    // round(36 × (1.0 + 35 × 0.30 / 50)) = round(36 × 1.21) = round(43.56) = 44
+    expect(durationWeeks({ tier: 4 }, 15)).toBe(44);
   });
 
-  it('test_duration_t1_no_director_returns_2', () => {
-    // AC-SU-14: null skill → multiplier 1.0 → 2 × 1.0 = 2
-    expect(durationWeeks({ tier: 1 })).toBe(2);
+  it('test_duration_t1_no_director_returns_6', () => {
+    // null skill → multiplier 1.0 → 6 × 1.0 = 6
+    expect(durationWeeks({ tier: 1 })).toBe(6);
   });
 
-  it('test_duration_t1_skill_100_returns_2_via_floor_clamp', () => {
-    // AC-SU-15: 2 × 0.80 = 1.6 → round = 2 (no DUR_MIN clamp needed)
-    expect(durationWeeks({ tier: 1 }, 100)).toBe(2);
+  it('test_duration_t1_skill_100_returns_5', () => {
+    // 6 × 0.80 = 4.8 → round = 5
+    expect(durationWeeks({ tier: 1 }, 100)).toBe(5);
   });
 
   it('test_duration_property_any_skill_returns_integer_within_clamp', () => {
