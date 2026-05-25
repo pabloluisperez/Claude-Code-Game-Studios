@@ -1,12 +1,14 @@
 ---
 Story: SCOUTING-MARKET-001
-Status: Ready
+Status: Complete
+Last Updated: 2026-05-25
+Completed: 2026-05-25
 Type: Logic
-GDD Requirement: AC-SCM-12 (MAX_BIDS), AC-SCM-22 (determinism schema), AC-SCM-25 (saved searches)
+GDD Requirement: AC-SCM-12, AC-SCM-22, AC-SCM-25
 Governing ADR: ADR-031 §D2
 Control Manifest: 2026-05-19
-Test Evidence: packages/db/tests/scouting-market-schema.test.ts (pending)
-ImplementedAt: packages/db/src/schema/scouting-market.ts + packages/db/migrations/0027_scouting_market.sql
+Test Evidence: packages/db/tests/scouting-market-schema.test.ts (7/7 passing)
+ImplementedAt: packages/db/src/schema/scouting-market.ts + packages/db/drizzle/0029_scouting_market.sql (renumbered from 0027 — see commit)
 ---
 
 # Story: Drizzle schema + migration 0027 (5 tables + AI club bargain state)

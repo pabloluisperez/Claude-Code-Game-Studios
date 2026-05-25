@@ -14,3 +14,4 @@ export * from './calendar-events.js';
 export * from './milestones.js';
 export * from './tv-contracts.js';
 export * from './stadium-upgrades.js';
+export * from './scouting-market.js';
