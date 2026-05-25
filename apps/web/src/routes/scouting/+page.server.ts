@@ -79,4 +79,25 @@ export const actions = {
     }
     return { action: 'scout' as const, success: true, ...body };
   },
+
+  offer: async ({ request, fetch, locals }) => {
+    if (!locals.user) return fail(401, { error: 'unauthorized' });
+    const data = await request.formData();
+    const clubId = String(data.get('clubId') ?? '');
+    const playerId = String(data.get('playerId') ?? '');
+    const feeEurK = Number(data.get('feeEurK') ?? 0);
+    const wageOfferEurKWeek = Number(data.get('wageOfferEurKWeek') ?? 0);
+    const contractWeeks = Number(data.get('contractWeeks') ?? 52);
+
+    const res = await fetch('/api/scouting/offer', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ clubId, playerId, feeEurK, wageOfferEurKWeek, contractWeeks }),
+    });
+    const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!res.ok) {
+      return fail(res.status, { action: 'offer', error: body.error ?? 'unknown', playerId });
+    }
+    return { action: 'offer' as const, success: true, ...body };
+  },
 } satisfies Actions;

@@ -11,6 +11,23 @@
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
+  // Offer modal state
+  let offerPlayerId = $state<string | null>(null);
+  let offerFee = $state(0);
+  let offerWage = $state(5);
+  let offerContractWeeks = $state(52);
+
+  function closeOffer(): void {
+    offerPlayerId = null;
+  }
+
+  $effect(() => {
+    if (form?.action === 'offer' && 'kind' in (form ?? {})) {
+      // Close modal on response
+      offerPlayerId = null;
+    }
+  });
+
   const POSITION_LABELS: Record<string, string> = {
     GK: 'POR', DEF: 'DEF', MID: 'MED', FWD: 'DEL',
   };
@@ -62,6 +79,27 @@
         Error: <span class="font-mono">{String(form.error)}</span>
       </div>
     {/if}
+    {#if form?.action === 'offer' && 'kind' in (form ?? {})}
+      {@const f = form as unknown as { kind: string; counterOfferEurK?: number; reason?: string; feeEurK?: number; finalWageEurKWeek?: number }}
+      {#if f.kind === 'accepted'}
+        <div class="alert alert-success">
+          ✅ Oferta aceptada — fee {f.feeEurK ?? 0} k€ + sueldo {f.finalWageEurKWeek ?? 0} k€/sem
+        </div>
+      {:else if f.kind === 'counter'}
+        <div class="alert alert-warning">
+          🤝 Contraoferta del club vendedor: <span class="font-mono">{f.counterOfferEurK} k€</span>. Hace una nueva oferta si te interesa.
+        </div>
+      {:else if f.kind === 'rejected'}
+        <div class="alert alert-error">
+          ❌ Oferta rechazada ({f.reason === 'wage_low' ? 'el jugador pidió más sueldo' : 'lejos del valor de mercado'})
+        </div>
+      {/if}
+    {/if}
+    {#if form?.action === 'offer' && form.error && !('kind' in (form ?? {}))}
+      <div class="alert alert-error">
+        Error en oferta: <span class="font-mono">{String(form.error)}</span>
+      </div>
+    {/if}
 
     <p class="text-xs opacity-60">{data.pool.length} jugadores visibles · click "Scout" para revelar más.</p>
 
@@ -98,7 +136,7 @@
                 {/if}
               </td>
               <td>
-                <div class="flex gap-1">
+                <div class="flex gap-1 items-center">
                   {#if p.visibilityTier < 2}
                     <form method="POST" action="?/scout" use:enhance>
                       <input type="hidden" name="clubId" value={data.club?.id ?? ''} />
@@ -115,9 +153,13 @@
                       <button type="submit" class="btn btn-xs btn-primary">Deep (15 k€)</button>
                     </form>
                   {/if}
-                  {#if p.visibilityTier === 3}
-                    <span class="text-xs opacity-50 italic">completo</span>
-                  {/if}
+                  <button
+                    type="button"
+                    class="btn btn-xs btn-success"
+                    onclick={() => { offerPlayerId = p.id; offerFee = p.transferValueEstimate ?? p.transferValueExact ?? 100; offerWage = 5; }}
+                  >
+                    Ofertar
+                  </button>
                 </div>
               </td>
             </tr>
@@ -127,7 +169,55 @@
     </div>
 
     <p class="text-center text-xs opacity-50 mt-6 italic">
-      v1.1: solo scout actions. Las ofertas + AI club rotation llegan en v1.2.
+      v1.2: ofertas con F2 (free agent) + F3 (AI auction). Counter-offer cycle iterativo en v1.3.
     </p>
+  {/if}
+
+  <!-- Offer modal -->
+  {#if offerPlayerId}
+    {@const p = data.pool.find((x) => x.id === offerPlayerId)}
+    {#if p}
+      <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+        <div class="card bg-base-100 shadow-xl max-w-md w-full">
+          <div class="card-body">
+            <h3 class="card-title">Hacer oferta por {p.name}</h3>
+            <p class="text-xs opacity-70">{p.position} · {p.clubName ?? 'agente libre'}</p>
+            <form method="POST" action="?/offer" use:enhance>
+              <input type="hidden" name="clubId" value={data.club?.id ?? ''} />
+              <input type="hidden" name="playerId" value={p.id} />
+
+              {#if p.contractStatus !== 'free_agent'}
+                <label class="form-control w-full mt-3">
+                  <span class="label-text">Fee (k€)</span>
+                  <input type="number" name="feeEurK" bind:value={offerFee} min="0" class="input input-bordered input-sm" />
+                </label>
+              {:else}
+                <input type="hidden" name="feeEurK" value="0" />
+                <p class="text-xs mt-2 italic">Agente libre — no se paga fee, sólo sueldo.</p>
+              {/if}
+
+              <label class="form-control w-full mt-2">
+                <span class="label-text">Sueldo semanal (k€)</span>
+                <input type="number" name="wageOfferEurKWeek" bind:value={offerWage} min="0" class="input input-bordered input-sm" />
+              </label>
+
+              <label class="form-control w-full mt-2">
+                <span class="label-text">Duración contrato (semanas)</span>
+                <input type="number" name="contractWeeks" bind:value={offerContractWeeks} min="1" max="260" class="input input-bordered input-sm" />
+              </label>
+
+              <p class="text-xs opacity-60 mt-2">
+                Compromiso total: <span class="font-mono">{offerFee + offerWage * offerContractWeeks} k€</span>
+              </p>
+
+              <div class="card-actions justify-end mt-4">
+                <button type="button" class="btn btn-ghost" onclick={closeOffer}>Cancelar</button>
+                <button type="submit" class="btn btn-success">Enviar oferta</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    {/if}
   {/if}
 </article>
