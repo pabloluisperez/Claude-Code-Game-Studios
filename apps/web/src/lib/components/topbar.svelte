@@ -6,6 +6,22 @@
 -->
 <script lang="ts">
   import { formatEurCompact } from '$lib/format';
+  import { onMount } from 'svelte';
+
+  // Pablo 2026-05-26: theme toggle (night / cream).
+  type Theme = 'night' | 'cream';
+  let theme = $state<Theme>('night');
+  onMount(() => {
+    const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('tsm-theme') : null;
+    const initial: Theme = saved === 'cream' || saved === 'night' ? saved : 'night';
+    theme = initial;
+    document.documentElement.setAttribute('data-theme', initial);
+  });
+  function toggleTheme(): void {
+    theme = theme === 'night' ? 'cream' : 'night';
+    document.documentElement.setAttribute('data-theme', theme);
+    if (typeof localStorage !== 'undefined') localStorage.setItem('tsm-theme', theme);
+  }
 
   interface Props {
     user: { username: string } | null;
@@ -135,6 +151,16 @@
       <!-- Polish walkthrough fix (Pablo, post-Sprint-11): username becomes a
            dropdown with explicit "Cambiar partida" → /game. Previously the
            only way to reach /game was via the URL bar. -->
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm"
+        onclick={toggleTheme}
+        aria-label="Cambiar tema ({theme === 'night' ? 'oscuro' : 'crema'})"
+        title="Cambiar tema ({theme === 'night' ? 'oscuro' : 'crema'})"
+      >
+        {theme === 'night' ? '☀️' : '🌙'}
+      </button>
+
       <div class="dropdown dropdown-end">
         <button
           type="button"

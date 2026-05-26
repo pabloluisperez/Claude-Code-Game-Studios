@@ -56,7 +56,20 @@
     />
     <div class="flex flex-1">
       {#if showSidebar}
-        <Sidebar bind:open={sidebarOpen} badges={data.badges} />
+        <Sidebar
+          bind:open={sidebarOpen}
+          badges={data.badges}
+          clubInfo={data.activePlaythrough
+            ? {
+                name: data.activePlaythrough.clubName ?? '—',
+                division: data.activePlaythrough.clubDivision ?? 'fifth',
+                position: data.activePlaythrough.standingsPosition ?? null,
+                record: data.activePlaythrough.standingsRecord ?? null,
+                balanceEurK: data.activePlaythrough.balanceEurK ?? null,
+                currentWeek: data.activePlaythrough.currentWeek,
+              }
+            : null}
+        />
       {/if}
       <main id="main-content" class="flex-1 container mx-auto px-4 py-8 max-w-7xl">
         {@render children()}

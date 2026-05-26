@@ -117,7 +117,6 @@
         </p>
       {/if}
     </div>
-    <a href="/city" class="btn btn-ghost btn-sm">🗺 Ver ciudad completa</a>
   </header>
 
   {#if !data.hasPlaythrough}
@@ -212,9 +211,14 @@
     {#if form?.action === 'buy' && 'itemId' in form}
       {@const f = form as unknown as { installmentEurK?: number; durationWeeks?: number; totalCost?: number }}
       <div class="alert alert-success mb-4">
-        Obra encolada. Se cobrarán <span class="font-mono">{f.installmentEurK ?? 0} k€</span>
+        🔨 Obra iniciada. Se cobrarán <span class="font-mono">{f.installmentEurK ?? 0} k€</span>
         cada semana durante <span class="font-mono">{f.durationWeeks ?? 0}</span> semanas
         (total <span class="font-mono">{f.totalCost ?? 0} k€</span>).
+      </div>
+    {/if}
+    {#if form?.action === 'buy' && form.error && form.error !== 'CRITICAL_BALANCE_WARNING'}
+      <div class="alert alert-error mb-4">
+        ❌ No se pudo iniciar la obra: <span class="font-mono">{String(form.error)}</span>
       </div>
     {/if}
 
@@ -264,7 +268,7 @@
                           <form method="POST" action="?/buy" use:enhance>
                             <input type="hidden" name="clubId" value={data.club?.id ?? ''} />
                             <input type="hidden" name="itemSlug" value={item.slug} />
-                            <button type="submit" class="btn btn-primary btn-sm w-full">Comprar — {weeklyK} k€/sem</button>
+                            <button type="submit" class="btn btn-primary btn-sm w-full">🔨 Construir — {weeklyK} k€/sem</button>
                           </form>
                         {:else if item.state === 'InProgress'}
                           <p class="text-xs font-mono">Quedan {item.weeksRemaining} sem · {weeklyK} k€/sem</p>
@@ -315,7 +319,7 @@
                 <input type="hidden" name="clubId" value={data.club?.id ?? ''} />
                 <input type="hidden" name="itemSlug" value={warningSlug} />
                 <input type="hidden" name="acceptRisk" value="true" />
-                <button type="submit" class="btn btn-warning">Acepto el riesgo</button>
+                <button type="submit" class="btn btn-warning">Acepto el riesgo — Construir</button>
               </form>
             </div>
           </div>

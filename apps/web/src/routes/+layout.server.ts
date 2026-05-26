@@ -9,6 +9,7 @@ import {
   seasons,
   leagues,
   fixtures,
+  standings,
   eq,
   and,
   or,
@@ -29,6 +30,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
       currentWeek: playthroughs.currentWeek,
       currentDayOfSeason: playthroughs.currentDayOfSeason,
       clubName: clubs.name,
+      clubDivision: clubs.division,
     })
     .from(playthroughs)
     .leftJoin(clubs, eq(clubs.id, playthroughs.clubId))
@@ -121,6 +123,32 @@ export const load: LayoutServerLoad = async ({ locals }) => {
     matchday = fx?.matchday ?? Math.max(1, active.currentWeek - seasonStartWeek + 1);
   }
 
+  // Standings position + record for sidebar club summary (Pablo 2026-05-26).
+  let position: number | null = null;
+  let record: { wins: number; draws: number; losses: number } | null = null;
+  if (activeSeason && !isPreseason) {
+    const allRows = await db
+      .select({
+        clubId: standings.clubId,
+        wins: standings.wins,
+        draws: standings.draws,
+        losses: standings.losses,
+        points: standings.points,
+        goalsFor: standings.goalsFor,
+      })
+      .from(standings)
+      .innerJoin(seasons, eq(seasons.id, standings.seasonId))
+      .innerJoin(leagues, eq(leagues.id, seasons.leagueId))
+      .where(and(eq(leagues.playthroughId, active.id), eq(seasons.status, 'active')))
+      .orderBy(desc(standings.points), desc(standings.goalsFor));
+    const idx = allRows.findIndex((r) => r.clubId === active.clubId);
+    if (idx >= 0) {
+      position = idx + 1;
+      const me = allRows[idx]!;
+      record = { wins: me.wins, draws: me.draws, losses: me.losses };
+    }
+  }
+
   return {
     user: locals.user,
     activePlaythrough: {
@@ -129,6 +157,8 @@ export const load: LayoutServerLoad = async ({ locals }) => {
       balanceEurK,
       isPreseason,
       matchday,
+      standingsPosition: position,
+      standingsRecord: record,
     },
     badges: {
       pendingStops: Number(pendingStops?.count ?? 0),
