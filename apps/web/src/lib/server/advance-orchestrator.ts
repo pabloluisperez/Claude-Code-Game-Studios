@@ -1080,6 +1080,68 @@ export async function runAdvanceTickFull(
     // Renewal generation must never block the advance pipeline.
   }
 
+  // ── Phase 8d-bis: expire contracts → leaving (Pablo 2026-05-26) ─────────
+  // When contractEndWeek <= currentWeek and player still attached to user club,
+  // flip availability to 'leaving' and emit a staff_message. The renewal flow
+  // (Phase 8d) gives the manager an 8-week heads-up; if they ignore or reject,
+  // the player walks here.
+  try {
+    const expiring = await db
+      .select({
+        id: players.id,
+        firstName: players.firstName,
+        lastName: players.lastName,
+        position: players.position,
+      })
+      .from(players)
+      .where(
+        and(
+          eq(players.clubId, active.clubId),
+          sql`${players.contractEndWeek} <= ${nextWeek}`,
+          sql`${players.availability} <> 'leaving'`,
+        ),
+      );
+
+    if (expiring.length > 0) {
+      const [headCoach] = await db
+        .select({ id: staff.id, name: staff.name })
+        .from(staff)
+        .where(
+          and(
+            eq(staff.playthroughId, active.id),
+            eq(staff.role, 'head_coach'),
+            eq(staff.status, 'active'),
+          ),
+        )
+        .limit(1);
+
+      for (const p of expiring) {
+        await db
+          .update(players)
+          .set({
+            availability: 'leaving',
+            contractStatus: 'free_agent',
+          })
+          .where(eq(players.id, p.id));
+
+        if (headCoach) {
+          await db.insert(staffMessages).values({
+            playthroughId: active.id,
+            staffId: headCoach.id,
+            week: nextWeek,
+            season: tvCurrentSeason,
+            priority: 'ROUTINE',
+            templateKey: 'contract:expired_walked',
+            content: `📋 ${headCoach.name.split(' ')[0]}: ${p.firstName} ${p.lastName} (${p.position}) ha expirado contrato y se marcha libre. Liberado del coste de salario.`,
+            isRead: false,
+          });
+        }
+      }
+    }
+  } catch {
+    // Contract expiry is decorative — never block the advance pipeline.
+  }
+
   // ── Phase 8e: individual training application (Pablo 2026-05-25) ───────
   // For every player on user's club with a training_focus assigned, +1 to the
   // matching attribute per advance tick. Capped at 95. Requires an active

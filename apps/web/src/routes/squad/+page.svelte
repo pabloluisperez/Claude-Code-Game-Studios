@@ -244,8 +244,9 @@
             {#each sorted as p}
               {@const suspended = (p.suspendedMatchesRemaining ?? 0) > 0}
               {@const injured = p.availability === 'injured' || (p.injuredUntilWeek != null && p.injuredUntilWeek > data.currentWeek)}
+              {@const leaving = p.availability === 'leaving'}
               {@const yellowsNearLimit = (p.yellowCardsSeason ?? 0) >= 4 && !suspended}
-              <tr class="hover cursor-pointer text-sm {suspended || injured ? 'opacity-60 bg-error/5' : ''}" onclick={() => (selected = p)}>
+              <tr class="hover cursor-pointer text-sm {suspended || injured || leaving ? 'opacity-60 bg-error/5' : ''}" onclick={() => (selected = p)}>
                 <td class="font-semibold">
                   <div class="flex items-center gap-2">
                     <Avatar seed={`player:${p.id}:${p.firstName}${p.lastName}`} size={28} />
@@ -266,6 +267,14 @@
                         title={p.injuredUntilWeek ? `Lesionado · vuelve en jornada ${p.injuredUntilWeek}` : 'Lesionado'}
                       >
                         🤕 {weeksLeft > 0 ? `${weeksLeft}sem` : 'Lesionado'}
+                      </span>
+                    {/if}
+                    {#if leaving}
+                      <span
+                        class="badge badge-neutral badge-sm gap-1"
+                        title="Contrato expirado — se marcha libre al rollover de temporada"
+                      >
+                        📋 Se marcha
                       </span>
                     {/if}
                     {#if yellowsNearLimit && !injured}

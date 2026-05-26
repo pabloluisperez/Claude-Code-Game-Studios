@@ -46,6 +46,7 @@
   }): boolean {
     if ((p.suspendedMatchesRemaining ?? 0) > 0) return false;
     if (p.availability === 'injured') return false;
+    if (p.availability === 'leaving') return false;
     if (p.injuredUntilWeek && data.hasPlaythrough && p.injuredUntilWeek > (data.currentWeek ?? 0)) return false;
     return true;
   }
@@ -281,6 +282,13 @@
                               title="Sancionado — pierde {p.suspendedMatchesRemaining} partido(s)"
                             >
                               🚫 Sancionado · {p.suspendedMatchesRemaining}p
+                            </span>
+                          {:else if p.availability === 'leaving'}
+                            <span
+                              class="badge badge-neutral badge-sm"
+                              title="Contrato expirado — se marcha libre al rollover de temporada"
+                            >
+                              📋 Se marcha
                             </span>
                           {:else if p.availability === 'injured' || (p.injuredUntilWeek && data.currentWeek && p.injuredUntilWeek > data.currentWeek)}
                             {@const weeksLeft = (p.injuredUntilWeek ?? 0) - (data.currentWeek ?? 0)}

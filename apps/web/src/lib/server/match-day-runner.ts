@@ -70,19 +70,28 @@ async function simulateFixture(
   // Sprint 13 task 13-1: suspended players (suspended_matches_remaining > 0)
   // do NOT appear in the match roster — they can't play.
   const homeRosterAll = await tx
-    .select({ ...playerCols, suspendedMatchesRemaining: players.suspendedMatchesRemaining })
+    .select({
+      ...playerCols,
+      suspendedMatchesRemaining: players.suspendedMatchesRemaining,
+      availability: players.availability,
+    })
     .from(players)
     .where(eq(players.clubId, args.homeClubId));
   const awayRosterAll = await tx
-    .select({ ...playerCols, suspendedMatchesRemaining: players.suspendedMatchesRemaining })
+    .select({
+      ...playerCols,
+      suspendedMatchesRemaining: players.suspendedMatchesRemaining,
+      availability: players.availability,
+    })
     .from(players)
     .where(eq(players.clubId, args.awayClubId));
 
+  // Sprint 13: suspended; Pablo 2026-05-26: 'leaving' (expired contracts) too.
   const homeRoster = homeRosterAll.filter(
-    (p) => (p.suspendedMatchesRemaining ?? 0) <= 0,
+    (p) => (p.suspendedMatchesRemaining ?? 0) <= 0 && p.availability !== 'leaving',
   );
   const awayRoster = awayRosterAll.filter(
-    (p) => (p.suspendedMatchesRemaining ?? 0) <= 0,
+    (p) => (p.suspendedMatchesRemaining ?? 0) <= 0 && p.availability !== 'leaving',
   );
 
   // Pablo 2026-05-26: a manager can field an injured player on purpose. We

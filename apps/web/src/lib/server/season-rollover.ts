@@ -18,6 +18,7 @@ import {
   leagues,
   divisions,
   players,
+  staff,
   staffMessages,
   calendarEvents,
   eq,
@@ -195,6 +196,45 @@ export async function checkAndRolloverSeason(args: {
           lte(calendarEvents.week, currentWeek),
         ),
       );
+
+    // Pablo 2026-05-26: purge players whose contract expired and are now
+    // 'leaving'. Hard delete is safe — they have no further game-state
+    // attachments (fixtures store player snapshots in match_outcome_data
+    // jsonb, so historical match data still references their name).
+    await tx
+      .delete(players)
+      .where(
+        and(
+          eq(players.playthroughId, playthroughId),
+          eq(players.availability, 'leaving'),
+        ),
+      );
+
+    // Welcome message from the head coach for the new season.
+    const [headCoach] = await tx
+      .select({ id: staff.id, name: staff.name })
+      .from(staff)
+      .where(
+        and(
+          eq(staff.playthroughId, playthroughId),
+          eq(staff.role, 'head_coach'),
+          eq(staff.status, 'active'),
+        ),
+      )
+      .limit(1);
+
+    if (headCoach) {
+      await tx.insert(staffMessages).values({
+        playthroughId,
+        staffId: headCoach.id,
+        week: newStartWeek - PRESEASON_WEEKS,
+        season: newSeasonNumber,
+        priority: 'ROUTINE',
+        templateKey: 'season:welcome',
+        content: `🏁 ${headCoach.name.split(' ')[0]}: Comienza la temporada ${newSeasonNumber}. Plantilla descansada y lista. Primera jornada en la semana ${newStartWeek}. ¡A por todas!`,
+        isRead: false,
+      });
+    }
 
     return {
       rolledOver: true,
