@@ -31,6 +31,8 @@ export const load: LayoutServerLoad = async ({ locals }) => {
       currentDayOfSeason: playthroughs.currentDayOfSeason,
       clubName: clubs.name,
       clubDivision: clubs.division,
+      kitPrimaryColor: clubs.kitPrimaryColor,
+      kitSecondaryColor: clubs.kitSecondaryColor,
     })
     .from(playthroughs)
     .leftJoin(clubs, eq(clubs.id, playthroughs.clubId))

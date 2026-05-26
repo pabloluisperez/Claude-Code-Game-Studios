@@ -6,6 +6,7 @@
 -->
 <script lang="ts">
   import { page } from '$app/stores';
+  import ClubShield from './club-shield.svelte';
 
   interface Props {
     open: boolean;
@@ -18,6 +19,8 @@
       balanceEurK: number | null;
       currentWeek: number;
       seasonNumber: number;
+      kitPrimaryColor?: string | null;
+      kitSecondaryColor?: string | null;
     } | null;
   }
   let { open = $bindable(), badges, clubInfo = null }: Props = $props();
@@ -68,7 +71,17 @@
 >
   <div class="p-3 border-b border-base-300">
     {#if clubInfo}
-      <div class="font-bold text-base truncate" title={clubInfo.name}>{clubInfo.name}</div>
+      <div class="flex items-start gap-2">
+        <ClubShield
+          name={clubInfo.name}
+          primaryColor={clubInfo.kitPrimaryColor ?? '#1e3a8a'}
+          secondaryColor={clubInfo.kitSecondaryColor ?? '#f8fafc'}
+          size={42}
+        />
+        <div class="flex-1 min-w-0">
+          <div class="font-bold text-sm truncate" title={clubInfo.name}>{clubInfo.name}</div>
+        </div>
+      </div>
       <div class="text-xs opacity-70 mt-0.5">
         {divisionLabel(clubInfo.division)} División
         {#if clubInfo.position}

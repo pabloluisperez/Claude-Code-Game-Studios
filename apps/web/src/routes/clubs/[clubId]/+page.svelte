@@ -6,6 +6,7 @@
    */
   import { enhance } from '$app/forms';
   import Avatar from '$lib/components/avatar.svelte';
+  import ClubShield from '$lib/components/club-shield.svelte';
   import type { PageData, ActionData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -61,10 +62,14 @@
     <!-- Header -->
     <header class="card bg-base-200 mb-4">
       <div class="card-body p-4 flex flex-row items-center gap-4">
-        <div
-          class="w-16 h-16 rounded-full border-4 flex-shrink-0"
-          style="background: {data.club.kitPrimaryColor}; border-color: {data.club.kitSecondaryColor};"
-        ></div>
+        <div class="flex-shrink-0">
+          <ClubShield
+            name={data.club.name}
+            primaryColor={data.club.kitPrimaryColor}
+            secondaryColor={data.club.kitSecondaryColor}
+            size={64}
+          />
+        </div>
         <div class="flex-1">
           <h1 class="text-2xl font-bold">{data.club.name}</h1>
           <p class="text-sm opacity-70">

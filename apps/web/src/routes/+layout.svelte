@@ -69,6 +69,8 @@
                 balanceEurK: data.activePlaythrough.balanceEurK ?? null,
                 currentWeek: data.activePlaythrough.weekInSeason ?? data.activePlaythrough.currentWeek,
                 seasonNumber: data.activePlaythrough.seasonNumber ?? 1,
+                kitPrimaryColor: data.activePlaythrough.kitPrimaryColor,
+                kitSecondaryColor: data.activePlaythrough.kitSecondaryColor,
               }
             : null}
         />

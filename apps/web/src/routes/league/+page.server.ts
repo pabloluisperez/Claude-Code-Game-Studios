@@ -132,6 +132,8 @@ export const load: PageServerLoad = async ({ parent, url }) => {
       clubId: standings.clubId,
       clubName: clubs.name,
       city: clubs.city,
+      kitPrimaryColor: clubs.kitPrimaryColor,
+      kitSecondaryColor: clubs.kitSecondaryColor,
       played: standings.played,
       wins: standings.wins,
       draws: standings.draws,

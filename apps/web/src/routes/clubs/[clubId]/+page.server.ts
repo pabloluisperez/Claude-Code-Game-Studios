@@ -11,7 +11,8 @@
 
 import type { PageServerLoad, Actions } from './$types';
 import { error, fail, redirect } from '@sveltejs/kit';
-import { db, clubs, players, playthroughs, staff, loadAdvanceContext, eq, and, asc, desc } from '@smt/db';
+import { db, clubs, players, playthroughs, staff, loadAdvanceContext, eq, and, asc, desc, sql } from '@smt/db';
+import { createSeededRng, generateRoster, defaultWorldState, pickTraits } from '@smt/shared';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
   if (!locals.user) throw redirect(303, '/login');
@@ -38,6 +39,56 @@ export const load: PageServerLoad = async ({ params, locals }) => {
   if (!target) throw error(404, 'Club no encontrado');
 
   const isOwnClub = target.id === ctx.playthrough.clubId;
+
+  // Pablo 2026-05-26: lazy roster generation. AI clubs in distant divisions
+  // were spawned without players (Fase 1 perf optimisation). When the user
+  // browses to one, generate its roster on-demand. One-shot per club —
+  // subsequent visits use the persisted roster.
+  const [{ count: existingPlayerCount = 0 } = { count: 0 }] = await db
+    .select({ count: sql<number>`COUNT(*)::int` })
+    .from(players)
+    .where(eq(players.clubId, target.id));
+
+  if (Number(existingPlayerCount) === 0 && !isOwnClub) {
+    // Build base skill from strength_rating (which acts as the club's avg).
+    const [strengthRow] = await db
+      .select({ strength: clubs.strengthRating })
+      .from(clubs)
+      .where(eq(clubs.id, target.id))
+      .limit(1);
+    const baseSkill = strengthRow?.strength ?? 35;
+    const rng = createSeededRng(`roster:${target.id}`);
+    const generated = generateRoster({
+      ctx: { rng, currentWeek: ctx.playthrough.currentWeek, hasMatchThisWeek: false, prevState: defaultWorldState() },
+      clubBaseSkill: baseSkill,
+      clubSlug: target.id,
+      currentWeek: ctx.playthrough.currentWeek,
+    });
+    await db.insert(players).values(
+      generated.map((p, i) => ({
+        clubId: target.id,
+        playthroughId: ctx.playthrough.id,
+        firstName: p.firstName,
+        lastName: p.lastName,
+        nationality: p.nationality,
+        birthWeek: p.birthWeek,
+        position: p.position,
+        skill: p.skill,
+        fitness: p.fitness,
+        morale: p.morale,
+        form: p.form,
+        stamina: p.stamina,
+        velocidad: p.velocidad,
+        resistencia: p.resistencia,
+        agresividad: p.agresividad,
+        calidad: p.calidad,
+        salaryEurK: p.salaryEurK,
+        contractStartWeek: 0,
+        contractEndWeek: 76,
+        traits: [...pickTraits(`${target.id}:gen:${i}:${p.firstName}${p.lastName}`)],
+      })),
+    );
+  }
 
   // Roster — return only public info for OTHER clubs.
   const roster = await db

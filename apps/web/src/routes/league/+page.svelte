@@ -12,6 +12,7 @@
 <script lang="ts">
   import type { PageData } from './$types';
   import { onMount } from 'svelte';
+  import ClubShield from '$lib/components/club-shield.svelte';
   let { data }: { data: PageData } = $props();
 
   // Fixtures the user has already watched this session.
@@ -278,8 +279,15 @@
                     >
                       <td class="font-mono">{i + 1}</td>
                       <td>
-                        {r.clubId === myClubId ? '★ ' : ''}
-                        <a href="/clubs/{r.clubId}" class="link link-hover">{r.clubName}</a>
+                        <a href="/clubs/{r.clubId}" class="link link-hover flex items-center gap-2">
+                          <ClubShield
+                            name={r.clubName}
+                            primaryColor={r.kitPrimaryColor ?? '#1e3a8a'}
+                            secondaryColor={r.kitSecondaryColor ?? '#f8fafc'}
+                            size={22}
+                          />
+                          <span>{r.clubId === myClubId ? '★ ' : ''}{r.clubName}</span>
+                        </a>
                       </td>
                       <td class="text-right font-mono">{r.played}</td>
                       <td class="text-right font-mono">{r.wins}</td>
