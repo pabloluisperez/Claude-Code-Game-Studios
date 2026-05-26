@@ -1044,6 +1044,7 @@ export async function runAdvanceTickFull(
         tier: sponsors.tier,
         weeklyEurK: sponsors.weeklyEurK,
         endsWeek: sponsors.endsWeek,
+        startedWeek: sponsors.startedWeek,
       })
       .from(sponsors)
       .where(
@@ -1093,6 +1094,7 @@ export async function runAdvanceTickFull(
           currentWeeklyEurK: s.weeklyEurK,
           proposedWeeklyEurK: proposedWeekly,
           contractWeeks,
+          currentContractWeeks: Math.max(1, s.endsWeek - s.startedWeek),
         } as Record<string, unknown>,
       });
     }

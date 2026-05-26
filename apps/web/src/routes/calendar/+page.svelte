@@ -271,6 +271,7 @@
         tier?: number;
         currentWeeklyEurK?: number;
         proposedWeeklyEurK?: number;
+        currentContractWeeks?: number;
       } | null}
       {@const isRenewal = meta?.kind === 'contract_renewal'}
       {@const isSponsorRenewal = meta?.kind === 'sponsor_renewal'}
@@ -318,6 +319,8 @@
 
           <!-- Sponsor renewal context (Pablo 2026-05-26) -->
           {#if isSponsorRenewal && meta}
+            {@const amtBetter = (meta.proposedWeeklyEurK ?? 0) >= (meta.currentWeeklyEurK ?? 0)}
+            {@const durBetter = (meta.contractWeeks ?? 0) >= (meta.currentContractWeeks ?? 0)}
             <div class="alert alert-info py-3 mt-3 text-sm">
               <div class="w-full">
                 <div class="font-semibold text-base mb-1">
@@ -327,17 +330,28 @@
                   <div>
                     <div class="text-xs opacity-60">Pagaba</div>
                     <div class="font-mono font-bold">€{meta.currentWeeklyEurK}K/sem</div>
+                    <div class="text-xs opacity-50">{meta.currentContractWeeks ?? '?'} sem</div>
                   </div>
                   <div class="text-xl opacity-40">→</div>
                   <div>
                     <div class="text-xs opacity-60">Ofrece</div>
-                    <div class="font-mono font-bold {(meta.proposedWeeklyEurK ?? 0) >= (meta.currentWeeklyEurK ?? 0) ? 'text-success' : 'text-warning'}">
+                    <div class="font-mono font-bold {amtBetter ? 'text-success' : 'text-warning'}">
                       €{meta.proposedWeeklyEurK}K/sem
                     </div>
+                    <div class="text-xs {durBetter ? 'text-success' : 'text-warning'}">{meta.contractWeeks} sem</div>
                   </div>
-                  <div class="text-xs opacity-70 text-right">
-                    Duración<br/>{meta.contractWeeks}sem
-                  </div>
+                </div>
+                <!-- Verdict line (Pablo 2026-05-26) -->
+                <div class="mt-2 text-xs font-semibold">
+                  {#if amtBetter && durBetter}
+                    ✅ Mejor oferta: paga más y por más tiempo.
+                  {:else if amtBetter && !durBetter}
+                    🟡 Paga más, pero por menos tiempo.
+                  {:else if !amtBetter && durBetter}
+                    🟡 Paga menos, pero por más tiempo.
+                  {:else}
+                    🔻 Peor oferta: paga menos y por menos tiempo.
+                  {/if}
                 </div>
               </div>
             </div>

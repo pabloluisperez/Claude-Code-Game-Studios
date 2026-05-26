@@ -439,10 +439,10 @@
               </div>
             </div>
 
-            <!-- Contract + salary (Pablo 2026-05-26: contrato en temporadas) -->
+            <!-- Contract + salary + market value (Pablo 2026-05-26) -->
             <div class="mt-4">
               <div class="text-xs uppercase opacity-60 mb-2">Contrato</div>
-              <div class="grid grid-cols-2 gap-3">
+              <div class="grid grid-cols-3 gap-3">
                 <div class="bg-base-200 rounded p-2 text-center">
                   <div class="text-xs opacity-60">Sueldo</div>
                   <div class="font-mono text-lg">{selected.salaryEurK} k€/sem</div>
@@ -452,11 +452,17 @@
                   {#if selected.contractEndWeek - data.currentWeek <= 0}
                     <div class="font-bold text-lg text-error">Expirado</div>
                   {:else if selected.contractEndWeek <= (data.seasonEndWeek ?? 0)}
-                    <div class="font-bold text-lg text-warning">Última temporada</div>
+                    <div class="font-bold text-sm text-warning">Última temp.</div>
                   {:else}
                     {@const seasonsLeft = Math.max(1, Math.ceil((selected.contractEndWeek - data.currentWeek) / (data.seasonLengthWeeks ?? 39)))}
-                    <div class="font-bold text-lg">{seasonsLeft} temporada{seasonsLeft === 1 ? '' : 's'}</div>
+                    <div class="font-bold text-lg">{seasonsLeft} temp.</div>
                   {/if}
+                </div>
+                <div class="bg-base-200 rounded p-2 text-center" title="Valor estimado de venta (skill × 10). Baja cuanto menos contrato quede.">
+                  <div class="text-xs opacity-60">Valor mercado</div>
+                  <div class="font-mono text-lg text-info">
+                    {Math.round(selected.skill * 10 * (selected.contractEndWeek <= (data.seasonEndWeek ?? 0) ? 0.6 : 1))} k€
+                  </div>
                 </div>
               </div>
             </div>

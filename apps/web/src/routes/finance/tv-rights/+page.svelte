@@ -81,7 +81,7 @@
   <title>Derechos de televisión — Cascada FC</title>
 </svelte:head>
 
-<section class="space-y-6 p-4 md:p-6 max-w-3xl mx-auto">
+<section class="space-y-6">
   <header>
     <h1 class="text-2xl font-bold">Finanzas</h1>
     <p class="opacity-60">Balance, ingresos, gastos y patrocinadores del club</p>
