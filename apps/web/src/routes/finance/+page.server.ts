@@ -90,6 +90,20 @@ export const load: PageServerLoad = async ({ parent }) => {
     )
     .orderBy(asc(calendarEvents.week));
 
+  // Pablo 2026-05-26: pending sponsor renewals — decided here (in context),
+  // not in the calendar modal. Calendar event cards link to this tab.
+  const pendingSponsorRenewals = await db
+    .select()
+    .from(calendarEvents)
+    .where(
+      and(
+        eq(calendarEvents.playthroughId, activePlaythrough.id),
+        eq(calendarEvents.type, 'sponsor_renewal'),
+        eq(calendarEvents.status, 'pending'),
+      ),
+    )
+    .orderBy(asc(calendarEvents.week));
+
   const [club] = await db
     .select()
     .from(clubs)
@@ -158,6 +172,7 @@ export const load: PageServerLoad = async ({ parent }) => {
     })),
     sponsors: sponsorRows,
     pendingSponsorOffers,
+    pendingSponsorRenewals,
     boardsCapacity,
     club: club
       ? {
@@ -395,5 +410,71 @@ export const actions: Actions = {
     });
 
     return { ok: true, decided: choice, brand: metadata.brand ?? null };
+  },
+
+  /**
+   * Pablo 2026-05-26: sponsor renewal decided in-context (Finanzas →
+   * Patrocinadores). 'renew' extends the sponsor row; 'decline' lets it
+   * expire. Resolves the calendar event either way.
+   */
+  decideSponsorRenewal: async ({ request, locals }) => {
+    if (!locals.user) throw redirect(303, '/login');
+    const form = await request.formData();
+    const eventId = String(form.get('eventId') ?? '');
+    const choice = String(form.get('choice') ?? '');
+    if (!eventId || !choice) return fail(400, { error: 'Faltan datos.' });
+
+    const [active] = await db
+      .select()
+      .from(playthroughs)
+      .where(eq(playthroughs.userId, locals.user.id))
+      .orderBy(desc(playthroughs.updatedAt))
+      .limit(1);
+    if (!active) return fail(400, { error: 'No hay carrera activa.' });
+
+    const [evt] = await db
+      .select()
+      .from(calendarEvents)
+      .where(
+        and(
+          eq(calendarEvents.id, eventId),
+          eq(calendarEvents.playthroughId, active.id),
+          eq(calendarEvents.type, 'sponsor_renewal'),
+        ),
+      )
+      .limit(1);
+    if (!evt) return fail(404, { error: 'Renovación no encontrada.' });
+    if (evt.status !== 'pending') return fail(400, { error: 'Renovación ya resuelta.' });
+
+    const meta = evt.metadata as {
+      sponsorId?: string;
+      proposedWeeklyEurK?: number;
+      contractWeeks?: number;
+      brand?: string;
+    };
+
+    await db.transaction(async (tx) => {
+      await tx
+        .update(calendarEvents)
+        .set({
+          status: 'resolved',
+          metadata: { ...meta, resolvedChoice: choice, resolvedAt: new Date().toISOString() },
+          consumed: true,
+        })
+        .where(eq(calendarEvents.id, eventId));
+
+      if ((choice === 'renew' || choice === 'accept') && meta.sponsorId && meta.proposedWeeklyEurK && meta.contractWeeks) {
+        await tx
+          .update(sponsors)
+          .set({
+            weeklyEurK: meta.proposedWeeklyEurK,
+            endsWeek: active.currentWeek + meta.contractWeeks,
+            updatedAt: new Date(),
+          })
+          .where(eq(sponsors.id, meta.sponsorId));
+      }
+    });
+
+    return { ok: true, decided: choice, brand: meta.brand ?? null };
   },
 };

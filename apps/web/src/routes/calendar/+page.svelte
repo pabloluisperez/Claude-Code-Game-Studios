@@ -213,20 +213,36 @@
                 {/if}
 
                 {#each dayEvents as e}
-                  <button
-                    class="w-full flex items-center justify-between p-2 rounded text-left
-                           {e.priority === 'STOP' && e.status === 'pending' ? 'bg-error/10 border border-error/30 hover:bg-error/20' : 'bg-base-100'}"
-                    onclick={() => (openEventId = e.id)}
-                    type="button"
-                  >
-                    <div>
-                      <div class="text-xs opacity-60">{eventIcon(e.type)} {eventLabel(e.type)}</div>
-                      <div class="text-sm">
-                        {e.status === 'pending' ? 'Pendiente' : e.status === 'resolved' ? 'Resuelto' : e.status}
+                  {@const sponsorHome = (e.type === 'sponsor_offer' || e.type === 'sponsor_renewal') && e.status === 'pending'}
+                  {#if sponsorHome}
+                    <!-- Pablo 2026-05-26: sponsor decisions taken in Finanzas → Patrocinadores. -->
+                    <a
+                      href="/finance?tab=patrocinadores"
+                      class="w-full flex items-center justify-between p-2 rounded text-left no-underline
+                             bg-error/10 border border-error/30 hover:bg-error/20"
+                    >
+                      <div>
+                        <div class="text-xs opacity-60">{eventIcon(e.type)} {eventLabel(e.type)}</div>
+                        <div class="text-sm">Decidir en Finanzas → Patrocinadores →</div>
                       </div>
-                    </div>
-                    <span class="badge {priorityColor(e.priority)}">{e.priority}</span>
-                  </button>
+                      <span class="badge {priorityColor(e.priority)}">{e.priority}</span>
+                    </a>
+                  {:else}
+                    <button
+                      class="w-full flex items-center justify-between p-2 rounded text-left
+                             {e.priority === 'STOP' && e.status === 'pending' ? 'bg-error/10 border border-error/30 hover:bg-error/20' : 'bg-base-100'}"
+                      onclick={() => (openEventId = e.id)}
+                      type="button"
+                    >
+                      <div>
+                        <div class="text-xs opacity-60">{eventIcon(e.type)} {eventLabel(e.type)}</div>
+                        <div class="text-sm">
+                          {e.status === 'pending' ? 'Pendiente' : e.status === 'resolved' ? 'Resuelto' : e.status}
+                        </div>
+                      </div>
+                      <span class="badge {priorityColor(e.priority)}">{e.priority}</span>
+                    </button>
+                  {/if}
                 {/each}
 
                 {#if !fixture && dayEvents.length === 0}

@@ -506,6 +506,54 @@
       aria-labelledby="tab-finance-patrocinadores"
       class="space-y-3"
     >
+      <!-- Pablo 2026-05-26: renovaciones de patrocinador decididas aquí (en contexto). -->
+      {#if data.pendingSponsorRenewals && data.pendingSponsorRenewals.length > 0}
+        <section class="card bg-warning/10 border border-warning shadow">
+          <div class="card-body">
+            <h2 class="card-title text-base">🔁 Renovaciones pendientes</h2>
+            {#each data.pendingSponsorRenewals as ev (ev.id)}
+              {@const m = ev.metadata as { brand?: string; currentWeeklyEurK?: number; proposedWeeklyEurK?: number; contractWeeks?: number; currentContractWeeks?: number; tier?: number }}
+              {@const amtBetter = (m.proposedWeeklyEurK ?? 0) >= (m.currentWeeklyEurK ?? 0)}
+              {@const durBetter = (m.contractWeeks ?? 0) >= (m.currentContractWeeks ?? 0)}
+              <div class="bg-base-100 rounded p-3 mt-2">
+                <div class="font-semibold">{m.brand} <span class="opacity-60 text-xs">(tier {m.tier ?? '?'})</span></div>
+                <div class="flex items-center justify-between gap-3 mt-2 text-sm">
+                  <div>
+                    <div class="text-xs opacity-60">Pagaba</div>
+                    <div class="font-mono font-bold">€{m.currentWeeklyEurK}K/sem</div>
+                    <div class="text-xs opacity-50">{m.currentContractWeeks ?? '?'} sem</div>
+                  </div>
+                  <div class="text-xl opacity-40">→</div>
+                  <div>
+                    <div class="text-xs opacity-60">Ofrece</div>
+                    <div class="font-mono font-bold {amtBetter ? 'text-success' : 'text-warning'}">€{m.proposedWeeklyEurK}K/sem</div>
+                    <div class="text-xs {durBetter ? 'text-success' : 'text-warning'}">{m.contractWeeks} sem</div>
+                  </div>
+                </div>
+                <div class="text-xs font-semibold mt-2">
+                  {#if amtBetter && durBetter}✅ Mejor: paga más y por más tiempo.
+                  {:else if amtBetter}🟡 Paga más, pero por menos tiempo.
+                  {:else if durBetter}🟡 Paga menos, pero por más tiempo.
+                  {:else}🔻 Peor: paga menos y por menos tiempo.{/if}
+                </div>
+                <div class="flex gap-2 mt-3">
+                  <form method="POST" action="?/decideSponsorRenewal" use:enhance>
+                    <input type="hidden" name="eventId" value={ev.id} />
+                    <input type="hidden" name="choice" value="renew" />
+                    <button type="submit" class="btn btn-sm btn-success">Renovar</button>
+                  </form>
+                  <form method="POST" action="?/decideSponsorRenewal" use:enhance>
+                    <input type="hidden" name="eventId" value={ev.id} />
+                    <input type="hidden" name="choice" value="decline" />
+                    <button type="submit" class="btn btn-sm btn-ghost">No renovar</button>
+                  </form>
+                </div>
+              </div>
+            {/each}
+          </div>
+        </section>
+      {/if}
+
       {#each slotsOrder as slotKey}
         {@const slotInfo = SLOT_META[slotKey]}
         {@const active = sponsorsBySlot[slotKey] ?? []}
