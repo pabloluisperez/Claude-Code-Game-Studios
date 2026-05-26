@@ -17,7 +17,7 @@
  * infrastructure for delayed completion ships in 24-6 / v1.2.
  */
 
-import { and, desc, eq, ne, sql } from 'drizzle-orm';
+import { and, desc, eq, ne, or, sql } from 'drizzle-orm';
 import {
   db as dbClient,
   clubs,
@@ -188,7 +188,9 @@ export async function getMarket(
     const directorTier = await getScoutDirectorTier(tx, clubId);
     const state = await buildScoutState(tx, clubId, windowId, directorTier);
 
-    // Fetch a paged view of other-club players.
+    // Pool: other clubs' players + free agents (clubId IS NULL or marked free_agent).
+    // Excludes user's own club. Pablo 2026-05-26: also surface expiring contracts
+    // (≤8 weeks remaining) so the manager can pre-sign for next season.
     const rows = await tx
       .select({
         id: players.id,
@@ -198,26 +200,46 @@ export async function getMarket(
         position: players.position,
         clubId: players.clubId,
         clubName: clubs.name,
+        contractEndWeek: players.contractEndWeek,
+        contractStatus: players.contractStatus,
+        availability: players.availability,
       })
       .from(players)
       .leftJoin(clubs, eq(clubs.id, players.clubId))
-      .where(ne(players.clubId, clubId))
+      .where(
+        or(
+          ne(players.clubId, clubId),
+          eq(players.contractStatus, 'free_agent'),
+        ),
+      )
       .limit(limit);
 
     const result: MarketPoolEntry[] = [];
     for (const p of rows) {
+      // Skip user's own players that slipped through via the OR clause.
+      if (p.clubId === clubId) continue;
       const tier: VisibilityTier = visibilityTierOf(
         { id: p.id, inPoolThisWindow: true },
         state,
         currentWeek,
       );
+      // Compute real contract status: free_agent > expiring > in_contract.
+      const weeksUntilExpiry = p.contractEndWeek - currentWeek;
+      let contractStatusOut: 'in_contract' | 'expiring' | 'free_agent';
+      if (p.contractStatus === 'free_agent' || !p.clubId) {
+        contractStatusOut = 'free_agent';
+      } else if (weeksUntilExpiry <= 8) {
+        contractStatusOut = 'expiring';
+      } else {
+        contractStatusOut = 'in_contract';
+      }
       const full: PoolPlayer = {
         id: p.id,
         name: `${p.firstName} ${p.lastName}`,
         age: 0, // v1.1: age computation deferred; players schema has birthWeek not age
         position: p.position,
-        currentClub: p.clubName,
-        contractStatus: 'in_contract',
+        currentClub: contractStatusOut === 'free_agent' ? null : p.clubName,
+        contractStatus: contractStatusOut,
         visibilityTier: tier,
         // T1 reveals
         ovrBand: `${Math.floor(p.skill / 10) * 10}-${Math.floor(p.skill / 10) * 10 + 9}`,
@@ -433,6 +455,12 @@ export type MakeOfferParams = {
   wageOfferEurKWeek: number;
   contractWeeks: number;
   windowId?: string;
+  /**
+   * Pablo 2026-05-26: lets makeOffer treat 'expiring' players (≤8 weeks
+   * to contractEndWeek) as free-agent equivalents — no fee required.
+   * If omitted, only the static contractStatus column is used.
+   */
+  currentWeek?: number;
 };
 
 export async function makeOffer(
@@ -450,6 +478,7 @@ export async function makeOffer(
         clubId: players.clubId,
         skill: players.skill,
         contractStatus: players.contractStatus,
+        contractEndWeek: players.contractEndWeek,
         wageExpectationEurKWeek: players.wageExpectationEurKWeek,
         weeksUnsigned: players.weeksUnsigned,
       })
@@ -491,7 +520,12 @@ export async function makeOffer(
       | { kind: 'rejected'; reason: 'hard_reject' | 'wage_low' };
     let outcomeShape: OutcomeShape;
 
-    if (player.contractStatus === 'free_agent') {
+    // Pablo 2026-05-26: 'expiring' (≤8 weeks left) acts like free agent — no fee,
+    // wage acceptance only. Lets manager pre-sign for next season at no cost.
+    const isExpiring =
+      params.currentWeek !== undefined &&
+      player.contractEndWeek - params.currentWeek <= 8;
+    if (player.contractStatus === 'free_agent' || isExpiring) {
       const accepted = freeAgentAcceptance(params.wageOfferEurKWeek, {
         wageExpectationEurKWeek: player.wageExpectationEurKWeek,
         weeksUnsigned: player.weeksUnsigned,

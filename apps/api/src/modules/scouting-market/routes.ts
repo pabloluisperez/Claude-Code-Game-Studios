@@ -22,7 +22,10 @@ import {
   respondToIncomingOffer,
 } from './service.js';
 
-const querySchema = z.object({ clubId: z.string().uuid() });
+const querySchema = z.object({
+  clubId: z.string().uuid(),
+  currentWeek: z.coerce.number().int().nonnegative().optional(),
+});
 const scoutSchema = z.object({
   clubId: z.string().uuid(),
   playerId: z.string().uuid(),
@@ -34,6 +37,7 @@ const offerSchema = z.object({
   feeEurK: z.number().int().min(0),
   wageOfferEurKWeek: z.number().int().min(0),
   contractWeeks: z.number().int().min(1).max(260),
+  currentWeek: z.number().int().nonnegative().optional(),
 });
 
 const listForSaleSchema = z.object({
@@ -75,11 +79,11 @@ export function createScoutingMarketRoutes(): Hono<AuthEnv> {
 
   app.get('/market', zValidator('query', querySchema), async (c) => {
     const user = c.get('user');
-    const { clubId } = c.req.valid('query');
+    const { clubId, currentWeek } = c.req.valid('query');
     if (!(await clubBelongsToUser(user.id, clubId))) {
       return c.json({ error: 'NOT_FOUND' }, 404);
     }
-    const pool = await getMarket(clubId, { limit: 50 });
+    const pool = await getMarket(clubId, { limit: 50, currentWeek });
     return c.json({ pool }, 200);
   });
 

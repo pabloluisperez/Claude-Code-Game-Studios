@@ -100,11 +100,15 @@
 
   function closeOffer(): void { offerPlayerId = null; }
 
-  $effect(() => {
-    if (form?.action === 'offer' && 'kind' in (form ?? {})) {
-      offerPlayerId = null;
-    }
-  });
+  // Pablo 2026-05-26: after sending offer, give feedback + close modal.
+  // Toast holds 4s so the user sees the outcome even after modal closes.
+  let lastOutcomeToast = $state<{ kind: string; msg: string } | null>(null);
+  let toastTimer: ReturnType<typeof setTimeout> | null = null;
+  function showToast(kind: string, msg: string) {
+    if (toastTimer) clearTimeout(toastTimer);
+    lastOutcomeToast = { kind, msg };
+    toastTimer = setTimeout(() => { lastOutcomeToast = null; }, 4500);
+  }
 </script>
 
 <svelte:head>
@@ -420,6 +424,15 @@
     </div>
   {/if}
 
+  <!-- Toast (offer feedback) -->
+  {#if lastOutcomeToast}
+    <div class="toast toast-end z-50">
+      <div class="alert alert-{lastOutcomeToast.kind === 'warning' ? 'warning' : lastOutcomeToast.kind === 'error' ? 'error' : lastOutcomeToast.kind === 'success' ? 'success' : 'info'}">
+        <span>{lastOutcomeToast.msg}</span>
+      </div>
+    </div>
+  {/if}
+
   <!-- Offer modal -->
   {#if offerPlayerId}
     {@const p = data.pool.find((x) => x.id === offerPlayerId)}
@@ -428,19 +441,56 @@
         <div class="card bg-base-100 shadow-xl max-w-md w-full">
           <div class="card-body">
             <h3 class="card-title">Hacer oferta por {p.name}</h3>
-            <p class="text-xs opacity-70">{p.position} · {p.clubName ?? 'agente libre'}</p>
-            <form method="POST" action="?/offer" use:enhance>
+            <p class="text-xs opacity-70">
+              {p.position} · {p.clubName ?? 'agente libre'}
+              {#if p.contractStatus === 'expiring'}
+                <span class="badge badge-warning badge-sm ml-2">📋 Pre-contrato (contrato expira)</span>
+              {:else if p.contractStatus === 'free_agent'}
+                <span class="badge badge-info badge-sm ml-2">🆓 Agente libre</span>
+              {/if}
+            </p>
+            <form
+              method="POST"
+              action="?/offer"
+              use:enhance={() => {
+                return async ({ update, result }) => {
+                  await update({ reset: false });
+                  if (result.type === 'success') {
+                    const body = (result.data ?? {}) as { kind?: string; counterOfferEurK?: number; reason?: string; feeEurK?: number; finalWageEurKWeek?: number };
+                    if (body.kind === 'accepted') {
+                      showToast('success', `✅ Oferta aceptada — fee ${body.feeEurK ?? 0} k€ + sueldo ${body.finalWageEurKWeek ?? 0} k€/sem`);
+                    } else if (body.kind === 'counter') {
+                      showToast('warning', `🤝 Contraoferta: ${body.counterOfferEurK} k€`);
+                    } else if (body.kind === 'rejected') {
+                      showToast('error', `❌ Oferta rechazada (${body.reason === 'wage_low' ? 'sueldo bajo' : 'lejos del valor de mercado'})`);
+                    } else {
+                      showToast('info', 'Oferta enviada.');
+                    }
+                    closeOffer();
+                  } else if (result.type === 'failure') {
+                    const err = (result.data as { error?: string })?.error ?? 'desconocido';
+                    showToast('error', `Error al enviar oferta: ${err}`);
+                  }
+                };
+              }}
+            >
               <input type="hidden" name="clubId" value={data.club?.id ?? ''} />
               <input type="hidden" name="playerId" value={p.id} />
 
-              {#if p.contractStatus !== 'free_agent'}
+              {#if p.contractStatus === 'in_contract'}
                 <label class="form-control w-full mt-3">
                   <span class="label-text">Fee (k€)</span>
                   <input type="number" name="feeEurK" bind:value={offerFee} min="0" class="input input-bordered input-sm" />
                 </label>
               {:else}
                 <input type="hidden" name="feeEurK" value="0" />
-                <p class="text-xs mt-2 italic">Agente libre — no se paga fee, sólo sueldo.</p>
+                <p class="text-xs mt-2 italic">
+                  {#if p.contractStatus === 'free_agent'}
+                    🆓 Agente libre — no se paga fee, sólo sueldo.
+                  {:else}
+                    📋 Pre-contrato — el contrato expira pronto, podés ficharlo sin fee (negociación al estilo Bosman).
+                  {/if}
+                </p>
               {/if}
 
               <label class="form-control w-full mt-2">
@@ -454,8 +504,8 @@
               </label>
 
               <p class="text-xs opacity-60 mt-2">
-                Compromiso total: <span class="font-mono">{offerFee + offerWage * offerContractWeeks} k€</span> ·
-                Buffer requerido: <span class="font-mono">{offerFee + offerWage * 4} k€</span> (fee + 4 sem)
+                Compromiso total: <span class="font-mono">{(p.contractStatus === 'in_contract' ? offerFee : 0) + offerWage * offerContractWeeks} k€</span> ·
+                Buffer requerido: <span class="font-mono">{(p.contractStatus === 'in_contract' ? offerFee : 0) + offerWage * 4} k€</span> (fee + 4 sem)
               </p>
 
               <div class="card-actions justify-end mt-4">

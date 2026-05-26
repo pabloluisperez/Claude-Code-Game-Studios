@@ -47,7 +47,9 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
   let pool: PoolEntry[] = [];
   if (club) {
     try {
-      const res = await fetch(`/api/scouting/market?clubId=${encodeURIComponent(club.id)}`);
+      const res = await fetch(
+        `/api/scouting/market?clubId=${encodeURIComponent(club.id)}&currentWeek=${ctx.playthrough.currentWeek}`,
+      );
       if (res.ok) {
         const body = (await res.json()) as { pool: PoolEntry[] };
         pool = body.pool;
@@ -148,10 +150,20 @@ export const actions = {
     const wageOfferEurKWeek = Number(data.get('wageOfferEurKWeek') ?? 0);
     const contractWeeks = Number(data.get('contractWeeks') ?? 52);
 
+    const ctxLocal = await loadAdvanceContext(db, locals.user.id);
+    const currentWeek = ctxLocal?.playthrough.currentWeek ?? 0;
+
     const res = await fetch('/api/scouting/offer', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ clubId, playerId, feeEurK, wageOfferEurKWeek, contractWeeks }),
+      body: JSON.stringify({
+        clubId,
+        playerId,
+        feeEurK,
+        wageOfferEurKWeek,
+        contractWeeks,
+        currentWeek,
+      }),
     });
     const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
     if (!res.ok) {
