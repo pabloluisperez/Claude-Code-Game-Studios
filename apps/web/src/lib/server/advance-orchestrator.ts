@@ -332,7 +332,17 @@ export async function runAdvanceTickFull(
           eq(calendarEvents.status, 'pending'),
         ),
       );
-    if (Number(contractCount) === 0 && Number(pendingCount) === 0) {
+    // Pablo 2026-05-26: TV deal must only arrive in pretemporada, NOT mid-season.
+    // Gate on: are we before the active season's startWeek?
+    const [tvSeasonRow] = await db
+      .select({ startWeek: seasons.startWeek })
+      .from(seasons)
+      .innerJoin(leagues, eq(leagues.id, seasons.leagueId))
+      .where(and(eq(leagues.playthroughId, active.id), eq(seasons.status, 'active')))
+      .orderBy(desc(seasons.seasonNumber))
+      .limit(1);
+    const inPreseason = tvSeasonRow ? nextWeek < tvSeasonRow.startWeek : true;
+    if (Number(contractCount) === 0 && Number(pendingCount) === 0 && inPreseason) {
       const { buildTVAuctionPayload } = await import('@smt/shared');
       const payload = buildTVAuctionPayload({
         prevSeasonFinalPosition: null, // T1 fresh start → LOCAL only
