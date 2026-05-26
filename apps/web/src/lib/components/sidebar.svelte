@@ -72,7 +72,7 @@
       label: 'Liga',
       children: [
         { href: '/league', icon: '📊', label: 'Clasificación' },
-        { href: '/calendar', icon: '📅', label: 'Calendario' },
+        { href: '/calendar', icon: '📅', label: 'Eventos' },
       ],
     },
     {
