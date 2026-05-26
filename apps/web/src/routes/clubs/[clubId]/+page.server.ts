@@ -148,6 +148,18 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     .limit(1);
   const scoutTier = scoutDir?.tier ?? 0;
 
+  // Active season window for contract-in-seasons display (Pablo 2026-05-26).
+  const { seasons, leagues } = await import('@smt/db');
+  const [activeSeason] = await db
+    .select({ startWeek: seasons.startWeek, endWeek: seasons.endWeek })
+    .from(seasons)
+    .innerJoin(leagues, eq(leagues.id, seasons.leagueId))
+    .where(and(eq(leagues.playthroughId, ctx.playthrough.id), eq(seasons.status, 'active')))
+    .orderBy(desc(seasons.seasonNumber))
+    .limit(1);
+  const seasonLengthWeeks = activeSeason ? (activeSeason.endWeek - activeSeason.startWeek + 1) + 5 : 39;
+  const seasonEndWeek = activeSeason?.endWeek ?? ctx.playthrough.currentWeek;
+
   return {
     hasPlaythrough: true as const,
     club: target,
@@ -156,6 +168,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     myClubId: ctx.playthrough.clubId,
     currentWeek: ctx.playthrough.currentWeek,
     scoutTier,
+    seasonEndWeek,
+    seasonLengthWeeks,
   };
 };
 

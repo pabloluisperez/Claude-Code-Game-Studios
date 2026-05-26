@@ -1,6 +1,6 @@
 import type { Actions, PageServerLoad } from './$types';
 import { fail, redirect } from '@sveltejs/kit';
-import { db, players, playthroughs, staff, eq, asc, desc, and, sql } from '@smt/db';
+import { db, players, playthroughs, staff, seasons, leagues, eq, asc, desc, and, sql } from '@smt/db';
 
 const TRAINING_FOCI = ['velocidad', 'resistencia', 'agresividad', 'calidad'] as const;
 type TrainingFocus = (typeof TRAINING_FOCI)[number];
@@ -47,6 +47,19 @@ export const load: PageServerLoad = async ({ parent }) => {
 
   const trainingCap = fitnessCoach ? (TIER_TO_TRAINEE_CAP[fitnessCoach.qualityTier] ?? 1) : 0;
 
+  // Active season window — used to express contracts in temporadas (Pablo 2026-05-26).
+  const [activeSeason] = await db
+    .select({ startWeek: seasons.startWeek, endWeek: seasons.endWeek })
+    .from(seasons)
+    .innerJoin(leagues, eq(leagues.id, seasons.leagueId))
+    .where(and(eq(leagues.playthroughId, activePlaythrough.id), eq(seasons.status, 'active')))
+    .orderBy(desc(seasons.seasonNumber))
+    .limit(1);
+  // Season length (weeks) including pretemporada gap; fallback 39.
+  const seasonLengthWeeks =
+    activeSeason ? (activeSeason.endWeek - activeSeason.startWeek + 1) + 5 : 39;
+  const seasonEndWeek = activeSeason?.endWeek ?? activePlaythrough.currentWeek;
+
   return {
     hasPlaythrough: true as const,
     players: rows,
@@ -54,6 +67,8 @@ export const load: PageServerLoad = async ({ parent }) => {
     trainingIntensity: pt?.trainingIntensity ?? 50,
     fitnessCoach: fitnessCoach ?? null,
     trainingCap,
+    seasonEndWeek,
+    seasonLengthWeeks,
   };
 };
 

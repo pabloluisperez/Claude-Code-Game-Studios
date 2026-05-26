@@ -299,12 +299,12 @@
                     {/if}
                     {#if p.contractEndWeek - data.currentWeek <= 0}
                       <span class="badge badge-error badge-sm" title="Contrato expirado">⛔ Expirado</span>
-                    {:else if p.contractEndWeek - data.currentWeek <= 8}
+                    {:else if p.contractEndWeek <= (data.seasonEndWeek ?? 0)}
                       <span
                         class="badge badge-warning badge-sm gap-1"
-                        title="Contrato termina en {p.contractEndWeek - data.currentWeek} semanas. Considerá renovar."
+                        title="Acaba esta temporada — mejor momento para renovar o vender (precio sube cuanto menos contrato quede)"
                       >
-                        📝 {p.contractEndWeek - data.currentWeek}sem
+                        📝 Última temporada
                       </span>
                     {/if}
                   </div>
@@ -435,6 +435,28 @@
                 <div class="text-center">
                   <div class="text-xs opacity-60">Fitness</div>
                   <div class="font-mono text-xl">{selected.fitness}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Contract + salary (Pablo 2026-05-26: contrato en temporadas) -->
+            <div class="mt-4">
+              <div class="text-xs uppercase opacity-60 mb-2">Contrato</div>
+              <div class="grid grid-cols-2 gap-3">
+                <div class="bg-base-200 rounded p-2 text-center">
+                  <div class="text-xs opacity-60">Sueldo</div>
+                  <div class="font-mono text-lg">{selected.salaryEurK} k€/sem</div>
+                </div>
+                <div class="bg-base-200 rounded p-2 text-center">
+                  <div class="text-xs opacity-60">Tiempo restante</div>
+                  {#if selected.contractEndWeek - data.currentWeek <= 0}
+                    <div class="font-bold text-lg text-error">Expirado</div>
+                  {:else if selected.contractEndWeek <= (data.seasonEndWeek ?? 0)}
+                    <div class="font-bold text-lg text-warning">Última temporada</div>
+                  {:else}
+                    {@const seasonsLeft = Math.max(1, Math.ceil((selected.contractEndWeek - data.currentWeek) / (data.seasonLengthWeeks ?? 39)))}
+                    <div class="font-bold text-lg">{seasonsLeft} temporada{seasonsLeft === 1 ? '' : 's'}</div>
+                  {/if}
                 </div>
               </div>
             </div>

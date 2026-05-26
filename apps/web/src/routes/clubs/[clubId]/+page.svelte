@@ -128,10 +128,13 @@
                     {/if}
                   </td>
                   <td class="text-right font-mono text-xs">
-                    {#if p.contractEndWeek - data.currentWeek > 0}
-                      {p.contractEndWeek - data.currentWeek}sem
-                    {:else}
+                    {#if p.contractEndWeek - data.currentWeek <= 0}
                       <span class="text-error">expirado</span>
+                    {:else if p.contractEndWeek <= data.seasonEndWeek}
+                      <span class="badge badge-warning badge-sm" title="Acaba esta temporada — mejor precio">⚠️ Última temp.</span>
+                    {:else}
+                      {@const seasonsLeft = Math.max(1, Math.ceil((p.contractEndWeek - data.currentWeek) / data.seasonLengthWeeks))}
+                      {seasonsLeft} temp.
                     {/if}
                   </td>
                   <td>
