@@ -74,6 +74,37 @@
   // no de partidos.
   let view = $state<'upcoming3' | 'all' | 'past'>('upcoming3');
 
+  // Pablo 2026-05-26: click on a played fixture → show goals/cards/injuries.
+  type MatchEvent = {
+    minute: number;
+    type: 'goal' | 'yellow_card' | 'red_card' | 'injury';
+    team: 'home' | 'away';
+    playerName?: string;
+  };
+  let openFixture = $state<FixtureRow | null>(null);
+  const openFixtureEvents = $derived.by<MatchEvent[]>(() => {
+    if (!openFixture) return [];
+    const raw = (openFixture as { matchOutcomeData?: { events?: MatchEvent[] } }).matchOutcomeData;
+    const evts = raw?.events ?? [];
+    return [...evts].sort((a, b) => a.minute - b.minute);
+  });
+  function eventIcon(type: MatchEvent['type']): string {
+    switch (type) {
+      case 'goal': return '⚽';
+      case 'yellow_card': return '🟨';
+      case 'red_card': return '🟥';
+      case 'injury': return '🤕';
+    }
+  }
+  function eventLabel(type: MatchEvent['type']): string {
+    switch (type) {
+      case 'goal': return 'Gol';
+      case 'yellow_card': return 'Amarilla';
+      case 'red_card': return 'Roja';
+      case 'injury': return 'Lesión';
+    }
+  }
+
   function zoneClass(idx: number, total: number): string {
     if (idx < 3) return 'bg-success/5';
     if (idx >= total - 3) return 'bg-error/5';
@@ -299,10 +330,13 @@
                 </h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-1 text-sm">
                   {#each group as f}
-                    <div
-                      class="flex items-center justify-between p-2 rounded {fixtureHighlightClass(f)}"
+                    <button
+                      type="button"
+                      class="flex items-center justify-between p-2 rounded text-left w-full {fixtureHighlightClass(f)} {f.status === 'played' ? 'hover:bg-base-300 cursor-pointer' : ''}"
                       onmouseenter={() => hoverFixture(f)}
                       onmouseleave={clearHover}
+                      onclick={() => { if (f.status === 'played') openFixture = f; }}
+                      disabled={f.status !== 'played'}
                     >
                       <div class="flex-1 truncate">
                         <span class="{f.homeClubId === myClubId ? 'font-bold' : ''}">{f.homeName}</span>
@@ -318,7 +352,7 @@
                           <span class="opacity-30 text-xs">—</span>
                         {/if}
                       </div>
-                    </div>
+                    </button>
                   {/each}
                 </div>
               </div>
@@ -328,5 +362,50 @@
         </div>
       </div>
     </section>
+
+    <!-- Match detail modal (Pablo 2026-05-26: detalle del partido) -->
+    {#if openFixture}
+      <div class="modal modal-open">
+        <div class="modal-box max-w-lg">
+          <h3 class="font-bold text-lg flex items-center gap-2">
+            <span class={openFixture.homeClubId === myClubId ? 'text-primary' : ''}>{openFixture.homeName}</span>
+            <span class="badge badge-neutral text-base font-mono">{openFixture.homeScore}-{openFixture.awayScore}</span>
+            <span class={openFixture.awayClubId === myClubId ? 'text-primary' : ''}>{openFixture.awayName}</span>
+          </h3>
+          <p class="text-xs opacity-60 mt-1">Jornada {openFixture.matchday} · semana {openFixture.week}</p>
+
+          {#if openFixtureEvents.length === 0}
+            <p class="mt-4 text-sm opacity-60 italic">Sin eventos relevantes en este partido.</p>
+          {:else}
+            <div class="mt-4 space-y-1">
+              {#each openFixtureEvents as e (e.minute + ':' + (e.playerName ?? '') + ':' + e.type)}
+                <div class="flex items-center gap-3 p-2 rounded {e.team === 'home' ? 'bg-base-200' : 'bg-base-300'}">
+                  <span class="font-mono text-xs opacity-60 w-8 text-right">{e.minute}'</span>
+                  <span class="text-lg">{eventIcon(e.type)}</span>
+                  <span class="text-sm flex-1">
+                    {e.playerName ?? '—'}
+                  </span>
+                  <span class="text-xs opacity-50">
+                    {eventLabel(e.type)} · {e.team === 'home' ? openFixture.homeName : openFixture.awayName}
+                  </span>
+                </div>
+              {/each}
+            </div>
+          {/if}
+
+          <div class="modal-action">
+            <button class="btn" onclick={() => (openFixture = null)}>Cerrar</button>
+          </div>
+        </div>
+        <div
+          class="modal-backdrop"
+          role="button"
+          tabindex="-1"
+          aria-label="Cerrar"
+          onclick={() => (openFixture = null)}
+          onkeydown={(e) => e.key === 'Escape' && (openFixture = null)}
+        ></div>
+      </div>
+    {/if}
   {/if}
 </div>

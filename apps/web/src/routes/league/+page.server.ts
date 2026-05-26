@@ -99,6 +99,7 @@ export const load: PageServerLoad = async ({ parent }) => {
       awayName: awayClubs.name,
       homeScore: fixtures.homeScore,
       awayScore: fixtures.awayScore,
+      matchOutcomeData: fixtures.matchOutcomeData,
     })
     .from(fixtures)
     .innerJoin(homeClubs, eq(homeClubs.id, fixtures.homeClubId))

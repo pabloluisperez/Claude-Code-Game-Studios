@@ -558,6 +558,31 @@ async function applyMatchEffects(
         .where(eq(players.id, p.id));
     }
   }
+
+  // Pablo 2026-05-25 (deferred): starters gain a small attribute bump
+  // from playing — minutes-driven progression. Per-match: 8% probability
+  // per starter to gain +1 in a random core attribute (capped 95).
+  // Deterministic via the same rng so reproducible per fixture.
+  const ATTRIBUTE_KEYS = ['velocidad', 'resistencia', 'agresividad', 'calidad'] as const;
+  const PROGRESSION_PROB = 0.08;
+  const ATTRIBUTE_CAP = 95;
+  const allStarters = [...homeStarters, ...awayStarters];
+  for (const starterId of allStarters) {
+    if (rng() > PROGRESSION_PROB) continue;
+    const attrIdx = Math.floor(rng() * ATTRIBUTE_KEYS.length);
+    const attr = ATTRIBUTE_KEYS[attrIdx]!;
+    const [current] = await tx
+      .select({ [attr]: players[attr] })
+      .from(players)
+      .where(eq(players.id, starterId))
+      .limit(1);
+    const value = (current as Record<string, number | null> | undefined)?.[attr];
+    if (value === null || value === undefined || value >= ATTRIBUTE_CAP) continue;
+    await tx
+      .update(players)
+      .set({ [attr]: Math.min(ATTRIBUTE_CAP, value + 1) })
+      .where(eq(players.id, starterId));
+  }
 }
 
 // ── Injury persistence ───────────────────────────────────────────────────────
