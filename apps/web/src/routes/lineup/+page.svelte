@@ -15,6 +15,18 @@
   let selectedIds: Set<string> = $state(new Set(data.startingLineupIds));
   let formation: string = $state(data.preferredFormation);
 
+  // Re-sync local state when server data refreshes after save/clear actions.
+  // Pablo 2026-05-26: without this, checkboxes appear unchecked after Guardar
+  // while the `tr.bg-success/10` styling still applies (rows shaded but ticks gone).
+  let lastSyncedIds = $state('');
+  $effect(() => {
+    const incoming = JSON.stringify([...data.startingLineupIds].sort());
+    if (incoming !== lastSyncedIds) {
+      selectedIds = new Set(data.startingLineupIds);
+      lastSyncedIds = incoming;
+    }
+  });
+
   // Position quotas per formation (informational — server validates only XI count + 1 GK).
   const QUOTAS: Record<string, { GK: number; DEF: number; MID: number; FWD: number }> = {
     '4-4-2': { GK: 1, DEF: 4, MID: 4, FWD: 2 },
@@ -214,8 +226,9 @@
                             type="checkbox"
                             class="checkbox checkbox-sm checkbox-success"
                             {checked}
-                            disabled={!avail || (!checked && selectedCount >= 11)}
+                            disabled={(!avail && !checked) || (!checked && selectedCount >= 11)}
                             onchange={() => toggle(p.id)}
+                            title={!avail && checked ? 'Sancionado / lesionado — desmarcalo para sacarlo del XI' : ''}
                           />
                           {#if checked}
                             <input type="hidden" name="starterIds" value={p.id} />

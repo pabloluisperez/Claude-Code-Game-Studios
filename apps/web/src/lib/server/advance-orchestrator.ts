@@ -46,7 +46,9 @@ import {
   leagues,
   calendarEvents,
   players,
+  transferOffers,
   eq,
+  ne,
   and,
   or,
   desc,
@@ -833,6 +835,86 @@ export async function runAdvanceTickFull(
     }
   } catch {
     // Finance commentary is decorative — never block the advance pipeline.
+  }
+
+  // ── Phase 8c-bis: AI offers for transfer-listed players ────────────────
+  // Pablo 2026-05-26: '6 jugadores transferibles pero no veo que me lleguen
+  // ofertas'. Generate per-week deterministic offers for each transferListed
+  // player. Probability ~25%/wk per player, fee 60-100% of skill×10 valuation.
+  try {
+    const listed = await db
+      .select({
+        id: players.id,
+        firstName: players.firstName,
+        lastName: players.lastName,
+        skill: players.skill,
+        salaryEurK: players.salaryEurK,
+      })
+      .from(players)
+      .where(
+        and(
+          eq(players.clubId, active.clubId),
+          eq(players.transferListed, true),
+        ),
+      );
+
+    if (listed.length > 0) {
+      // Pool of potential buyers: any club other than the user's.
+      const buyers = await db
+        .select({ id: clubs.id, name: clubs.name, division: clubs.division })
+        .from(clubs)
+        .where(ne(clubs.id, active.clubId));
+
+      if (buyers.length > 0) {
+        for (const p of listed) {
+          // Idempotency: skip if already a pending offer for this player.
+          const [{ count: pendingCount = 0 } = { count: 0 }] = await db
+            .select({ count: sql<number>`COUNT(*)::int` })
+            .from(transferOffers)
+            .where(
+              and(
+                eq(transferOffers.playerId, p.id),
+                eq(transferOffers.status, 'pending'),
+              ),
+            );
+          if (Number(pendingCount) > 0) continue;
+
+          // Deterministic per (playerId, week).
+          const seed = `${p.id}:${nextWeek}:offer`;
+          const seedRng = createSeededRng(seed);
+          const roll = seedRng();
+          // 35% probability per week per listed player.
+          if (roll > 0.35) continue;
+
+          // Pick a buyer deterministically.
+          const buyerIdx = Math.floor(seedRng() * buyers.length);
+          const buyer = buyers[buyerIdx];
+          if (!buyer) continue;
+
+          const transferValueEurK = p.skill * 10;
+          // Fee 50-100% of value (lowball is realistic — Pablo can counter).
+          const feeFactor = 0.5 + seedRng() * 0.5;
+          const feeEurK = Math.max(5, Math.round(transferValueEurK * feeFactor));
+          // Wage offer: 100-130% of current salary (modest bump).
+          const wageOfferEurKWeek = Math.max(1, Math.round(p.salaryEurK * (1.0 + seedRng() * 0.3)));
+          const contractWeeks = 52;
+
+          await db.insert(transferOffers).values({
+            buyerClubId: buyer.id,
+            sellerClubId: active.clubId,
+            playerId: p.id,
+            windowId: '00000000-0000-0000-0000-000000000001',
+            feeEurK,
+            wageOfferEurKWeek,
+            contractWeeks,
+            status: 'pending',
+            bidNumber: 1,
+          });
+        }
+      }
+    }
+  } catch {
+    // AI offer generation is decorative — never block the advance pipeline.
   }
 
   // ── Phase 8d: contract renewal scans (Pablo 2026-05-25) ────────────────
