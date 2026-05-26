@@ -17,9 +17,14 @@ import {
   standings,
   leagues,
   divisions,
+  players,
+  staffMessages,
+  calendarEvents,
   eq,
   and,
   desc,
+  sql,
+  lte,
 } from '@smt/db';
 import { generateDoubleRoundRobin } from '@smt/shared';
 
@@ -133,6 +138,63 @@ export async function checkAndRolloverSeason(args: {
         points: 0,
       })),
     );
+
+    // Pablo 2026-05-26: pretemporada reset.
+    //   1. Players: fitness ← 95, morale ← max(current, 75), form ← 60,
+    //      yellowCardsSeason ← 0, suspendedMatchesRemaining ← NULL,
+    //      injuredUntilWeek ← NULL when past, availability ← 'available'
+    //      when injury was due to expire. Scoped to the playthrough so AI
+    //      clubs also reset (fair across competition).
+    //   2. Old staff_messages from prior seasons → mark isRead=true so the
+    //      inbox is clean for the new season.
+    //   3. Pending calendar_events from prior season → expired.
+    await tx
+      .update(players)
+      .set({
+        fitness: 95,
+        morale: sql`GREATEST(${players.morale}, 75)`,
+        form: 60,
+        yellowCardsSeason: 0,
+        suspendedMatchesRemaining: null,
+      })
+      .where(eq(players.playthroughId, playthroughId));
+
+    // Heal any injuries whose due-week has already passed; leave still-active
+    // ones intact (carrying over a 4-week injury into pretemporada is realistic).
+    await tx
+      .update(players)
+      .set({ availability: 'available', injuredUntilWeek: null })
+      .where(
+        and(
+          eq(players.playthroughId, playthroughId),
+          eq(players.availability, 'injured'),
+          lte(players.injuredUntilWeek, currentWeek),
+        ),
+      );
+
+    // Clear inbox clutter from the old season.
+    await tx
+      .update(staffMessages)
+      .set({ isRead: true })
+      .where(
+        and(
+          eq(staffMessages.playthroughId, playthroughId),
+          eq(staffMessages.season, activeSeason.seasonNumber),
+        ),
+      );
+
+    // Expire pending STOP events from the old season so they don't carry
+    // into the new one.
+    await tx
+      .update(calendarEvents)
+      .set({ status: 'expired', consumed: true })
+      .where(
+        and(
+          eq(calendarEvents.playthroughId, playthroughId),
+          eq(calendarEvents.status, 'pending'),
+          lte(calendarEvents.week, currentWeek),
+        ),
+      );
 
     return {
       rolledOver: true,
