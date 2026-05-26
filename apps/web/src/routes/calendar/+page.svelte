@@ -266,14 +266,25 @@
         proposedContractWeeks?: number;
         resolvedOutcome?: string;
         resolvedFinalSalaryEurK?: number;
+        // Sponsor renewal fields (Pablo 2026-05-26)
+        sponsorId?: string;
+        tier?: number;
+        currentWeeklyEurK?: number;
+        proposedWeeklyEurK?: number;
       } | null}
       {@const isRenewal = meta?.kind === 'contract_renewal'}
+      {@const isSponsorRenewal = meta?.kind === 'sponsor_renewal'}
       {@const optEntries = (meta?.options
         ? Object.entries(meta.options)
         : isRenewal
         ? [
             ['accept', { label: `Aceptar (€${meta?.demandedSalaryEurK}K/sem)`, description: 'Aceptar las condiciones que pide el jugador.' }],
             ['reject', { label: 'Rechazar', description: 'No le renovamos — termina su contrato y se marcha libre.' }],
+          ]
+        : isSponsorRenewal
+        ? [
+            ['renew', { label: `Renovar (€${meta?.proposedWeeklyEurK}K/sem · ${meta?.contractWeeks}sem)`, description: 'Aceptar renovación del patrocinador.' }],
+            ['decline', { label: 'No renovar', description: 'El patrocinio expira y deja de pagar — abre slot para otro.' }],
           ]
         : [
             ['accept', { label: 'Aceptar', description: 'Aceptar la propuesta tal cual.' }],
@@ -301,6 +312,33 @@
                 {#if meta.description}
                   <div class="text-xs opacity-80 mt-1">{meta.description}</div>
                 {/if}
+              </div>
+            </div>
+          {/if}
+
+          <!-- Sponsor renewal context (Pablo 2026-05-26) -->
+          {#if isSponsorRenewal && meta}
+            <div class="alert alert-info py-3 mt-3 text-sm">
+              <div class="w-full">
+                <div class="font-semibold text-base mb-1">
+                  {meta.brand} <span class="opacity-60 text-xs">(tier {meta.tier ?? '?'})</span>
+                </div>
+                <div class="mt-2 flex items-center justify-between gap-3">
+                  <div>
+                    <div class="text-xs opacity-60">Pagaba</div>
+                    <div class="font-mono font-bold">€{meta.currentWeeklyEurK}K/sem</div>
+                  </div>
+                  <div class="text-xl opacity-40">→</div>
+                  <div>
+                    <div class="text-xs opacity-60">Ofrece</div>
+                    <div class="font-mono font-bold {(meta.proposedWeeklyEurK ?? 0) >= (meta.currentWeeklyEurK ?? 0) ? 'text-success' : 'text-warning'}">
+                      €{meta.proposedWeeklyEurK}K/sem
+                    </div>
+                  </div>
+                  <div class="text-xs opacity-70 text-right">
+                    Duración<br/>{meta.contractWeeks}sem
+                  </div>
+                </div>
               </div>
             </div>
           {/if}

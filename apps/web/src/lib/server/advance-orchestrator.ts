@@ -998,6 +998,90 @@ export async function runAdvanceTickFull(
     // AI offer generation is decorative — never block the advance pipeline.
   }
 
+  // ── Phase 8c-bis-2: sponsor lifecycle (Pablo 2026-05-26) ────────────────
+  // Two operations:
+  //   1. Sponsors at endsWeek - 4: generate sponsor_renewal STOP event with
+  //      a fresh offer (variation on prior amount based on tier).
+  //   2. Sponsors at endsWeek: flip status='expired' + cancellationReason='expired'.
+  try {
+    const { sponsors } = await import('@smt/db');
+
+    // (1) Renewal offers 4 weeks before expiry.
+    const renewals = await db
+      .select({
+        id: sponsors.id,
+        name: sponsors.name,
+        tier: sponsors.tier,
+        weeklyEurK: sponsors.weeklyEurK,
+        endsWeek: sponsors.endsWeek,
+      })
+      .from(sponsors)
+      .where(
+        and(
+          eq(sponsors.playthroughId, active.id),
+          eq(sponsors.clubId, active.clubId),
+          eq(sponsors.status, 'active'),
+          sql`${sponsors.endsWeek} = ${nextWeek + 4}`,
+        ),
+      );
+
+    for (const s of renewals) {
+      // Skip if a pending renewal event already exists for this sponsor.
+      const [{ count = 0 } = { count: 0 }] = await db
+        .select({ count: sql<number>`COUNT(*)::int` })
+        .from(calendarEvents)
+        .where(
+          and(
+            eq(calendarEvents.playthroughId, active.id),
+            eq(calendarEvents.type, 'sponsor_renewal'),
+            eq(calendarEvents.status, 'pending'),
+            sql`(${calendarEvents.metadata} ->> 'sponsorId') = ${s.id}`,
+          ),
+        );
+      if (Number(count) > 0) continue;
+
+      // Proposed amount: ±20% jitter, biased slightly down (renewal is lower).
+      const seed = `${s.id}:renewal:${nextWeek}`;
+      const seedRng = createSeededRng(seed);
+      const factor = 0.85 + seedRng() * 0.3; // [0.85, 1.15]
+      const proposedWeekly = Math.max(1, Math.round(s.weeklyEurK * factor));
+      const contractWeeks = 26 + Math.floor(seedRng() * 27); // 26..52
+
+      await db.insert(calendarEvents).values({
+        playthroughId: active.id,
+        week: nextWeek,
+        season: tvCurrentSeason,
+        type: 'sponsor_renewal',
+        priority: 'STOP',
+        status: 'pending',
+        consumed: false,
+        metadata: {
+          kind: 'sponsor_renewal',
+          sponsorId: s.id,
+          brand: s.name,
+          tier: s.tier,
+          currentWeeklyEurK: s.weeklyEurK,
+          proposedWeeklyEurK: proposedWeekly,
+          contractWeeks,
+        } as Record<string, unknown>,
+      });
+    }
+
+    // (2) Expire sponsors past their endsWeek (and they didn't renew).
+    await db
+      .update(sponsors)
+      .set({ status: 'expired', cancellationReason: 'expired' })
+      .where(
+        and(
+          eq(sponsors.playthroughId, active.id),
+          eq(sponsors.status, 'active'),
+          sql`${sponsors.endsWeek} <= ${nextWeek}`,
+        ),
+      );
+  } catch {
+    // Sponsor lifecycle is decorative — never block the advance pipeline.
+  }
+
   // ── Phase 8d: contract renewal scans (Pablo 2026-05-25) ────────────────
   // Players whose contract ends in exactly 8 weeks generate a renewal event.
   // One-shot trigger window (== 8) so we don't re-spam every week. Player's

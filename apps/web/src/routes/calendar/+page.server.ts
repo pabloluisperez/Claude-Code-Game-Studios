@@ -166,6 +166,11 @@ export const actions: Actions = {
       skill?: number;
       form?: number;
       age?: number;
+      // Sponsor renewal fields (Pablo 2026-05-26)
+      sponsorId?: string;
+      tier?: number;
+      currentWeeklyEurK?: number;
+      proposedWeeklyEurK?: number;
     };
 
     // Counter-offer salary (only relevant for contract_renewal kind).
@@ -222,6 +227,28 @@ export const actions: Actions = {
               eq(calendarEvents.status, 'pending'),
             ),
           );
+      }
+
+      // Pablo 2026-05-26: sponsor_renewal side effects.
+      // accept → extend the sponsor row's endsWeek + update weeklyEurK to proposed
+      // decline → no-op (sponsor expires at its endsWeek; Phase 8c-bis-2 handles flip)
+      if (
+        metadata.kind === 'sponsor_renewal' &&
+        metadata.sponsorId &&
+        metadata.proposedWeeklyEurK &&
+        metadata.contractWeeks
+      ) {
+        if (choice === 'renew' || choice === 'accept') {
+          const { sponsors } = await import('@smt/db');
+          await tx
+            .update(sponsors)
+            .set({
+              weeklyEurK: metadata.proposedWeeklyEurK,
+              endsWeek: active.currentWeek + metadata.contractWeeks,
+              updatedAt: new Date(),
+            })
+            .where(eq(sponsors.id, metadata.sponsorId));
+        }
       }
 
       // Pablo 2026-05-25: contract_renewal side effects.
