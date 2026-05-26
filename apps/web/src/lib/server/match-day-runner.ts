@@ -113,16 +113,43 @@ async function simulateFixture(
   );
 
   // Pablo 2026-05-25: pull manual XI selections from clubs (NULL → auto top 11).
+  // Pablo 2026-05-26: pull defaultMatchInstruction too.
   // Suspended IDs are silently dropped by quickSimulateMatch's resolveStarters
   // since they're not in the roster passed here.
   const [homeClubRow] = await tx
-    .select({ ids: clubs.startingLineupPlayerIds })
+    .select({
+      ids: clubs.startingLineupPlayerIds,
+      instruction: clubs.defaultMatchInstruction,
+      managerId: clubs.managerId,
+    })
     .from(clubs)
     .where(eq(clubs.id, args.homeClubId));
   const [awayClubRow] = await tx
-    .select({ ids: clubs.startingLineupPlayerIds })
+    .select({
+      ids: clubs.startingLineupPlayerIds,
+      instruction: clubs.defaultMatchInstruction,
+      managerId: clubs.managerId,
+    })
     .from(clubs)
     .where(eq(clubs.id, args.awayClubId));
+
+  // For AI clubs (no managerId), pick instruction deterministically per fixture.
+  function resolveInstruction(
+    row: { instruction: string; managerId: string | null } | undefined,
+    seed: string,
+  ): 'PRESS_HIGH' | 'HOLD_SHAPE' | 'COUNTER' {
+    if (row?.managerId) {
+      const v = row.instruction as 'PRESS_HIGH' | 'HOLD_SHAPE' | 'COUNTER';
+      return v === 'PRESS_HIGH' || v === 'COUNTER' || v === 'HOLD_SHAPE' ? v : 'HOLD_SHAPE';
+    }
+    const rngLocal = createSeededRng(seed);
+    const roll = rngLocal();
+    if (roll < 0.33) return 'PRESS_HIGH';
+    if (roll < 0.66) return 'COUNTER';
+    return 'HOLD_SHAPE';
+  }
+  const homeInstruction = resolveInstruction(homeClubRow, `${args.seed}:home-instr`);
+  const awayInstruction = resolveInstruction(awayClubRow, `${args.seed}:away-instr`);
 
   // For auto-pick (no manual XI), pre-filter out injured so they're never
   // auto-selected. For manual XI, keep injured in the roster — quickSim's
@@ -147,6 +174,8 @@ async function simulateFixture(
     awayStarterIds: awayClubRow?.ids ?? null,
     homeUnavailableStarterIds: homeUnavailableIds,
     awayUnavailableStarterIds: awayUnavailableIds,
+    homeInstruction,
+    awayInstruction,
     rng: createSeededRng(args.seed),
   });
 }

@@ -60,6 +60,7 @@ export const load: PageServerLoad = async ({ parent }) => {
     .select({
       ids: clubs.startingLineupPlayerIds,
       formation: clubs.preferredFormation,
+      instruction: clubs.defaultMatchInstruction,
     })
     .from(clubs)
     .where(eq(clubs.id, activePlaythrough.clubId));
@@ -70,6 +71,7 @@ export const load: PageServerLoad = async ({ parent }) => {
     currentWeek: activePlaythrough.currentWeek,
     startingLineupIds: (club?.ids ?? []) as string[],
     preferredFormation: (club?.formation ?? '4-4-2') as Formation,
+    instruction: (club?.instruction ?? 'HOLD_SHAPE') as 'PRESS_HIGH' | 'HOLD_SHAPE' | 'COUNTER',
   };
 };
 
@@ -80,8 +82,12 @@ export const actions: Actions = {
 
     const idsRaw = form.getAll('starterIds').map((v) => String(v));
     const formation = String(form.get('formation') ?? '4-4-2') as Formation;
+    const instruction = String(form.get('instruction') ?? 'HOLD_SHAPE') as 'PRESS_HIGH' | 'HOLD_SHAPE' | 'COUNTER';
     if (!VALID_FORMATIONS.includes(formation)) {
       return fail(400, { error: `Formación inválida: ${formation}` });
+    }
+    if (!['PRESS_HIGH', 'HOLD_SHAPE', 'COUNTER'].includes(instruction)) {
+      return fail(400, { error: `Instrucción inválida: ${instruction}` });
     }
 
     // Look up the active playthrough — can't import from $lib/server here as the
@@ -124,11 +130,12 @@ export const actions: Actions = {
       .set({
         startingLineupPlayerIds: idsRaw,
         preferredFormation: formation,
+        defaultMatchInstruction: instruction,
         updatedAt: new Date(),
       })
       .where(eq(clubs.id, active.clubId));
 
-    return { ok: true, count: idsRaw.length, formation };
+    return { ok: true, count: idsRaw.length, formation, instruction };
   },
 
   clear: async ({ locals }) => {

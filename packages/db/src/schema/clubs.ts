@@ -49,6 +49,14 @@ export const clubs = pgTable('clubs', {
   startingLineupPlayerIds: jsonb('starting_lineup_player_ids').$type<string[] | null>(),
   /** Preferred formation for quick-sim and match-session start. */
   preferredFormation: text('preferred_formation').notNull().default('4-4-2'),
+  /**
+   * Tactical instruction applied to all quick-sim matches.
+   *   'PRESS_HIGH'  — aggressive: +5% strength, more cards/injuries
+   *   'HOLD_SHAPE'  — balanced: baseline behaviour
+   *   'COUNTER'     — defensive: -5% strength, more FWD-weighted goals
+   * Pablo 2026-05-26.
+   */
+  defaultMatchInstruction: text('default_match_instruction').notNull().default('HOLD_SHAPE'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 });

@@ -14,6 +14,7 @@
   // Initialize from saved lineup.
   let selectedIds: Set<string> = $state(new Set(data.startingLineupIds));
   let formation: string = $state(data.preferredFormation);
+  let instruction: 'PRESS_HIGH' | 'HOLD_SHAPE' | 'COUNTER' = $state(data.instruction ?? 'HOLD_SHAPE');
 
   // Re-sync local state when server data refreshes after save/clear actions.
   // Pablo 2026-05-26: without this, checkboxes appear unchecked after Guardar
@@ -217,8 +218,39 @@
     {/if}
 
     <!-- Roster grouped by position -->
+    <!-- Tactical instruction selector (Pablo 2026-05-26) -->
+    <div class="card bg-base-200 mb-4">
+      <div class="card-body p-4">
+        <h2 class="card-title text-base">Táctica</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-2 mt-1">
+          <label class="cursor-pointer">
+            <input type="radio" bind:group={instruction} name="instructionRadio" value="PRESS_HIGH" class="sr-only" />
+            <div class="card border-2 p-3 transition {instruction === 'PRESS_HIGH' ? 'border-error bg-error/10' : 'border-base-300 hover:border-base-content/30'}">
+              <div class="font-bold text-sm">🔥 Presión alta</div>
+              <div class="text-xs opacity-70 mt-1">+5% fuerza · +30% tarjetas/lesiones</div>
+            </div>
+          </label>
+          <label class="cursor-pointer">
+            <input type="radio" bind:group={instruction} name="instructionRadio" value="HOLD_SHAPE" class="sr-only" />
+            <div class="card border-2 p-3 transition {instruction === 'HOLD_SHAPE' ? 'border-info bg-info/10' : 'border-base-300 hover:border-base-content/30'}">
+              <div class="font-bold text-sm">⚖️ Mantener forma</div>
+              <div class="text-xs opacity-70 mt-1">Equilibrado (baseline)</div>
+            </div>
+          </label>
+          <label class="cursor-pointer">
+            <input type="radio" bind:group={instruction} name="instructionRadio" value="COUNTER" class="sr-only" />
+            <div class="card border-2 p-3 transition {instruction === 'COUNTER' ? 'border-warning bg-warning/10' : 'border-base-300 hover:border-base-content/30'}">
+              <div class="font-bold text-sm">⚡ Contraataque</div>
+              <div class="text-xs opacity-70 mt-1">-5% fuerza · delanteros ×1.4 chance gol</div>
+            </div>
+          </label>
+        </div>
+      </div>
+    </div>
+
     <form method="POST" action="?/save" use:enhance class="space-y-4">
       <input type="hidden" name="formation" value={formation} />
+      <input type="hidden" name="instruction" value={instruction} />
 
       {#each ['GK', 'DEF', 'MID', 'FWD'] as pos (pos)}
         {@const list = groups[pos] ?? []}

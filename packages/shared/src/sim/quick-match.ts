@@ -176,6 +176,9 @@ function playerLabel(p: QuickPlayerInput): string {
   return '—';
 }
 
+/** Tactical instructions per ADR-013 + Pablo 2026-05-26 quickSim extension. */
+export type QuickInstruction = 'PRESS_HIGH' | 'HOLD_SHAPE' | 'COUNTER';
+
 export function quickSimulateMatch(args: {
   readonly homeRoster: readonly QuickPlayerInput[];
   readonly awayRoster: readonly QuickPlayerInput[];
@@ -191,6 +194,9 @@ export function quickSimulateMatch(args: {
    */
   readonly homeUnavailableStarterIds?: ReadonlySet<string>;
   readonly awayUnavailableStarterIds?: ReadonlySet<string>;
+  /** Tactical instructions per side. Default HOLD_SHAPE if omitted. */
+  readonly homeInstruction?: QuickInstruction | null;
+  readonly awayInstruction?: QuickInstruction | null;
   readonly rng: () => number;
 }): QuickMatchResult {
   const homeStarters = resolveStarters(args.homeRoster, args.homeStarterIds);
@@ -212,6 +218,21 @@ export function quickSimulateMatch(args: {
   const awayStrengthFactor = awayEffective.length / TOP_N;
   home.strength *= homeStrengthFactor;
   away.strength *= awayStrengthFactor;
+
+  // Pablo 2026-05-26: tactical instruction modifiers.
+  //   PRESS_HIGH → +5% strength, +30% card/injury rate
+  //   HOLD_SHAPE → baseline (no modifier)
+  //   COUNTER    → -5% strength, FWD goal weight ×1.4
+  const homeIns: QuickInstruction = args.homeInstruction ?? 'HOLD_SHAPE';
+  const awayIns: QuickInstruction = args.awayInstruction ?? 'HOLD_SHAPE';
+  if (homeIns === 'PRESS_HIGH') home.strength *= 1.05;
+  if (homeIns === 'COUNTER') home.strength *= 0.95;
+  if (awayIns === 'PRESS_HIGH') away.strength *= 1.05;
+  if (awayIns === 'COUNTER') away.strength *= 0.95;
+  const homeCardMul = homeIns === 'PRESS_HIGH' ? 1.3 : 1.0;
+  const awayCardMul = awayIns === 'PRESS_HIGH' ? 1.3 : 1.0;
+  const homeFwdMul = homeIns === 'COUNTER' ? 1.4 : 1.0;
+  const awayFwdMul = awayIns === 'COUNTER' ? 1.4 : 1.0;
 
   const homeXg = Math.max(0, BASE_XG + STRENGTH_TO_XG * (home.strength - 50) + HOME_ADVANTAGE);
   const awayXg = Math.max(0, BASE_XG + STRENGTH_TO_XG * (away.strength - 50) - HOME_ADVANTAGE * 0.4);
@@ -235,7 +256,7 @@ export function quickSimulateMatch(args: {
   for (let i = 0; i < homeScore; i++) {
     const scorer = pickWeighted(
       homeOutfield,
-      (p) => Math.max(1, (p.calidad ?? p.skill) - 30) * (p.position === 'FWD' ? 1.5 : p.position === 'MID' ? 1.0 : 0.4),
+      (p) => Math.max(1, (p.calidad ?? p.skill) - 30) * (p.position === 'FWD' ? 1.5 * homeFwdMul : p.position === 'MID' ? 1.0 : 0.4),
       args.rng,
     );
     events.push({
@@ -249,7 +270,7 @@ export function quickSimulateMatch(args: {
   for (let i = 0; i < awayScore; i++) {
     const scorer = pickWeighted(
       awayOutfield,
-      (p) => Math.max(1, (p.calidad ?? p.skill) - 30) * (p.position === 'FWD' ? 1.5 : p.position === 'MID' ? 1.0 : 0.4),
+      (p) => Math.max(1, (p.calidad ?? p.skill) - 30) * (p.position === 'FWD' ? 1.5 * awayFwdMul : p.position === 'MID' ? 1.0 : 0.4),
       args.rng,
     );
     events.push({
@@ -261,9 +282,9 @@ export function quickSimulateMatch(args: {
     });
   }
 
-  // Cards — weighted by agresividad.
-  function cardsFor(team: 'home' | 'away', roster: readonly QuickPlayerInput[], aggMean: number) {
-    const expected = Math.max(0, (aggMean - 30) / 25);
+  // Cards — weighted by agresividad. PRESS_HIGH adds ~30% to card rate.
+  function cardsFor(team: 'home' | 'away', roster: readonly QuickPlayerInput[], aggMean: number, cardMul: number) {
+    const expected = Math.max(0, (aggMean - 30) / 25) * cardMul;
     const count = Math.floor(expected + args.rng() * 0.8);
     for (let i = 0; i < count; i++) {
       const isRed = args.rng() < 0.1;
@@ -281,8 +302,8 @@ export function quickSimulateMatch(args: {
       });
     }
   }
-  cardsFor('home', homeEffective, home.aggMean);
-  cardsFor('away', awayEffective, away.aggMean);
+  cardsFor('home', homeEffective, home.aggMean, homeCardMul);
+  cardsFor('away', awayEffective, away.aggMean, awayCardMul);
 
   // Injuries — weighted by (100 − resistencia).
   const combinedAgg = (home.aggMean + away.aggMean) / 2;
