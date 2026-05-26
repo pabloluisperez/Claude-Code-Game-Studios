@@ -52,9 +52,9 @@
   const links = [
     { href: '/dashboard',  icon: '📊', label: 'Dashboard' },
     { href: '/squad',      icon: '👥', label: 'Plantilla' },
-    { href: '/lineup',     icon: '⚽', label: 'XI titular' },
-    { href: '/staff',      icon: '🧑‍💼', label: 'Staff' },
-    { href: '/scouting',   icon: '🔍', label: 'Scouting' },
+    { href: '/lineup',     icon: '⚽', label: 'Entrenador' },
+    { href: '/staff',      icon: '🧑‍💼', label: 'Empleados del club' },
+    { href: '/scouting',   icon: '🔍', label: 'Fichajes' },
     { href: '/finance',    icon: '💰', label: 'Finanzas' },
     { href: '/league',     icon: '🏆', label: 'Liga' },
     { href: '/calendar',   icon: '📅', label: 'Calendario' },
@@ -102,7 +102,7 @@
           💰 {clubInfo.balanceEurK.toLocaleString('es-ES')} k€
         </div>
       {/if}
-      <div class="text-xs opacity-50 mt-0.5">Año {clubInfo.seasonNumber} · Semana {clubInfo.currentWeek}</div>
+      <div class="text-xs opacity-50 mt-0.5">Año {clubInfo.seasonNumber} · Jornada {clubInfo.currentWeek}</div>
     {:else}
       <div class="text-xs uppercase opacity-50 tracking-wide">Total Soccer Manager</div>
       <div class="text-sm font-semibold">Manager dashboard</div>

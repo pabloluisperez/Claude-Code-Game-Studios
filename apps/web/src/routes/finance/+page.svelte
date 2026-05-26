@@ -121,7 +121,7 @@
   {:else}
     <!-- a11y P1-4 (Sprint 11 task 11-3): each tab declares aria-selected
          + aria-controls; corresponding tabpanels expose role + id. -->
-    <div role="tablist" class="tabs tabs-boxed w-fit" aria-label="Finanzas">
+    <div role="tablist" class="tabs tabs-boxed w-full grid grid-cols-4" aria-label="Finanzas">
       <button
         role="tab"
         id="tab-finance-resumen"

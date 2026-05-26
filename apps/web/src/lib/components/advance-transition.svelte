@@ -490,11 +490,11 @@
       <div class="ticker">
         {#if currentHeadline}
           {#key currentHeadline.text}
-            <div class="ticker-card border-l-4 {headlineColor(currentHeadline.tag)}">
-              <div class="text-xs uppercase opacity-50 tracking-wide">
+            <div class="ticker-card border-l-4 {headlineColor(currentHeadline.tag)} pl-3 py-2">
+              <div class="text-xs uppercase opacity-50 tracking-wide mb-1.5">
                 {headlineTagLabel(currentHeadline.tag)}
               </div>
-              <div class="text-base md:text-lg font-semibold">
+              <div class="text-base md:text-lg font-semibold leading-snug">
                 {currentHeadline.text}
               </div>
             </div>

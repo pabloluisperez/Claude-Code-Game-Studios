@@ -180,11 +180,21 @@ export const load: PageServerLoad = async ({ params, parent }) => {
     }
   }
 
+  // Pablo 2026-05-26: which side is the user's club (for confetti gating).
+  const myClubSide: 'home' | 'away' | null = !activePlaythrough
+    ? null
+    : fx.homeClubId === activePlaythrough.clubId
+      ? 'home'
+      : fx.awayClubId === activePlaythrough.clubId
+        ? 'away'
+        : null;
+
   return {
     fixture: fx,
     otherFixtures,
     liveStandings,
     currentWeek: activePlaythrough?.currentWeek ?? 0,
     homeMatchEconomics,
+    myClubSide,
   };
 };

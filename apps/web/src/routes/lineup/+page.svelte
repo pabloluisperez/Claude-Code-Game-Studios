@@ -11,19 +11,21 @@
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
-  // Initialize from saved lineup.
-  let selectedIds: Set<string> = $state(new Set(data.startingLineupIds));
+  // Pablo 2026-05-26: bind:group-based selection avoids the controlled-checkbox
+  // desync bug (where Auto changed state but visual checkboxes lagged). The
+  // array is the single source of truth; bind:group manages native checked.
+  let selectedArray: string[] = $state([...data.startingLineupIds]);
   let formation: string = $state(data.preferredFormation);
   let instruction: 'PRESS_HIGH' | 'HOLD_SHAPE' | 'COUNTER' = $state(data.instruction ?? 'HOLD_SHAPE');
 
+  const selectedIds = $derived(new Set(selectedArray));
+
   // Re-sync local state when server data refreshes after save/clear actions.
-  // Pablo 2026-05-26: without this, checkboxes appear unchecked after Guardar
-  // while the `tr.bg-success/10` styling still applies (rows shaded but ticks gone).
   let lastSyncedIds = $state('');
   $effect(() => {
     const incoming = JSON.stringify([...data.startingLineupIds].sort());
     if (incoming !== lastSyncedIds) {
-      selectedIds = new Set(data.startingLineupIds);
+      selectedArray = [...data.startingLineupIds];
       lastSyncedIds = incoming;
     }
   });
@@ -64,7 +66,7 @@
     return g;
   });
 
-  let selectedCount = $derived(selectedIds.size);
+  let selectedCount = $derived(selectedArray.length);
   let gkSelected = $derived(
     data.hasPlaythrough
       ? data.players.filter((p) => p.position === 'GK' && selectedIds.has(p.id)).length
@@ -92,30 +94,23 @@
       : [],
   );
 
-  function toggle(id: string) {
-    const next = new Set(selectedIds);
-    if (next.has(id)) next.delete(id);
-    else if (next.size < 11) next.add(id);
-    selectedIds = next;
-  }
-
   function autoFill() {
     // Auto-pick: best 1 GK + DEF/MID/FWD per quota by skill, only available players.
     if (!data.hasPlaythrough) return;
-    const next = new Set<string>();
+    const next: string[] = [];
     const q = QUOTAS[formation] ?? QUOTAS['4-4-2'];
     for (const pos of ['GK', 'DEF', 'MID', 'FWD'] as const) {
       const candidates = data.players
         .filter((p) => p.position === pos && isAvailable(p))
         .sort((a, b) => b.skill - a.skill)
         .slice(0, q[pos]);
-      for (const c of candidates) next.add(c.id);
+      for (const c of candidates) next.push(c.id);
     }
-    selectedIds = next;
+    selectedArray = next;
   }
 
   function clearAll() {
-    selectedIds = new Set();
+    selectedArray = [];
   }
 </script>
 
@@ -287,9 +282,9 @@
                           <input
                             type="checkbox"
                             class="checkbox checkbox-sm {suspended ? 'checkbox-error' : !avail ? 'checkbox-warning' : 'checkbox-success'}"
-                            {checked}
+                            bind:group={selectedArray}
+                            value={p.id}
                             disabled={(suspended && !checked) || (!checked && selectedCount >= 11)}
-                            onchange={() => toggle(p.id)}
                             title={
                               suspended ? 'Sancionado — no puede jugar' :
                               !avail && checked ? 'Lesionado en el XI — el equipo jugará con un jugador menos' :

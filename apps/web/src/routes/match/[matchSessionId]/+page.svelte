@@ -142,12 +142,16 @@
         0,
       ) >>> 0;
     const triggerRoll = (hash % 1000) / 1000; // 0..1
-    if (triggerRoll >= 0.08) return 'none';
+    // Pablo 2026-05-26: bumped 8% → 18% so VAR shows up more often (was rarely
+    // seen across matches). ~18% per goal ≈ a VAR check most matches.
+    if (triggerRoll >= 0.18) return 'none';
     const outcomeRoll = ((hash >> 8) % 1000) / 1000;
     return outcomeRoll < 0.5 ? 'overturned' : 'confirmed';
   }
 
   function triggerConfetti(side: 'home' | 'away'): void {
+    // Pablo 2026-05-26: only celebrate the USER's goals, not the rival's.
+    if (data.myClubSide && side !== data.myClubSide) return;
     confettiSide = side;
     confettiKey += 1;
     // Auto-clear after the animation (1.5s) so consecutive goals re-trigger
