@@ -481,6 +481,7 @@ export async function makeOffer(
         contractEndWeek: players.contractEndWeek,
         wageExpectationEurKWeek: players.wageExpectationEurKWeek,
         weeksUnsigned: players.weeksUnsigned,
+        transferListed: players.transferListed,
       })
       .from(players)
       .where(eq(players.id, params.playerId))
@@ -538,10 +539,14 @@ export async function makeOffer(
         dbStatus = 'rejected';
       }
     } else {
+      // Pablo 2026-05-26: ofertas a no-transferibles = club pide premium.
+      // transferListed=true → bargainFactor 1.0 (price as marked)
+      // transferListed=false → 1.4 (40% premium because they don't want to sell)
+      const bargainFactor = player.transferListed ? 1.0 : 1.4;
       const auction: AuctionResult = aiClubAcceptance(
         params.feeEurK,
         { transferValueEurK },
-        { bargainFactor: 1.0, needFactor: 0.5 },
+        { bargainFactor, needFactor: 0.5 },
       );
       if (auction.accepted === true) {
         outcomeShape = {

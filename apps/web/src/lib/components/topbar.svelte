@@ -44,6 +44,7 @@
      */
     isPreseason?: boolean;
     matchday?: number | null;
+    seasonNumber?: number;
   }
   let {
     user,
@@ -56,6 +57,7 @@
     onToggleSidebar,
     isPreseason = false,
     matchday = null,
+    seasonNumber = 1,
   }: Props = $props();
 
   // Compute the label + value for the week/jornada chip.
@@ -124,7 +126,7 @@
       </div>
     {/if}
     <div class="hidden md:flex flex-col items-end text-xs leading-tight">
-      <span class="opacity-50">{weekChipLabel}</span>
+      <span class="opacity-50">Año {seasonNumber} · {weekChipLabel}</span>
       <span class="font-mono font-semibold">{weekChipValue}</span>
     </div>
     {#if balanceEurK !== null}

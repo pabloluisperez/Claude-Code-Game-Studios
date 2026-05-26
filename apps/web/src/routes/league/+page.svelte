@@ -161,8 +161,16 @@
 
 <div class="space-y-6">
   <header>
-    <h1 class="text-2xl font-bold">Liga</h1>
-    <p class="opacity-60">Clasificación y calendario completo</p>
+    <h1 class="text-2xl font-bold">
+      {data.hasPlaythrough ? data.divisionName : 'Liga'}
+    </h1>
+    <p class="opacity-60">
+      {#if data.hasPlaythrough}
+        Temporada {data.seasonNumber} · Clasificación y calendario
+      {:else}
+        Clasificación y calendario completo
+      {/if}
+    </p>
   </header>
 
   {#if !data.hasPlaythrough}
@@ -203,7 +211,8 @@
                     >
                       <td class="font-mono">{i + 1}</td>
                       <td>
-                        {r.clubId === myClubId ? '★ ' : ''}{r.clubName}
+                        {r.clubId === myClubId ? '★ ' : ''}
+                        <a href="/clubs/{r.clubId}" class="link link-hover">{r.clubName}</a>
                       </td>
                       <td class="text-right font-mono">{r.played}</td>
                       <td class="text-right font-mono">{r.wins}</td>

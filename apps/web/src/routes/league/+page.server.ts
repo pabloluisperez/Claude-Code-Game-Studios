@@ -7,6 +7,7 @@ import {
   clubs,
   leagues,
   seasons,
+  divisions,
   eq,
   and,
   desc,
@@ -56,8 +57,17 @@ export const load: PageServerLoad = async ({ parent }) => {
       upcomingFixtures: [],
       currentWeek: activePlaythrough.currentWeek,
       myClubId: activePlaythrough.clubId,
+      divisionName: 'Quinta División',
+      seasonNumber: 1,
     };
   }
+
+  // Resolve the division name + current season number for the page header.
+  const [divisionRow] = await db
+    .select({ name: divisions.name })
+    .from(divisions)
+    .where(eq(divisions.id, activeSeason.divisionId))
+    .limit(1);
 
   // Standings JOIN clubs for human-readable names.
   const standingsRows = await db
@@ -117,5 +127,7 @@ export const load: PageServerLoad = async ({ parent }) => {
     upcomingFixtures,
     currentWeek: activePlaythrough.currentWeek,
     myClubId: activePlaythrough.clubId,
+    divisionName: divisionRow?.name ?? 'División',
+    seasonNumber: activeSeason.seasonNumber,
   };
 };

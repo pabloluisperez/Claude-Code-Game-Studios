@@ -44,7 +44,7 @@
     <a href="#main-content" class="skip-link">Saltar al contenido</a>
     <Topbar
       user={data.user}
-      week={data.activePlaythrough?.currentWeek ?? 0}
+      week={data.activePlaythrough?.weekInSeason ?? 0}
       dateDisplay={data.activePlaythrough?.date?.display}
       dateDisplayLong={data.activePlaythrough?.date?.displayLong}
       balanceEurK={data.activePlaythrough?.balanceEurK ?? null}
@@ -53,6 +53,7 @@
       onToggleSidebar={toggleSidebar}
       isPreseason={data.activePlaythrough?.isPreseason ?? false}
       matchday={data.activePlaythrough?.matchday ?? null}
+      seasonNumber={data.activePlaythrough?.seasonNumber ?? 1}
     />
     <div class="flex flex-1">
       {#if showSidebar}
@@ -66,7 +67,8 @@
                 position: data.activePlaythrough.standingsPosition ?? null,
                 record: data.activePlaythrough.standingsRecord ?? null,
                 balanceEurK: data.activePlaythrough.balanceEurK ?? null,
-                currentWeek: data.activePlaythrough.currentWeek,
+                currentWeek: data.activePlaythrough.weekInSeason ?? data.activePlaythrough.currentWeek,
+                seasonNumber: data.activePlaythrough.seasonNumber ?? 1,
               }
             : null}
         />

@@ -17,6 +17,7 @@
       record: { wins: number; draws: number; losses: number } | null;
       balanceEurK: number | null;
       currentWeek: number;
+      seasonNumber: number;
     } | null;
   }
   let { open = $bindable(), badges, clubInfo = null }: Props = $props();
@@ -88,7 +89,7 @@
           💰 {clubInfo.balanceEurK.toLocaleString('es-ES')} k€
         </div>
       {/if}
-      <div class="text-xs opacity-50 mt-0.5">Semana {clubInfo.currentWeek}</div>
+      <div class="text-xs opacity-50 mt-0.5">Año {clubInfo.seasonNumber} · Semana {clubInfo.currentWeek}</div>
     {:else}
       <div class="text-xs uppercase opacity-50 tracking-wide">Total Soccer Manager</div>
       <div class="text-sm font-semibold">Manager dashboard</div>

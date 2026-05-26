@@ -96,13 +96,18 @@ export const load: LayoutServerLoad = async ({ locals }) => {
   // before the active season's startWeek, then "Jornada N" once the league
   // is running. Compute both: seasonStartWeek + current matchday.
   const [activeSeason] = await db
-    .select({ startWeek: seasons.startWeek })
+    .select({ startWeek: seasons.startWeek, seasonNumber: seasons.seasonNumber })
     .from(seasons)
     .innerJoin(leagues, eq(leagues.id, seasons.leagueId))
     .where(and(eq(leagues.playthroughId, active.id), eq(seasons.status, 'active')))
     .orderBy(desc(seasons.seasonNumber))
     .limit(1);
   const seasonStartWeek = activeSeason?.startWeek ?? null;
+  const seasonNumber = activeSeason?.seasonNumber ?? 1;
+  // Pablo 2026-05-26: relative week-within-season for display purposes.
+  // Pretemporada lasts a few weeks before startWeek — render that as week 0.
+  const weekInSeason =
+    seasonStartWeek !== null ? Math.max(0, active.currentWeek - seasonStartWeek + 1) : active.currentWeek;
   const isPreseason =
     seasonStartWeek !== null && active.currentWeek < seasonStartWeek;
   let matchday: number | null = null;
@@ -157,6 +162,8 @@ export const load: LayoutServerLoad = async ({ locals }) => {
       balanceEurK,
       isPreseason,
       matchday,
+      seasonNumber,
+      weekInSeason,
       standingsPosition: position,
       standingsRecord: record,
     },
