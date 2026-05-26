@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Manager de fútbol por navegador. Simula temporadas, gestiona club y carrera." />
     <meta name="theme-color" content="#1a3e2a" />
+    <script>
+      // Pablo 2026-05-26: apply persisted theme BEFORE first paint to avoid flash.
+      try {
+        var t = localStorage.getItem('tsm-theme');
+        if (t === 'cream' || t === 'night') {
+          document.documentElement.setAttribute('data-theme', t);
+        }
+      } catch (e) {}
+    </script>
 
     <link rel="icon" type="image/png" sizes="32x32" href="%sveltekit.assets%/icons/icon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="%sveltekit.assets%/icons/icon-16.png" />

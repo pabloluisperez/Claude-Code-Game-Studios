@@ -74,6 +74,25 @@
   // no de partidos.
   let view = $state<'upcoming3' | 'all' | 'past'>('upcoming3');
 
+  // Pablo 2026-05-26: build tier→{groupCount, tierName} index for nav buttons.
+  const tierMap = $derived.by(() => {
+    const m = new Map<number, { groupCount: number; tierName: string }>();
+    if (!data.hasPlaythrough) return m;
+    for (const d of data.availableDivisions) {
+      const existing = m.get(d.tier);
+      if (!existing) {
+        m.set(d.tier, { groupCount: 1, tierName: d.name.replace(/ Grupo \d+$/, '') });
+      } else {
+        existing.groupCount = Math.max(existing.groupCount, d.groupIndex + 1);
+      }
+    }
+    return m;
+  });
+  const tierEntries = $derived([...tierMap.entries()].sort((a, b) => a[0] - b[0]));
+  const viewingTierGroupCount = $derived(
+    data.hasPlaythrough ? (tierMap.get(data.viewingTier)?.groupCount ?? 1) : 1,
+  );
+
   // Pablo 2026-05-26: click on a played fixture → show goals/cards/injuries.
   type MatchEvent = {
     minute: number;
@@ -161,16 +180,64 @@
 
 <div class="space-y-6">
   <header>
-    <h1 class="text-2xl font-bold">
-      {data.hasPlaythrough ? data.divisionName : 'Liga'}
-    </h1>
-    <p class="opacity-60">
-      {#if data.hasPlaythrough}
-        Temporada {data.seasonNumber} · Clasificación y calendario
-      {:else}
-        Clasificación y calendario completo
+    <div class="flex flex-wrap items-baseline justify-between gap-2">
+      <div>
+        <h1 class="text-2xl font-bold">
+          {data.hasPlaythrough ? data.divisionName : 'Liga'}
+          {#if data.hasPlaythrough && data.isMyDivision}
+            <span class="badge badge-primary badge-sm align-middle ml-1">Tu liga</span>
+          {/if}
+        </h1>
+        <p class="opacity-60">
+          {#if data.hasPlaythrough}
+            Temporada {data.seasonNumber} · Clasificación y calendario
+          {:else}
+            Clasificación y calendario completo
+          {/if}
+        </p>
+      </div>
+      {#if data.hasPlaythrough && !data.isMyDivision}
+        <a href="/league" class="btn btn-sm btn-outline">← Volver a mi liga</a>
       {/if}
-    </p>
+    </div>
+
+    {#if data.hasPlaythrough && data.availableDivisions.length > 0}
+      <div class="mt-3 space-y-2">
+        <!-- Tier buttons -->
+        <div class="flex flex-wrap gap-1">
+          {#each tierEntries as [tier, info] (tier)}
+            <a
+              href={`/league?tier=${tier}&group=0`}
+              class="btn btn-xs {data.viewingTier === tier ? 'btn-primary' : 'btn-ghost border border-base-300'}"
+              title={info.tierName}
+            >
+              {info.tierName}
+              {#if tier === data.myTier}
+                <span class="text-xs opacity-70 ml-1">★</span>
+              {/if}
+            </a>
+          {/each}
+        </div>
+
+        <!-- Group selector (only for tiers with > 1 group) -->
+        {#if viewingTierGroupCount > 1}
+          <div class="flex flex-wrap gap-1 items-center">
+            <span class="text-xs opacity-60 mr-1">Grupo:</span>
+            {#each Array.from({ length: viewingTierGroupCount }, (_, i) => i) as g (g)}
+              <a
+                href={`/league?tier=${data.viewingTier}&group=${g}`}
+                class="btn btn-xs {data.viewingGroup === g ? 'btn-secondary' : 'btn-ghost border border-base-300'}"
+              >
+                {g + 1}
+                {#if data.viewingTier === data.myTier && g === data.myGroup}
+                  <span class="text-xs ml-0.5">★</span>
+                {/if}
+              </a>
+            {/each}
+          </div>
+        {/if}
+      </div>
+    {/if}
   </header>
 
   {#if !data.hasPlaythrough}
