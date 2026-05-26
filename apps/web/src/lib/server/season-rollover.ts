@@ -255,11 +255,12 @@ export async function checkAndRolloverSeason(args: {
       }
     }
 
-    // ── Roster-on-promote (Pablo 2026-05-26 #38) ───────────────────────
-    // If the user changed tier, generate full rosters for the rivals in
-    // their NEW group that are still lightweight (no players) — otherwise
-    // the user's division full-sim would face empty rosters next season.
-    if (userPromoted || userRelegated) {
+    // ── Ensure user-group rosters (Pablo 2026-05-26 #38 / 2026-05-27 fix) ──
+    // Generate full rosters for ANY rosterless rival in the user's CURRENT
+    // group — runs every rollover, not just on promotion, because the group
+    // rebalance can move lightweight clubs into the user's group even when the
+    // user stays in the same tier (was causing 0-0 draws vs empty rosters).
+    {
       const [userNow] = await tx
         .select({ tier: clubs.tier, groupIndex: clubs.groupIndex })
         .from(clubs)

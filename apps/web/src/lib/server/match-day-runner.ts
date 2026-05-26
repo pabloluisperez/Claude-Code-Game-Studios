@@ -31,6 +31,9 @@ import {
   quickSimulateMatch,
   extractSuspensions,
   processYellowAccumulation,
+  generateRoster,
+  defaultWorldState,
+  pickTraits,
   type QuickMatchResult,
 } from '@smt/shared';
 
@@ -52,10 +55,65 @@ type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
  * Pull both rosters from `players` and call `quickSimulateMatch`.
  * Uses a per-fixture seed so each result is reproducible.
  */
+/**
+ * Pablo 2026-05-27: self-heal — a club in the user's division with no roster
+ * (e.g. a lightweight pyramid club moved into the group by the season
+ * rebalance) gets a roster generated on the fly so the full player-sim works
+ * instead of producing 0-0 draws against empty rosters.
+ */
+async function ensureRoster(
+  tx: Tx,
+  clubId: string,
+  playthroughId: string,
+  currentWeek: number,
+): Promise<void> {
+  const [{ n = 0 } = { n: 0 }] = await tx
+    .select({ n: sql<number>`COUNT(*)::int` })
+    .from(players)
+    .where(eq(players.clubId, clubId));
+  if (Number(n) > 0) return;
+  const [c] = await tx.select({ strength: clubs.strengthRating }).from(clubs).where(eq(clubs.id, clubId)).limit(1);
+  const rng = createSeededRng(`roster:${clubId}:heal`);
+  const generated = generateRoster({
+    ctx: { rng, currentWeek, hasMatchThisWeek: false, prevState: defaultWorldState() },
+    clubBaseSkill: c?.strength ?? 35,
+    clubSlug: clubId,
+    currentWeek,
+  });
+  await tx.insert(players).values(
+    generated.map((p, i) => ({
+      clubId,
+      playthroughId,
+      firstName: p.firstName,
+      lastName: p.lastName,
+      nationality: p.nationality,
+      birthWeek: p.birthWeek,
+      position: p.position,
+      skill: p.skill,
+      fitness: p.fitness,
+      morale: p.morale,
+      form: p.form,
+      stamina: p.stamina,
+      velocidad: p.velocidad,
+      resistencia: p.resistencia,
+      agresividad: p.agresividad,
+      calidad: p.calidad,
+      salaryEurK: p.salaryEurK,
+      contractStartWeek: p.contractStartWeek,
+      contractEndWeek: p.contractEndWeek,
+      traits: [...pickTraits(`${clubId}:heal:${i}:${p.firstName}${p.lastName}`)],
+    })),
+  );
+}
+
 async function simulateFixture(
   tx: Tx,
-  args: { fixtureId: string; homeClubId: string; awayClubId: string; seed: string },
+  args: { fixtureId: string; homeClubId: string; awayClubId: string; seed: string; playthroughId: string; currentWeek: number },
 ): Promise<QuickMatchResult> {
+  // Self-heal missing rosters before the full player-sim (Pablo 2026-05-27).
+  await ensureRoster(tx, args.homeClubId, args.playthroughId, args.currentWeek);
+  await ensureRoster(tx, args.awayClubId, args.playthroughId, args.currentWeek);
+
   const playerCols = {
     id: players.id,
     firstName: players.firstName,
@@ -318,6 +376,8 @@ export async function runMatchDay(args: {
             homeClubId: fx.homeClubId,
             awayClubId: fx.awayClubId,
             seed,
+            playthroughId,
+            currentWeek: week,
           })
         : simulateStrengthBased(fx.homeStrength ?? 50, fx.awayStrength ?? 50, seed);
 
