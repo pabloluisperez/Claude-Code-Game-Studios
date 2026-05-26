@@ -431,6 +431,7 @@ export async function runAdvanceTickFull(
     divisionTier,
     tvWeeklyEurK: tvPre.revenue,
     fanLoyalty: tvPre.fanLoyalty,
+    attendanceSeed: `${active.id}:${nextWeek}:att`,
   });
 
   // ── Phase 3b: stadium-upgrades tick (Pablo bug 2026-05-25) ──────────────

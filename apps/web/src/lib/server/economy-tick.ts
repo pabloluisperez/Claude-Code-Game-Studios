@@ -113,6 +113,8 @@ export async function applyEconomyTick(args: {
    * matchday attendance boost. When undefined, treated as 0 (no boost).
    */
   fanLoyalty?: number;
+  /** Seed for per-match attendance variance (Pablo 2026-05-26). */
+  attendanceSeed?: string;
 }): Promise<EconomyTickResult> {
   const { playthroughId, clubId, baseState, homeFixtureThisWeek, divisionTier } = args;
   const tvWeeklyEurK = args.tvWeeklyEurK ?? 0;
@@ -144,7 +146,18 @@ export async function applyEconomyTick(args: {
     const fanAttendance = stateRead['fan_attendance'] ?? 40;
     const fanCultureIndex = stateRead['fan_culture_index'] ?? 35;
     const ticketPriceIndex = stateRead['ticket_price_index'] ?? 50;
-    matchDayAttendance = Math.round(stadiumCapacity * (fanAttendance / 100));
+    // Pablo 2026-05-26: attendance now varies with form (fan_momentum) + a
+    // deterministic random jitter, instead of always the same number.
+    //   momentumFactor: fan_momentum 50 = neutral; ±0.3 at extremes (0/100)
+    //   jitter: ±12% deterministic per (playthrough, week)
+    const momentumFactor = 1 + ((fanMomentum - 50) / 50) * 0.3;
+    let jitter = 1;
+    if (args.attendanceSeed) {
+      const h = [...args.attendanceSeed].reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0) >>> 0;
+      jitter = 0.88 + ((h % 1000) / 1000) * 0.24; // [0.88, 1.12]
+    }
+    const baseAtt = stadiumCapacity * (fanAttendance / 100) * momentumFactor * jitter;
+    matchDayAttendance = Math.max(0, Math.min(stadiumCapacity, Math.round(baseAtt)));
     const pricing = computeEffectiveTicketPrice({
       stadiumCapacity,
       divisionTier,
