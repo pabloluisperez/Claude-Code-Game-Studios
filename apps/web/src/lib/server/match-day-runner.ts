@@ -16,6 +16,7 @@ import {
   fixtures,
   standings,
   players,
+  playthroughs,
   staffMessages,
   staff,
   clubs,
@@ -229,6 +230,47 @@ async function applyToStandings(
 }
 
 /**
+ * Strength-based quick simulation for AI-vs-AI matches in distant divisions
+ * (no per-player rosters loaded). Pablo 2026-05-26: Spanish pyramid has ~496
+ * clubs across 27 divisions — only the user's group has full rosters.
+ */
+function simulateStrengthBased(
+  homeStrength: number,
+  awayStrength: number,
+  seed: string,
+): QuickMatchResult {
+  const rng = createSeededRng(seed);
+  const HOME_ADV = 3;
+  const homeXg = Math.max(0, 0.05 * (homeStrength + HOME_ADV - 50));
+  const awayXg = Math.max(0, 0.05 * (awayStrength - 50));
+  // Poisson-ish draw using just rng.
+  function poissonish(lambda: number): number {
+    let k = 0;
+    let p = 1;
+    const L = Math.exp(-lambda);
+    while (p > L && k < 7) {
+      k++;
+      p *= rng();
+    }
+    return Math.max(0, k - 1);
+  }
+  const homeScore = poissonish(1.2 + homeXg);
+  const awayScore = poissonish(1.0 + awayXg);
+  const winner: 'home' | 'away' | 'draw' =
+    homeScore > awayScore ? 'home' : awayScore > homeScore ? 'away' : 'draw';
+  return {
+    homeScore,
+    awayScore,
+    winner,
+    homeStrength,
+    awayStrength,
+    events: [],
+    homeStarterIds: [],
+    awayStarterIds: [],
+  };
+}
+
+/**
  * Run all `status = 'scheduled'` fixtures in `week`, persisting scores and
  * updating standings. Returns the list of results for caller side effects
  * (e.g. an in-game notification feed).
@@ -240,12 +282,26 @@ export async function runMatchDay(args: {
   const { playthroughId, week } = args;
 
   return db.transaction(async (tx) => {
+    // Find the user's club to identify which fixtures need full-player sim.
+    const [userPt] = await tx
+      .select({ tier: clubs.tier, groupIndex: clubs.groupIndex })
+      .from(playthroughs)
+      .innerJoin(clubs, eq(clubs.id, playthroughs.clubId))
+      .where(eq(playthroughs.id, playthroughId))
+      .limit(1);
+    const userTier = userPt?.tier ?? 5;
+    const userGroup = userPt?.groupIndex ?? 0;
+
     const scheduledRows = await tx
       .select({
         id: fixtures.id,
         seasonId: fixtures.seasonId,
         homeClubId: fixtures.homeClubId,
         awayClubId: fixtures.awayClubId,
+        homeTier: sql<number>`(SELECT tier FROM clubs WHERE id = ${fixtures.homeClubId})`,
+        homeGroup: sql<number>`(SELECT group_index FROM clubs WHERE id = ${fixtures.homeClubId})`,
+        homeStrength: sql<number>`(SELECT strength_rating FROM clubs WHERE id = ${fixtures.homeClubId})`,
+        awayStrength: sql<number>`(SELECT strength_rating FROM clubs WHERE id = ${fixtures.awayClubId})`,
       })
       .from(fixtures)
       .where(and(eq(fixtures.week, week), eq(fixtures.status, 'scheduled')));
@@ -255,12 +311,15 @@ export async function runMatchDay(args: {
 
     for (const fx of scheduledRows) {
       const seed = `${playthroughId}:${fx.id}`;
-      const result = await simulateFixture(tx, {
-        fixtureId: fx.id,
-        homeClubId: fx.homeClubId,
-        awayClubId: fx.awayClubId,
-        seed,
-      });
+      const isUserDivision = fx.homeTier === userTier && fx.homeGroup === userGroup;
+      const result = isUserDivision
+        ? await simulateFixture(tx, {
+            fixtureId: fx.id,
+            homeClubId: fx.homeClubId,
+            awayClubId: fx.awayClubId,
+            seed,
+          })
+        : simulateStrengthBased(fx.homeStrength ?? 50, fx.awayStrength ?? 50, seed);
 
       await tx
         .update(fixtures)
@@ -287,37 +346,30 @@ export async function runMatchDay(args: {
         winner: result.winner,
       });
 
-      // Sprint 13 task 13-1 (BUG-PT-5): persist suspensions + 5-yellow rule
-      // for this fixture. Runs in the same tx as the score persist so a
-      // failure rolls everything back.
-      await applySuspensions(tx, {
-        playthroughId,
-        week,
-        homeClubId: fx.homeClubId,
-        awayClubId: fx.awayClubId,
-        events: result.events,
-      });
-
-      // Pablo 2026-05-25: post-match fatigue + morale for starters vs bench.
-      // Starters lose 8..15 fitness, bench recover 5..10. Morale shifts by result.
-      // Deterministic per-fixture by reusing the same seed for the random jitter.
-      await applyMatchEffects(tx, {
-        seed: `${seed}:fx-effects`,
-        homeClubId: fx.homeClubId,
-        awayClubId: fx.awayClubId,
-        homeStarterIds: result.homeStarterIds,
-        awayStarterIds: result.awayStarterIds,
-        winner: result.winner,
-      });
-
-      // Pablo 2026-05-26: persist injuries from match events. Before this fix,
-      // 'injury' events appeared narratively in match outcome but never updated
-      // the player row — so the player remained selectable for the next XI.
-      await applyInjuries(tx, {
-        seed: `${seed}:fx-injuries`,
-        week,
-        events: result.events,
-      });
+      // Per-player side effects (suspensions, fatigue/morale, injuries) ONLY
+      // for the user's division — distant divisions have no per-player rosters.
+      if (isUserDivision) {
+        await applySuspensions(tx, {
+          playthroughId,
+          week,
+          homeClubId: fx.homeClubId,
+          awayClubId: fx.awayClubId,
+          events: result.events,
+        });
+        await applyMatchEffects(tx, {
+          seed: `${seed}:fx-effects`,
+          homeClubId: fx.homeClubId,
+          awayClubId: fx.awayClubId,
+          homeStarterIds: result.homeStarterIds,
+          awayStarterIds: result.awayStarterIds,
+          winner: result.winner,
+        });
+        await applyInjuries(tx, {
+          seed: `${seed}:fx-injuries`,
+          week,
+          events: result.events,
+        });
+      }
 
       results.push({
         fixtureId: fx.id,

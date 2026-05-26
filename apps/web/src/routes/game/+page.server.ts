@@ -38,15 +38,19 @@ import {
   defaultWorldState,
   generateRoster,
   generateAiClubs,
-  generateDoubleRoundRobin,
   initManagerSkills,
   createSeededRng,
   pickTraits,
   STAFF_WEEKLY_WAGE_EURK,
   LEAGUE_KICKOFF_WEEK,
 } from '@smt/shared';
+import { persistPyramid } from '$lib/server/league-pyramid';
 
-const AI_CLUB_COUNT = 11; // user + 11 = 12 clubs (even, needed for round-robin)
+// User starts in 3ª RFEF group 1 with 17 AI rivals (Tier 5 has 18 clubs/group).
+const USER_TIER = 5 as const;
+const USER_GROUP_INDEX = 0 as const;
+const USER_GROUP_CLUB_COUNT = 18; // matches PYRAMID Tier 5 clubsPerGroup
+const AI_CLUBS_IN_USER_GROUP = USER_GROUP_CLUB_COUNT - 1; // 17 AI clubs in user's group
 // Season schedule (in-game weeks):
 //   0..4   pretemporada (no matches)
 //   5..26  liga (matchdays 1..22)
@@ -115,6 +119,9 @@ export const actions: Actions = {
           name: clubName,
           city,
           division: 'fifth',
+          tier: USER_TIER,
+          groupIndex: USER_GROUP_INDEX,
+          strengthRating: 35,
           prestige: 1,
           budget: 10000,
           fanBase: 500,
@@ -161,10 +168,12 @@ export const actions: Actions = {
         })),
       );
 
-      // ── 3. AI clubs + their rosters ───────────────────────────────────
+      // ── 3. AI rivals in user's group + full rosters ───────────────────
+      // Only the user's tier-5 group gets per-player rosters. Other 26
+      // divisions get lightweight clubs (strength_rating only).
       const aiSeeds = generateAiClubs({
         rng,
-        count: AI_CLUB_COUNT,
+        count: AI_CLUBS_IN_USER_GROUP,
         currentWeek: 0,
         excludeNames: new Set([clubName]),
       });
@@ -177,6 +186,9 @@ export const actions: Actions = {
             name: s.name,
             city: s.city,
             division: 'fifth' as const,
+            tier: USER_TIER,
+            groupIndex: USER_GROUP_INDEX,
+            strengthRating: 35,
             prestige: 1,
             budget: 8000,
             fanBase: 300,
@@ -214,30 +226,25 @@ export const actions: Actions = {
       });
       if (aiPlayerRows.length > 0) await tx.insert(players).values(aiPlayerRows);
 
-      // ── 4. League + division + season ─────────────────────────────────
+      // ── 4. League + full pyramid (27 divisions, ~496 clubs) ───────────
       const [league] = await tx
         .insert(leagues)
         .values({ playthroughId: newPlaythrough.id, name: 'Liga TSM', country: 'ES' })
         .returning({ id: leagues.id });
 
-      const [division] = await tx
-        .insert(divisions)
-        .values({ leagueId: league.id, tier: 5, name: 'Quinta División', clubCount: 12 })
-        .returning({ id: divisions.id });
-
-      // 12 clubs → 22 matchdays, 1 per week starting at SEASON_START_WEEK.
-      const endWeek = SEASON_START_WEEK + 22 - 1;
-      const [season] = await tx
-        .insert(seasons)
-        .values({
-          leagueId: league.id,
-          divisionId: division.id,
-          seasonNumber: 1,
-          status: 'active',
-          startWeek: SEASON_START_WEEK,
-          endWeek,
-        })
-        .returning({ id: seasons.id });
+      // Build the full pyramid: spawns all 27 divisions + 482 AI clubs
+      // (Tier 1-4 + Tier 5 groups 1-17) + fixtures + standings.
+      // The user + 17 AI clubs in Tier 5 group 0 are added inside.
+      await persistPyramid(tx, {
+        leagueId: league.id,
+        playthroughId: newPlaythrough.id,
+        userClubId: newClub.id,
+        userTier: USER_TIER,
+        userGroupIndex: USER_GROUP_INDEX,
+        rng,
+        seasonStartWeek: SEASON_START_WEEK,
+        excludeClubNames: new Set([clubName, ...aiSeeds.map((s) => s.name)]),
+      });
 
       // Season objective for the player (persisted as a NOTIFY event so the
       // dashboard + end-of-season screen can read it).
@@ -246,43 +253,8 @@ export const actions: Actions = {
         seasonNumber: 1,
         target: 'permanencia',
         targetLabel: 'Permanencia (no quedar último)',
-        targetRule: 'top_9_of_12',
+        targetRule: 'top_13_of_18',
       };
-
-      // ── 5. Fixtures (double round-robin) ──────────────────────────────
-      const allClubIds = [newClub.id, ...aiClubRows.map((c) => c.id)];
-      const pairs = generateDoubleRoundRobin({
-        clubIds: allClubIds,
-        startWeek: SEASON_START_WEEK,
-      });
-
-      await tx.insert(fixtures).values(
-        pairs.map((p) => ({
-          seasonId: season.id,
-          divisionId: division.id,
-          homeClubId: p.homeClubId,
-          awayClubId: p.awayClubId,
-          week: p.week,
-          matchday: p.matchday,
-          status: 'scheduled' as const,
-        })),
-      );
-
-      // ── 6. Initial standings (all zeros) ──────────────────────────────
-      await tx.insert(standings).values(
-        allClubIds.map((id) => ({
-          seasonId: season.id,
-          divisionId: division.id,
-          clubId: id,
-          played: 0,
-          wins: 0,
-          draws: 0,
-          losses: 0,
-          goalsFor: 0,
-          goalsAgainst: 0,
-          points: 0,
-        })),
-      );
 
       // ── 7. WorldSnapshot + manager profile ───────────────────────────
       await tx.insert(worldSnapshots).values({
@@ -493,7 +465,7 @@ export const actions: Actions = {
         },
         {
           playthroughId: newPlaythrough.id,
-          week: endWeek,
+          week: SEASON_START_WEEK + 34 - 1,
           season: 1,
           type: 'transfer_window_close',
           priority: 'NOTIFY',
@@ -502,7 +474,7 @@ export const actions: Actions = {
         },
         {
           playthroughId: newPlaythrough.id,
-          week: endWeek,
+          week: SEASON_START_WEEK + 34 - 1,
           season: 1,
           type: 'season_end',
           priority: 'NOTIFY',

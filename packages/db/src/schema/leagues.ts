@@ -42,6 +42,8 @@ export const divisions = pgTable('divisions', {
     .notNull()
     .references(() => leagues.id, { onDelete: 'cascade' }),
   tier: integer('tier').notNull(), // 1 = top, 2 = second, etc.
+  /** Group within tier (0-based). Tier 1/2 use 0 only; Tier 3 uses 0/1; Tier 5 uses 0..17. */
+  groupIndex: integer('group_index').notNull().default(0),
   name: text('name').notNull(),
   clubCount: integer('club_count').notNull().default(20),
 });

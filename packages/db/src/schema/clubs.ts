@@ -10,6 +10,12 @@ export const clubs = pgTable('clubs', {
   name: text('name').notNull(),
   city: text('city').notNull(),
   division: divisionEnum('division').notNull().default('fifth'),
+  /** Pyramid tier 1..5 (1=Primera, 5=3ª RFEF). Source of truth for division resolution. */
+  tier: integer('tier').notNull().default(5),
+  /** Group index within tier (0-based). Tier 1/2 = 0; Tier 3 = 0/1; Tier 4 = 0-4; Tier 5 = 0-17. */
+  groupIndex: integer('group_index').notNull().default(0),
+  /** Lightweight team strength for AI clubs in distant divisions (no per-player rosters). 30=Tier 5 baseline, 95=Tier 1 elite. */
+  strengthRating: integer('strength_rating').notNull().default(30),
   prestige: integer('prestige').notNull().default(1),
   budget: integer('budget').notNull().default(10000),
   fanBase: integer('fan_base').notNull().default(500),
