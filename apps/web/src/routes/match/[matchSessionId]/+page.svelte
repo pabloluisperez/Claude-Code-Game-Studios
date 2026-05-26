@@ -169,6 +169,40 @@
     if (t === 'yellow_card') return 'badge-warning';
     return 'badge-info';
   }
+
+  // Pablo 2026-05-26 (#38): match commentary — Spanish narration per event.
+  // Deterministic variant by minute so the same match reads the same way.
+  const COMMENTARY: Record<string, string[]> = {
+    goal: [
+      '¡GOOOL! {p} la manda al fondo de la red.',
+      '¡Lo marca {p}! Definición de crack.',
+      '{p} no perdona y bate al portero.',
+      '¡Qué golazo de {p}! El estadio estalla.',
+      '{p} aparece en el área y la empuja a gol.',
+    ],
+    yellow_card: [
+      'Amarilla para {p} tras una entrada dura.',
+      'El árbitro saca tarjeta a {p}.',
+      '{p} ve la amarilla por protestar.',
+      'Falta táctica de {p} — amonestado.',
+    ],
+    red_card: [
+      '¡Roja directa a {p}! Se queda con uno menos.',
+      '{p} se va expulsado, jugada polémica.',
+      '¡Expulsión! {p} abandona el campo.',
+    ],
+    injury: [
+      '{p} cae lesionado, no puede continuar.',
+      'Problema físico para {p}, pide el cambio.',
+      '{p} se duele y necesita asistencia.',
+    ],
+  };
+  function commentary(type: string, minute: number, player?: string): string {
+    const lines = COMMENTARY[type];
+    if (!lines) return '';
+    const line = lines[minute % lines.length] ?? lines[0]!;
+    return line.replace('{p}', player ?? 'un jugador');
+  }
   function eventLabel(t: string): string {
     switch (t) {
       case 'goal': return '⚽ Gol';
@@ -614,9 +648,7 @@
               </div>
               <span class="badge {eventBadge(e.type)} flex-shrink-0">{eventLabel(e.type)}</span>
               <div class="flex-1 text-sm min-w-0">
-                {#if e.playerName}
-                  <span class="font-semibold">{e.playerName}</span>
-                {/if}
+                <span class="opacity-90">{commentary(e.type, e.minute, e.playerName)}</span>
               </div>
               <!-- Spacer column on opposite side so events visually stick to their half -->
               <div class="flex-1"></div>

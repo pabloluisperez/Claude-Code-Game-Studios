@@ -47,7 +47,7 @@ import {
   lte,
   type Db,
 } from '@smt/db';
-import { generateDoubleRoundRobin } from '@smt/shared';
+import { generateDoubleRoundRobin, generateRoster, createSeededRng, defaultWorldState, pickTraits } from '@smt/shared';
 
 const PRESEASON_WEEKS = 5;
 
@@ -255,6 +255,63 @@ export async function checkAndRolloverSeason(args: {
       }
     }
 
+    // ── Roster-on-promote (Pablo 2026-05-26 #38) ───────────────────────
+    // If the user changed tier, generate full rosters for the rivals in
+    // their NEW group that are still lightweight (no players) — otherwise
+    // the user's division full-sim would face empty rosters next season.
+    if (userPromoted || userRelegated) {
+      const [userNow] = await tx
+        .select({ tier: clubs.tier, groupIndex: clubs.groupIndex })
+        .from(clubs)
+        .where(eq(clubs.id, userPt.clubId))
+        .limit(1);
+      if (userNow) {
+        const groupClubs = await tx
+          .select({ id: clubs.id, strengthRating: clubs.strengthRating })
+          .from(clubs)
+          .where(and(eq(clubs.tier, userNow.tier), eq(clubs.groupIndex, userNow.groupIndex)));
+        for (const gc of groupClubs) {
+          if (gc.id === userPt.clubId) continue;
+          const [{ n = 0 } = { n: 0 }] = await tx
+            .select({ n: sql<number>`COUNT(*)::int` })
+            .from(players)
+            .where(eq(players.clubId, gc.id));
+          if (Number(n) > 0) continue; // already has a roster
+          const rng = createSeededRng(`roster:${gc.id}:s${activeSeason.seasonNumber}`);
+          const generated = generateRoster({
+            ctx: { rng, currentWeek, hasMatchThisWeek: false, prevState: defaultWorldState() },
+            clubBaseSkill: gc.strengthRating,
+            clubSlug: gc.id,
+            currentWeek,
+          });
+          await tx.insert(players).values(
+            generated.map((p, i) => ({
+              clubId: gc.id,
+              playthroughId,
+              firstName: p.firstName,
+              lastName: p.lastName,
+              nationality: p.nationality,
+              birthWeek: p.birthWeek,
+              position: p.position,
+              skill: p.skill,
+              fitness: p.fitness,
+              morale: p.morale,
+              form: p.form,
+              stamina: p.stamina,
+              velocidad: p.velocidad,
+              resistencia: p.resistencia,
+              agresividad: p.agresividad,
+              calidad: p.calidad,
+              salaryEurK: p.salaryEurK,
+              contractStartWeek: p.contractStartWeek,
+              contractEndWeek: p.contractEndWeek,
+              traits: [...pickTraits(`${gc.id}:gen:${i}:${p.firstName}${p.lastName}`)],
+            })),
+          );
+        }
+      }
+    }
+
     // ── Create new seasons + fixtures + standings for ALL 27 divisions ──
     const newStartWeek = activeSeason.endWeek + PRESEASON_WEEKS;
     const newSeasonNumber = activeSeason.seasonNumber + 1;
@@ -409,11 +466,12 @@ export async function checkAndRolloverSeason(args: {
         4: 'Segunda RFEF',
         5: 'Tercera RFEF',
       };
-      let content = `🏁 ${headCoach.name.split(' ')[0]}: Comienza la temporada ${newSeasonNumber}. Plantilla descansada y lista.`;
+      const coachName = headCoach.name.split(' ')[0];
+      let content = `🏁 ${coachName}: Comienza la temporada ${newSeasonNumber}. Plantilla descansada y lista.`;
       if (userPromoted) {
-        content = `🎉 ${headCoach.name.split(' ')[0]}: ¡ASCENDIMOS a ${TIER_LABELS[userNewTier]}! Una temporada inolvidable. La próxima temporada arrancamos en una división más alta.`;
+        content = `🎉 ${coachName}: ¡ASCENDIMOS a ${TIER_LABELS[userNewTier]}! Una temporada inolvidable. La próxima temporada arrancamos en una división más alta.`;
       } else if (userRelegated) {
-        content = `😞 ${headCoach.name.split(' ')[0]}: Descendimos a ${TIER_LABELS[userNewTier]}. Toca recomponerse — el objetivo será volver a subir cuanto antes.`;
+        content = `😞 ${coachName}: Descendimos a ${TIER_LABELS[userNewTier]}. Toca recomponerse — el objetivo será volver a subir cuanto antes.`;
       }
       await tx.insert(staffMessages).values({
         playthroughId,
@@ -425,6 +483,60 @@ export async function checkAndRolloverSeason(args: {
         content,
         isRead: false,
       });
+
+      // Pablo 2026-05-26 (#38): season-end classification (champion / european
+      // / playoff / mid-table) + playoff explanation. Computed from the user's
+      // final position in their (completed-season) division.
+      try {
+        const finalStandings = await tx
+          .select({ clubId: standings.clubId })
+          .from(standings)
+          .innerJoin(seasons, eq(seasons.id, standings.seasonId))
+          .where(
+            and(
+              eq(standings.divisionId, userDivision.id),
+              eq(seasons.seasonNumber, activeSeason.seasonNumber),
+            ),
+          )
+          .orderBy(desc(standings.points), desc(standings.goalsFor));
+        const pos = finalStandings.findIndex((s) => s.clubId === userPt.clubId) + 1;
+        const tier = userClubRow.tier;
+        let classMsg = '';
+        if (pos > 0) {
+          if (tier === 1) {
+            if (pos === 1) classMsg = `🏆 ${coachName}: ¡CAMPEONES DE LIGA! Y a la Champions League. Histórico.`;
+            else if (pos <= 5) classMsg = `🥇 ${coachName}: ${pos}º — clasificados para la Champions League.`;
+            else if (pos === 6) classMsg = `🥈 ${coachName}: 6º — a la Europa League.`;
+            else if (pos === 7) classMsg = `🥉 ${coachName}: 7º — a la Conference League.`;
+          } else {
+            // Lower tiers: 1-2 direct, 3-6 playoff (Tier 2); 1 direct, 2-5 playoff (3/4/5).
+            const directSpots = tier === 2 ? 2 : 1;
+            const playoffEnd = tier === 2 ? 6 : 5;
+            if (pos <= directSpots) {
+              classMsg = `🥇 ${coachName}: ${pos}º — ascenso directo conseguido.`;
+            } else if (pos > directSpots && pos <= playoffEnd) {
+              classMsg =
+                `🎯 ${coachName}: ${pos}º — ¡a PLAYOFF de ascenso! ` +
+                `Se enfrentan los clasificados ${directSpots + 1}º-${playoffEnd}º a doble partido; ` +
+                `el peor clasificado juega la ida en casa. Los ganadores suben. ¡A por ello!`;
+            }
+          }
+        }
+        if (classMsg) {
+          await tx.insert(staffMessages).values({
+            playthroughId,
+            staffId: headCoach.id,
+            week: newStartWeek - PRESEASON_WEEKS,
+            season: newSeasonNumber,
+            priority: 'ROUTINE',
+            templateKey: 'season:classification',
+            content: classMsg,
+            isRead: false,
+          });
+        }
+      } catch {
+        // Classification message is decorative — never block rollover.
+      }
     }
 
     return {
