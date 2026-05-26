@@ -49,19 +49,58 @@
     return 0;
   }
 
-  const links = [
-    { href: '/dashboard',  icon: '📊', label: 'Dashboard' },
-    { href: '/squad',      icon: '👥', label: 'Plantilla' },
-    { href: '/lineup',     icon: '⚽', label: 'Entrenador' },
-    { href: '/staff',      icon: '🧑‍💼', label: 'Empleados del club' },
-    { href: '/scouting',   icon: '🔍', label: 'Fichajes' },
-    { href: '/finance',    icon: '💰', label: 'Finanzas' },
-    { href: '/league',     icon: '🏆', label: 'Liga' },
-    { href: '/calendar',   icon: '📅', label: 'Calendario' },
-    { href: '/city',       icon: '🏛', label: 'Museo' },
-    { href: '/stadium',    icon: '🏟', label: 'Estadio' },
-    { href: '/manager',    icon: '🧠', label: 'Mánager' },
-  ] as const;
+  // Pablo 2026-05-26: grouped navigation.
+  type NavLink = { href: string; icon: string; label: string };
+  type NavItem =
+    | { kind: 'link'; href: string; icon: string; label: string }
+    | { kind: 'group'; icon: string; label: string; children: NavLink[] };
+
+  const nav: NavItem[] = [
+    { kind: 'link', href: '/dashboard', icon: '📊', label: 'Dashboard' },
+    {
+      kind: 'group',
+      icon: '⚽',
+      label: 'Entrenador',
+      children: [
+        { href: '/lineup', icon: '📋', label: 'Alineación' },
+        { href: '/squad', icon: '👥', label: 'Plantilla' },
+      ],
+    },
+    {
+      kind: 'group',
+      icon: '🏆',
+      label: 'Liga',
+      children: [
+        { href: '/league', icon: '📊', label: 'Clasificación' },
+        { href: '/calendar', icon: '📅', label: 'Calendario' },
+      ],
+    },
+    {
+      kind: 'group',
+      icon: '🏛',
+      label: 'El club',
+      children: [
+        { href: '/scouting', icon: '🔍', label: 'Fichajes' },
+        { href: '/staff', icon: '🧑‍💼', label: 'Empleados del club' },
+        { href: '/finance', icon: '💰', label: 'Decisiones' },
+        { href: '/stadium', icon: '🏟', label: 'Estadio' },
+        { href: '/city', icon: '🏛', label: 'Museo' },
+      ],
+    },
+    { kind: 'link', href: '/manager', icon: '🧠', label: 'Mánager' },
+  ];
+
+  function isActive(href: string): boolean {
+    return $page.url.pathname === href || $page.url.pathname.startsWith(href + '/');
+  }
+  // A group's badge = sum of its children's badges.
+  function groupDot(children: NavLink[]): number {
+    return children.reduce((sum, c) => sum + dotFor(c.href), 0);
+  }
+  // A group is open if any child route is active.
+  function groupHasActive(children: NavLink[]): boolean {
+    return children.some((c) => isActive(c.href));
+  }
 </script>
 
 <aside
@@ -109,20 +148,46 @@
     {/if}
   </div>
   <ul class="menu p-2 gap-1">
-    {#each links as link}
-      {@const dot = dotFor(link.href)}
-      <li>
-        <a
-          href={link.href}
-          class:active={$page.url.pathname.startsWith(link.href)}
-        >
-          <span class="text-lg">{link.icon}</span>
-          <span class="flex-1">{link.label}</span>
-          {#if dot > 0}
-            <span class="badge badge-error badge-sm animate-pulse">{dot}</span>
-          {/if}
-        </a>
-      </li>
+    {#each nav as item (item.label)}
+      {#if item.kind === 'link'}
+        {@const dot = dotFor(item.href)}
+        <li>
+          <a href={item.href} class:active={isActive(item.href)}>
+            <span class="text-lg">{item.icon}</span>
+            <span class="flex-1">{item.label}</span>
+            {#if dot > 0}
+              <span class="badge badge-error badge-sm animate-pulse">{dot}</span>
+            {/if}
+          </a>
+        </li>
+      {:else}
+        {@const gDot = groupDot(item.children)}
+        <li>
+          <details open={groupHasActive(item.children)}>
+            <summary>
+              <span class="text-lg">{item.icon}</span>
+              <span class="flex-1">{item.label}</span>
+              {#if gDot > 0}
+                <span class="badge badge-error badge-sm animate-pulse">{gDot}</span>
+              {/if}
+            </summary>
+            <ul>
+              {#each item.children as child (child.href)}
+                {@const dot = dotFor(child.href)}
+                <li>
+                  <a href={child.href} class:active={isActive(child.href)}>
+                    <span>{child.icon}</span>
+                    <span class="flex-1">{child.label}</span>
+                    {#if dot > 0}
+                      <span class="badge badge-error badge-sm animate-pulse">{dot}</span>
+                    {/if}
+                  </a>
+                </li>
+              {/each}
+            </ul>
+          </details>
+        </li>
+      {/if}
     {/each}
   </ul>
 </aside>
