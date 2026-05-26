@@ -181,6 +181,23 @@ export const load: PageServerLoad = async ({ parent, url }) => {
   const isMyDivision =
     viewingTier === (myClub?.tier ?? 5) && viewingGroup === (myClub?.groupIndex ?? 0);
 
+  // Pablo 2026-05-26: resolve playerId → full name for match-detail modal.
+  // Historical events stored surname only; we map IDs to current full names.
+  const playerIds = new Set<string>();
+  for (const f of pastFixtures) {
+    const evts = (f.matchOutcomeData as { events?: Array<{ playerId?: string }> } | null)?.events ?? [];
+    for (const e of evts) if (e.playerId) playerIds.add(e.playerId);
+  }
+  const nameMap: Record<string, string> = {};
+  if (playerIds.size > 0) {
+    const { players: playersTable, inArray } = await import('@smt/db');
+    const nameRows = await db
+      .select({ id: playersTable.id, firstName: playersTable.firstName, lastName: playersTable.lastName })
+      .from(playersTable)
+      .where(inArray(playersTable.id, [...playerIds]));
+    for (const r of nameRows) nameMap[r.id] = `${r.firstName} ${r.lastName}`;
+  }
+
   return {
     hasPlaythrough: true as const,
     standings: standingsRows,
@@ -196,5 +213,6 @@ export const load: PageServerLoad = async ({ parent, url }) => {
     myGroup: myClub?.groupIndex ?? 0,
     isMyDivision,
     availableDivisions: allDivisions,
+    playerNameMap: nameMap,
   };
 };

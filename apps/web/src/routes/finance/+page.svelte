@@ -121,13 +121,13 @@
   {:else}
     <!-- a11y P1-4 (Sprint 11 task 11-3): each tab declares aria-selected
          + aria-controls; corresponding tabpanels expose role + id. -->
-    <div role="tablist" class="tabs tabs-boxed w-full grid grid-cols-4" aria-label="Finanzas">
+    <div role="tablist" class="tabs tabs-boxed w-full" aria-label="Finanzas">
       <button
         role="tab"
         id="tab-finance-resumen"
         aria-selected={activeTab === 'resumen'}
         aria-controls="tabpanel-finance-resumen"
-        class="tab {activeTab === 'resumen' ? 'tab-active' : ''}"
+        class="tab flex-1 {activeTab === 'resumen' ? 'tab-active' : ''}"
         onclick={() => (activeTab = 'resumen')}
       >
         📊 Resumen
@@ -137,7 +137,7 @@
         id="tab-finance-patrocinadores"
         aria-selected={activeTab === 'patrocinadores'}
         aria-controls="tabpanel-finance-patrocinadores"
-        class="tab {activeTab === 'patrocinadores' ? 'tab-active' : ''}"
+        class="tab flex-1 {activeTab === 'patrocinadores' ? 'tab-active' : ''}"
         onclick={() => (activeTab = 'patrocinadores')}
       >
         🤝 Patrocinadores
@@ -152,14 +152,14 @@
         id="tab-finance-abonos"
         aria-selected={activeTab === 'abonos'}
         aria-controls="tabpanel-finance-abonos"
-        class="tab {activeTab === 'abonos' ? 'tab-active' : ''}"
+        class="tab flex-1 {activeTab === 'abonos' ? 'tab-active' : ''}"
         onclick={() => (activeTab = 'abonos')}
       >
         🎟 Abonos
       </button>
       <a
         role="tab"
-        class="tab"
+        class="tab flex-1"
         href="/finance/tv-rights"
       >
         📺 Derechos TV

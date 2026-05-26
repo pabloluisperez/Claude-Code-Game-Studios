@@ -202,23 +202,26 @@ describe('generateRoster — skill values within bounds', () => {
 // ── Contract staggering ──────────────────────────────────────────────────────
 
 describe('generateRoster — contract staggering', () => {
-  it('test_initial_contracts_distributed_across_3_seasons', () => {
+  it('test_initial_contracts_distributed_across_seasons', () => {
     const roster = generateRoster({
       ctx: makeCtx('contract-stagger'),
       clubBaseSkill: 60,
       clubSlug: 'club',
       currentWeek: 1000,
     });
-    const buckets = { season1: 0, season2: 0, season3: 0 };
+    // Pablo 2026-05-26: season ≈ 40 weeks; contracts span 1..4 seasons.
+    const SEASON = 40;
+    const buckets = { s1: 0, s2: 0, s3: 0, s4: 0 };
     for (const p of roster) {
       const weeksLeft = p.contractEndWeek - p.contractStartWeek;
-      if (weeksLeft === 52) buckets.season1++;
-      else if (weeksLeft === 104) buckets.season2++;
-      else if (weeksLeft === 156) buckets.season3++;
+      if (weeksLeft === SEASON) buckets.s1++;
+      else if (weeksLeft === SEASON * 2) buckets.s2++;
+      else if (weeksLeft === SEASON * 3) buckets.s3++;
+      else if (weeksLeft === SEASON * 4) buckets.s4++;
     }
-    // Each bucket should be non-empty (rough check)
-    expect(buckets.season1).toBeGreaterThan(0);
-    expect(buckets.season2).toBeGreaterThan(0);
+    // At least two distinct contract lengths present (staggered).
+    const nonEmpty = [buckets.s1, buckets.s2, buckets.s3, buckets.s4].filter((n) => n > 0).length;
+    expect(nonEmpty).toBeGreaterThanOrEqual(2);
   });
 });
 

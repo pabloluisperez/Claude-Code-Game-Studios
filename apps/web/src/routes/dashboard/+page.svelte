@@ -121,11 +121,11 @@
   const ROSTER_SIZE = 25;
 
   function fanMomentumLabel(v: number): string {
-    if (v < 20) return 'Decepcionada';
-    if (v < 40) return 'Tibia';
-    if (v < 60) return 'Neutral';
-    if (v < 80) return 'Buena ola';
-    return 'Eufórica';
+    if (v < 20) return 'Indignada';
+    if (v < 40) return 'Descontenta';
+    if (v < 60) return 'Tranquila';
+    if (v < 80) return 'Ilusionada';
+    return 'Entregada';
   }
 
   const nodes = $derived.by<NodeReading[]>(() => {

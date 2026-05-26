@@ -253,14 +253,23 @@ function generateCoreAttrs(
 }
 
 /**
- * Pick contract end week — staggered so ~30% expire each season.
- * Uses a 3-way split: contractStartWeek + {52, 104, 156} weeks.
+ * Pick contract end week — staggered so a realistic mix of contract lengths
+ * exists at squad generation. Season ≈ 40 weeks (34 matchdays + pretemporada).
+ * Pablo 2026-05-26: 'genera tiempo de contrato realista; los que quedan a 1
+ * año o esta temporada se pueden renovar'.
+ *
+ *   ~20% — ends this season (1 season / ~40 wk) → renewable now
+ *   ~25% — 2 seasons
+ *   ~35% — 3 seasons
+ *   ~20% — 4 seasons
  */
+const SEASON_WEEKS_APPROX = 40;
 function pickContractEnd(rng: () => number, startWeek: number): number {
   const roll = rng();
-  if (roll < 0.3) return startWeek + 52;       // 30% — 1 season
-  if (roll < 0.85) return startWeek + 104;     // 55% — 2 seasons
-  return startWeek + 156;                       // 15% — 3 seasons
+  if (roll < 0.2) return startWeek + SEASON_WEEKS_APPROX;       // 20% — 1 season
+  if (roll < 0.45) return startWeek + SEASON_WEEKS_APPROX * 2;  // 25% — 2 seasons
+  if (roll < 0.8) return startWeek + SEASON_WEEKS_APPROX * 3;   // 35% — 3 seasons
+  return startWeek + SEASON_WEEKS_APPROX * 4;                    // 20% — 4 seasons
 }
 
 /**

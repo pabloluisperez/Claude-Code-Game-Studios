@@ -93,11 +93,11 @@
     mirror the finance tab bar here, with the 4 sibling tabs all linking
     via plain hrefs (each tab is its own route or ?tab= URL param).
   -->
-  <div role="tablist" class="tabs tabs-boxed w-full grid grid-cols-4">
-    <a role="tab" class="tab" href="/finance">📊 Resumen</a>
-    <a role="tab" class="tab" href="/finance?tab=patrocinadores">🤝 Patrocinadores</a>
-    <a role="tab" class="tab" href="/finance?tab=abonos">🎟 Abonos</a>
-    <a role="tab" class="tab tab-active" href="/finance/tv-rights">📺 Derechos TV</a>
+  <div role="tablist" class="tabs tabs-boxed w-full">
+    <a role="tab" class="tab flex-1" href="/finance">📊 Resumen</a>
+    <a role="tab" class="tab flex-1" href="/finance?tab=patrocinadores">🤝 Patrocinadores</a>
+    <a role="tab" class="tab flex-1" href="/finance?tab=abonos">🎟 Abonos</a>
+    <a role="tab" class="tab flex-1 tab-active" href="/finance/tv-rights">📺 Derechos TV</a>
   </div>
 
   {#if !data.hasPlaythrough}

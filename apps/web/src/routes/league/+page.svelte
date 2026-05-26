@@ -100,6 +100,7 @@
     type: 'goal' | 'yellow_card' | 'red_card' | 'injury';
     team: 'home' | 'away';
     playerName?: string;
+    playerId?: string;
   };
   let openFixture = $state<FixtureRow | null>(null);
   const openFixtureEvents = $derived.by<MatchEvent[]>(() => {
@@ -473,7 +474,7 @@
                   <span class="font-mono text-xs opacity-60 w-8 text-right">{e.minute}'</span>
                   <span class="text-lg">{eventIcon(e.type)}</span>
                   <span class="text-sm flex-1">
-                    {e.playerName ?? '—'}
+                    {(e.playerId && data.playerNameMap?.[e.playerId]) || e.playerName || '—'}
                   </span>
                   <span class="text-xs opacity-50">
                     {eventLabel(e.type)} · {e.team === 'home' ? openFixture.homeName : openFixture.awayName}

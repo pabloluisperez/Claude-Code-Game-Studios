@@ -162,8 +162,8 @@ export const actions: Actions = {
           form: p.form,
           stamina: p.stamina,
           salaryEurK: 2,
-          contractStartWeek: 0,
-          contractEndWeek: 76,
+          contractStartWeek: p.contractStartWeek,
+          contractEndWeek: p.contractEndWeek,
           traits: [...pickTraits(`${newPlaythrough.id}:user:${i}:${p.firstName}${p.lastName}`)],
         })),
       );
@@ -219,8 +219,8 @@ export const actions: Actions = {
           agresividad: p.agresividad,
           calidad: p.calidad,
           salaryEurK: 1,
-          contractStartWeek: 0,
-          contractEndWeek: 76,
+          contractStartWeek: p.contractStartWeek,
+          contractEndWeek: p.contractEndWeek,
           traits: [...pickTraits(`${newPlaythrough.id}:ai${i}:${j}:${p.firstName}${p.lastName}`)],
         }));
       });

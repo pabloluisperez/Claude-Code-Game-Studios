@@ -83,8 +83,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
         agresividad: p.agresividad,
         calidad: p.calidad,
         salaryEurK: p.salaryEurK,
-        contractStartWeek: 0,
-        contractEndWeek: 76,
+        contractStartWeek: p.contractStartWeek,
+        contractEndWeek: p.contractEndWeek,
         traits: [...pickTraits(`${target.id}:gen:${i}:${p.firstName}${p.lastName}`)],
       })),
     );
