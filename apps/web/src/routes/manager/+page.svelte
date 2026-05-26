@@ -6,6 +6,7 @@
 -->
 <script lang="ts">
   import type { PageData } from './$types';
+  import { xpReasonLabel } from '$lib/xp-reason-labels';
   let { data }: { data: PageData } = $props();
 
   interface ManagerSkill {
@@ -207,7 +208,7 @@
                       {skillCards.find((c) => c.id === e.skillId)?.label ?? e.skillId}
                     </td>
                     <td class="text-right font-mono text-success">+{e.xpGranted}</td>
-                    <td class="text-xs opacity-70">{e.reason}</td>
+                    <td class="text-xs opacity-70">{xpReasonLabel(e.reason)}</td>
                   </tr>
                 {/each}
               </tbody>

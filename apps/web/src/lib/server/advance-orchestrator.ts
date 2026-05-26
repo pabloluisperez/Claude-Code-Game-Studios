@@ -1118,6 +1118,113 @@ export async function runAdvanceTickFull(
     // Training application is decorative — never block the advance pipeline.
   }
 
+  // ── Phase 8f: pre-match XI warning (Pablo 2026-05-26) ─────────────────
+  // Check the NEXT week's fixture. If user club is playing and the saved
+  // starting_lineup_player_ids includes an injured/sanctioned player, emit
+  // an URGENT staff_message so the manager can swap in /lineup before the
+  // next advance triggers the match.
+  try {
+    const upcomingWeek = nextWeek + 1;
+    const upcoming = await db
+      .select({ id: fixtures.id })
+      .from(fixtures)
+      .where(
+        and(
+          eq(fixtures.week, upcomingWeek),
+          eq(fixtures.status, 'scheduled'),
+          or(
+            eq(fixtures.homeClubId, active.clubId),
+            eq(fixtures.awayClubId, active.clubId),
+          ),
+        ),
+      )
+      .limit(1);
+
+    if (upcoming.length > 0) {
+      const [clubRow] = await db
+        .select({ ids: clubs.startingLineupPlayerIds })
+        .from(clubs)
+        .where(eq(clubs.id, active.clubId))
+        .limit(1);
+      const lineupIds = clubRow?.ids ?? [];
+
+      if (lineupIds.length > 0) {
+        const flagged = await db
+          .select({
+            id: players.id,
+            firstName: players.firstName,
+            lastName: players.lastName,
+            availability: players.availability,
+            injuredUntilWeek: players.injuredUntilWeek,
+            suspendedMatchesRemaining: players.suspendedMatchesRemaining,
+          })
+          .from(players)
+          .where(eq(players.clubId, active.clubId));
+
+        const issues: string[] = [];
+        for (const p of flagged) {
+          if (!lineupIds.includes(p.id)) continue;
+          if ((p.suspendedMatchesRemaining ?? 0) > 0) {
+            issues.push(`🚫 ${p.firstName} ${p.lastName} (sancionado · ${p.suspendedMatchesRemaining} partidos)`);
+          } else if (
+            p.availability === 'injured' ||
+            (p.injuredUntilWeek !== null && p.injuredUntilWeek > nextWeek)
+          ) {
+            const weeksLeft = p.injuredUntilWeek ? p.injuredUntilWeek - nextWeek : 0;
+            issues.push(`🤕 ${p.firstName} ${p.lastName} (lesionado · vuelve en ${weeksLeft}sem)`);
+          }
+        }
+
+        if (issues.length > 0) {
+          const [headCoach] = await db
+            .select({ id: staff.id, name: staff.name })
+            .from(staff)
+            .where(
+              and(
+                eq(staff.playthroughId, active.id),
+                eq(staff.role, 'head_coach'),
+                eq(staff.status, 'active'),
+              ),
+            )
+            .limit(1);
+
+          if (headCoach) {
+            // De-dup: only emit one warning per upcoming-week per playthrough.
+            const existing = await db
+              .select({ id: staffMessages.id })
+              .from(staffMessages)
+              .where(
+                and(
+                  eq(staffMessages.playthroughId, active.id),
+                  eq(staffMessages.week, nextWeek),
+                  eq(staffMessages.templateKey, 'lineup:pre_match_warning'),
+                ),
+              )
+              .limit(1);
+
+            if (!existing[0]) {
+              await db.insert(staffMessages).values({
+                playthroughId: active.id,
+                staffId: headCoach.id,
+                week: nextWeek,
+                season: tvCurrentSeason,
+                priority: 'URGENT',
+                templateKey: 'lineup:pre_match_warning',
+                content:
+                  `⚠️ ${headCoach.name.split(' ')[0]}: jugadores del XI no disponibles para la jornada ${upcomingWeek}: ` +
+                  issues.join(' · ') +
+                  '. Cambialos en /lineup antes de avanzar.',
+                isRead: false,
+              });
+            }
+          }
+        }
+      }
+    }
+  } catch {
+    // Pre-match warning is decorative — never block the advance pipeline.
+  }
+
   // ── Phase 9: season rollover ────────────────────────────────────────────
   const rollover = await checkAndRolloverSeason({
     playthroughId: active.id,

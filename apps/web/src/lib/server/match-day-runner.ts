@@ -85,6 +85,24 @@ async function simulateFixture(
     (p) => (p.suspendedMatchesRemaining ?? 0) <= 0,
   );
 
+  // Pablo 2026-05-26: a manager can field an injured player on purpose. We
+  // pass those IDs to quickSim so they occupy the XI slot but contribute 0
+  // to strength / events — team plays effectively with fewer players.
+  const fullRosterCols = await tx
+    .select({ id: players.id, availability: players.availability, injuredUntilWeek: players.injuredUntilWeek })
+    .from(players)
+    .where(eq(players.clubId, args.homeClubId));
+  const fullAwayCols = await tx
+    .select({ id: players.id, availability: players.availability, injuredUntilWeek: players.injuredUntilWeek })
+    .from(players)
+    .where(eq(players.clubId, args.awayClubId));
+  const homeUnavailableIds = new Set(
+    fullRosterCols.filter((p) => p.availability === 'injured').map((p) => p.id),
+  );
+  const awayUnavailableIds = new Set(
+    fullAwayCols.filter((p) => p.availability === 'injured').map((p) => p.id),
+  );
+
   // Pablo 2026-05-25: pull manual XI selections from clubs (NULL → auto top 11).
   // Suspended IDs are silently dropped by quickSimulateMatch's resolveStarters
   // since they're not in the roster passed here.
@@ -97,17 +115,29 @@ async function simulateFixture(
     .from(clubs)
     .where(eq(clubs.id, args.awayClubId));
 
+  // For auto-pick (no manual XI), pre-filter out injured so they're never
+  // auto-selected. For manual XI, keep injured in the roster — quickSim's
+  // unavailableStarterIds set will mark them as 0-contribution.
+  const homeRosterForSim = homeClubRow?.ids
+    ? homeRoster
+    : homeRoster.filter((p) => !homeUnavailableIds.has(p.id));
+  const awayRosterForSim = awayClubRow?.ids
+    ? awayRoster
+    : awayRoster.filter((p) => !awayUnavailableIds.has(p.id));
+
   return quickSimulateMatch({
-    homeRoster: homeRoster.map((p) => ({
+    homeRoster: homeRosterForSim.map((p) => ({
       ...p,
       position: p.position as 'GK' | 'DEF' | 'MID' | 'FWD',
     })),
-    awayRoster: awayRoster.map((p) => ({
+    awayRoster: awayRosterForSim.map((p) => ({
       ...p,
       position: p.position as 'GK' | 'DEF' | 'MID' | 'FWD',
     })),
     homeStarterIds: homeClubRow?.ids ?? null,
     awayStarterIds: awayClubRow?.ids ?? null,
+    homeUnavailableStarterIds: homeUnavailableIds,
+    awayUnavailableStarterIds: awayUnavailableIds,
     rng: createSeededRng(args.seed),
   });
 }

@@ -81,6 +81,15 @@
 
   let canSave = $derived(selectedCount === 11 && gkSelected >= 1);
 
+  // Pablo 2026-05-26: surface "injured player in XI" warning. Suspended is hard-
+  // blocked at the checkbox layer, but injured is allowed (manager chooses the
+  // tradeoff — team plays effectively with one less player).
+  let injuredInXI = $derived(
+    data.hasPlaythrough
+      ? data.players.filter((p) => selectedIds.has(p.id) && !isAvailable(p))
+      : [],
+  );
+
   function toggle(id: string) {
     const next = new Set(selectedIds);
     if (next.has(id)) next.delete(id);
@@ -176,6 +185,20 @@
       </div>
     </div>
 
+    {#if injuredInXI.length > 0}
+      <div class="alert alert-warning mb-4">
+        <div>
+          <div class="font-bold">⚠️ Tenés {injuredInXI.length} lesionado{injuredInXI.length === 1 ? '' : 's'} en el XI</div>
+          <div class="text-sm">
+            {#each injuredInXI as p, i (p.id)}
+              <span>{p.firstName} {p.lastName}</span>{i < injuredInXI.length - 1 ? ', ' : ''}
+            {/each}
+            — el equipo jugará efectivamente con {11 - injuredInXI.length} jugador{11 - injuredInXI.length === 1 ? '' : 'es'}.
+          </div>
+        </div>
+      </div>
+    {/if}
+
     {#if form && 'error' in form && form.error}
       <div class="alert alert-error mb-4">
         <span>{form.error}</span>
@@ -225,15 +248,20 @@
                     {#each list as p (p.id)}
                       {@const checked = selectedIds.has(p.id)}
                       {@const avail = isAvailable(p)}
+                      {@const suspended = (p.suspendedMatchesRemaining ?? 0) > 0}
                       <tr class={checked ? 'bg-success/10' : ''}>
                         <td>
                           <input
                             type="checkbox"
-                            class="checkbox checkbox-sm checkbox-success"
+                            class="checkbox checkbox-sm {suspended ? 'checkbox-error' : !avail ? 'checkbox-warning' : 'checkbox-success'}"
                             {checked}
-                            disabled={(!avail && !checked) || (!checked && selectedCount >= 11)}
+                            disabled={(suspended && !checked) || (!checked && selectedCount >= 11)}
                             onchange={() => toggle(p.id)}
-                            title={!avail && checked ? 'Sancionado / lesionado — desmarcalo para sacarlo del XI' : ''}
+                            title={
+                              suspended ? 'Sancionado — no puede jugar' :
+                              !avail && checked ? 'Lesionado en el XI — el equipo jugará con un jugador menos' :
+                              ''
+                            }
                           />
                           {#if checked}
                             <input type="hidden" name="starterIds" value={p.id} />

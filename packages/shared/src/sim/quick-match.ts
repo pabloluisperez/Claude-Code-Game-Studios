@@ -182,12 +182,36 @@ export function quickSimulateMatch(args: {
   /** Optional manual XI. If omitted, auto-pick top 11 by skill. */
   readonly homeStarterIds?: readonly string[] | null;
   readonly awayStarterIds?: readonly string[] | null;
+  /**
+   * IDs of starters who are physically unable to play (injured) but the
+   * manager chose to field anyway. They occupy the XI slot but contribute
+   * 0 to strength and never appear in events. Effective player count drops
+   * by len(unavailable) — team plays with N less players.
+   * Pablo 2026-05-26.
+   */
+  readonly homeUnavailableStarterIds?: ReadonlySet<string>;
+  readonly awayUnavailableStarterIds?: ReadonlySet<string>;
   readonly rng: () => number;
 }): QuickMatchResult {
   const homeStarters = resolveStarters(args.homeRoster, args.homeStarterIds);
   const awayStarters = resolveStarters(args.awayRoster, args.awayStarterIds);
-  const home = aggregates(args.homeRoster, homeStarters);
-  const away = aggregates(args.awayRoster, awayStarters);
+  // Filter out injured/unavailable players for strength + event picks. They
+  // still occupy a slot (manager's tactical choice / forced) — the team plays
+  // effectively with fewer players.
+  const homeEffective = args.homeUnavailableStarterIds
+    ? homeStarters.filter((p) => !p.id || !args.homeUnavailableStarterIds!.has(p.id))
+    : homeStarters;
+  const awayEffective = args.awayUnavailableStarterIds
+    ? awayStarters.filter((p) => !p.id || !args.awayUnavailableStarterIds!.has(p.id))
+    : awayStarters;
+  const home = aggregates(args.homeRoster, homeEffective);
+  const away = aggregates(args.awayRoster, awayEffective);
+  // Scale strength by effective player count: a team with 10 plays at 10/11
+  // of its potential because the empty slot has no presence on the pitch.
+  const homeStrengthFactor = homeEffective.length / TOP_N;
+  const awayStrengthFactor = awayEffective.length / TOP_N;
+  home.strength *= homeStrengthFactor;
+  away.strength *= awayStrengthFactor;
 
   const homeXg = Math.max(0, BASE_XG + STRENGTH_TO_XG * (home.strength - 50) + HOME_ADVANTAGE);
   const awayXg = Math.max(0, BASE_XG + STRENGTH_TO_XG * (away.strength - 50) - HOME_ADVANTAGE * 0.4);
@@ -204,8 +228,9 @@ export function quickSimulateMatch(args: {
   // Eligible scorers: FWD + MID (and DEF rarely, but we exclude GK).
   // Weight by calidad — premier finishers score more often.
   // 2026-05-25: events now come from STARTERS only — bench players can't score.
-  const homeOutfield = homeStarters.filter((p) => p.position !== 'GK');
-  const awayOutfield = awayStarters.filter((p) => p.position !== 'GK');
+  // 2026-05-26: events come from EFFECTIVE starters — injured contribute nothing.
+  const homeOutfield = homeEffective.filter((p) => p.position !== 'GK');
+  const awayOutfield = awayEffective.filter((p) => p.position !== 'GK');
 
   for (let i = 0; i < homeScore; i++) {
     const scorer = pickWeighted(
@@ -256,14 +281,14 @@ export function quickSimulateMatch(args: {
       });
     }
   }
-  cardsFor('home', homeStarters, home.aggMean);
-  cardsFor('away', awayStarters, away.aggMean);
+  cardsFor('home', homeEffective, home.aggMean);
+  cardsFor('away', awayEffective, away.aggMean);
 
   // Injuries — weighted by (100 − resistencia).
   const combinedAgg = (home.aggMean + away.aggMean) / 2;
   const injuryProb = 0.05 + Math.max(0, (combinedAgg - 50) / 100);
   function pickInjury(team: 'home' | 'away') {
-    const roster = team === 'home' ? homeStarters : awayStarters;
+    const roster = team === 'home' ? homeEffective : awayEffective;
     const victim = pickWeighted(
       roster,
       (p) => Math.max(1, 100 - (p.resistencia ?? p.skill)),

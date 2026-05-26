@@ -166,9 +166,8 @@
             decoding="async"
           />
           <p class="text-xs opacity-60 mt-3">
-            Nivel visual <strong>{data.stadium.visualLevel}/9</strong> —
             <span class="sr-only">Estadio nivel visual: {data.stadium.visualLevel}</span>
-            cada reforma terminada acerca tu estadio a su forma final.
+            Cada reforma terminada acerca tu estadio a su forma final.
           </p>
         </div>
       </div>
