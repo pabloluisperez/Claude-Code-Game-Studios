@@ -253,6 +253,13 @@
       "when": 1779740000000,
       "tag": "0035_retune_player_salaries",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1779780000000,
+      "tag": "0036_backfill_injuries",
+      "breakpoints": true
     }
   ]
 }

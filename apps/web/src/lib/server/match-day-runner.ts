@@ -242,6 +242,15 @@ export async function runMatchDay(args: {
         winner: result.winner,
       });
 
+      // Pablo 2026-05-26: persist injuries from match events. Before this fix,
+      // 'injury' events appeared narratively in match outcome but never updated
+      // the player row — so the player remained selectable for the next XI.
+      await applyInjuries(tx, {
+        seed: `${seed}:fx-injuries`,
+        week,
+        events: result.events,
+      });
+
       results.push({
         fixtureId: fx.id,
         homeClubId: fx.homeClubId,
@@ -509,5 +518,52 @@ async function applyMatchEffects(
         .set({ fitness: Math.round(nextFit), morale: Math.round(nextMor) })
         .where(eq(players.id, p.id));
     }
+  }
+}
+
+// ── Injury persistence ───────────────────────────────────────────────────────
+
+/**
+ * Pablo 2026-05-26: persist injuries from match events.
+ *
+ * For each 'injury' event with a playerId, set:
+ *   availability = 'injured'
+ *   injuredUntilWeek = week + recoveryWeeks (1..6 weeks, deterministic via seed)
+ *
+ * Recovery is processed in advance-orchestrator Phase 7-bis: when
+ * injuredUntilWeek <= currentWeek, the player flips back to 'available'.
+ *
+ * Skips injuries for players already injured (no re-aggravation logic for MVP).
+ */
+async function applyInjuries(
+  tx: Tx,
+  args: {
+    seed: string;
+    week: number;
+    events: QuickMatchResult['events'];
+  },
+): Promise<void> {
+  const rng = createSeededRng(args.seed);
+  const injuryEvents = args.events.filter((e) => e.type === 'injury' && e.playerId);
+
+  for (const e of injuryEvents) {
+    if (!e.playerId) continue;
+    // Skip if already injured — read first to avoid re-rolling recovery weeks.
+    const [existing] = await tx
+      .select({ availability: players.availability })
+      .from(players)
+      .where(eq(players.id, e.playerId))
+      .limit(1);
+    if (!existing || existing.availability === 'injured') continue;
+
+    // Deterministic recovery duration: 1..6 weeks.
+    const recoveryWeeks = 1 + Math.floor(rng() * 6);
+    await tx
+      .update(players)
+      .set({
+        availability: 'injured',
+        injuredUntilWeek: args.week + recoveryWeeks,
+      })
+      .where(eq(players.id, e.playerId));
   }
 }

@@ -39,8 +39,13 @@
     return p === 'GK' ? 'Portero' : p === 'DEF' ? 'Defensa' : p === 'MID' ? 'Centrocampista' : 'Delantero';
   }
 
-  function isAvailable(p: { suspendedMatchesRemaining: number | null; injuredUntilWeek: number | null }): boolean {
+  function isAvailable(p: {
+    suspendedMatchesRemaining: number | null;
+    injuredUntilWeek: number | null;
+    availability: string;
+  }): boolean {
     if ((p.suspendedMatchesRemaining ?? 0) > 0) return false;
+    if (p.availability === 'injured') return false;
     if (p.injuredUntilWeek && data.hasPlaythrough && p.injuredUntilWeek > (data.currentWeek ?? 0)) return false;
     return true;
   }
@@ -243,9 +248,20 @@
                         <td class="text-right font-mono opacity-80">{p.form}</td>
                         <td>
                           {#if (p.suspendedMatchesRemaining ?? 0) > 0}
-                            <span class="badge badge-error badge-sm">Sancionado</span>
-                          {:else if p.injuredUntilWeek && data.currentWeek && p.injuredUntilWeek > data.currentWeek}
-                            <span class="badge badge-warning badge-sm">Lesionado</span>
+                            <span
+                              class="badge badge-error badge-sm"
+                              title="Sancionado — pierde {p.suspendedMatchesRemaining} partido(s)"
+                            >
+                              🚫 Sancionado · {p.suspendedMatchesRemaining}p
+                            </span>
+                          {:else if p.availability === 'injured' || (p.injuredUntilWeek && data.currentWeek && p.injuredUntilWeek > data.currentWeek)}
+                            {@const weeksLeft = (p.injuredUntilWeek ?? 0) - (data.currentWeek ?? 0)}
+                            <span
+                              class="badge badge-warning badge-sm"
+                              title="Lesionado · vuelve en jornada {p.injuredUntilWeek}"
+                            >
+                              🤕 Lesionado · {weeksLeft > 0 ? `${weeksLeft}sem` : 'recuperándose'}
+                            </span>
                           {:else}
                             <span class="badge badge-success badge-sm">Disponible</span>
                           {/if}

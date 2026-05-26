@@ -721,27 +721,40 @@ export async function runAdvanceTickFull(
     week: nextWeek,
   });
 
-  // ── Phase 7-bis: weekly fitness recovery ───────────────────────────────
+  // ── Phase 7-bis: weekly fitness + injury recovery ─────────────────────
   // Pablo 2026-05-26: 'durante la semana deberían recuperarse un poco'.
-  // Applies asymptotic recovery to ALL user-club players (including starters):
-  //   gain = round((100 - fitness) × 0.15)
-  // So fitness=30 → +10, fitness=70 → +4, fitness=95 → +1, fitness=100 → 0.
-  // Combined with the asymptotic match decay (Phase: match-day-runner), this
-  // produces a stable rhythm: starters drop to ~50 after a match, recover to
-  // ~65 by the next match.
+  // Plus injury recovery: when injuredUntilWeek <= currentWeek, flip back to
+  // 'available' (was previously unwired — applyWeeklyRecovery was defined but
+  // never called).
   try {
     const rosterForRecovery = await db
-      .select({ id: players.id, fitness: players.fitness })
+      .select({
+        id: players.id,
+        fitness: players.fitness,
+        availability: players.availability,
+        injuredUntilWeek: players.injuredUntilWeek,
+      })
       .from(players)
       .where(eq(players.clubId, active.clubId));
     for (const p of rosterForRecovery) {
-      if (p.fitness >= 100) continue;
-      const gain = Math.round((100 - p.fitness) * 0.15);
-      if (gain <= 0) continue;
-      await db
-        .update(players)
-        .set({ fitness: Math.min(100, p.fitness + gain) })
-        .where(eq(players.id, p.id));
+      const patch: Record<string, unknown> = {};
+      // Fitness recovery: asymptotic toward 100.
+      if (p.fitness < 100) {
+        const gain = Math.round((100 - p.fitness) * 0.15);
+        if (gain > 0) patch.fitness = Math.min(100, p.fitness + gain);
+      }
+      // Injury recovery: flip injured → available when due.
+      if (
+        p.availability === 'injured' &&
+        p.injuredUntilWeek !== null &&
+        nextWeek >= p.injuredUntilWeek
+      ) {
+        patch.availability = 'available';
+        patch.injuredUntilWeek = null;
+      }
+      if (Object.keys(patch).length > 0) {
+        await db.update(players).set(patch).where(eq(players.id, p.id));
+      }
     }
   } catch {
     // Recovery is decorative — never block the advance pipeline.

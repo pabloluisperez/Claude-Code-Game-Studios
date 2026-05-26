@@ -50,6 +50,7 @@ export const load: PageServerLoad = async ({ parent }) => {
       form: players.form,
       suspendedMatchesRemaining: players.suspendedMatchesRemaining,
       injuredUntilWeek: players.injuredUntilWeek,
+      availability: players.availability,
     })
     .from(players)
     .where(eq(players.clubId, activePlaythrough.clubId))
