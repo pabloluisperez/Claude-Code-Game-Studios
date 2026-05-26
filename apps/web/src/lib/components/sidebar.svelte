@@ -81,9 +81,13 @@
       icon: '🏛',
       label: 'El club',
       children: [
+        { href: '/finance', icon: '💰', label: 'Finanzas' },
+        { href: '/finance?tab=patrocinadores', icon: '🤝', label: 'Patrocinadores' },
+        { href: '/finance?tab=abonos', icon: '🎟', label: 'Abonos' },
+        { href: '/finance/tv-rights', icon: '📺', label: 'Derechos TV' },
+        { href: '/shop', icon: '🛍', label: 'Tienda' },
         { href: '/scouting', icon: '🔍', label: 'Fichajes' },
         { href: '/staff', icon: '🧑‍💼', label: 'Empleados del club' },
-        { href: '/finance', icon: '💰', label: 'Decisiones' },
         { href: '/stadium', icon: '🏟', label: 'Estadio' },
         { href: '/city', icon: '🏛', label: 'Museo' },
       ],
@@ -92,7 +96,17 @@
   ];
 
   function isActive(href: string): boolean {
-    return $page.url.pathname === href || $page.url.pathname.startsWith(href + '/');
+    const path = $page.url.pathname;
+    const tab = $page.url.searchParams.get('tab');
+    // Hrefs with a ?tab= must match the active tab exactly.
+    if (href.includes('?tab=')) {
+      const [hPath, hQuery] = href.split('?');
+      const hTab = new URLSearchParams(hQuery).get('tab');
+      return path === hPath && tab === hTab;
+    }
+    // Plain /finance should NOT light up when a tab is active.
+    if (href === '/finance') return path === '/finance' && !tab;
+    return path === href || path.startsWith(href + '/');
   }
   // A group's badge = sum of its children's badges.
   function groupDot(children: NavLink[]): number {

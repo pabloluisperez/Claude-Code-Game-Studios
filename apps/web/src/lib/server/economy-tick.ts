@@ -20,6 +20,7 @@ import {
   sponsors,
   staff,
   players,
+  clubs,
   eq,
   and,
   sql,
@@ -28,6 +29,8 @@ import {
 import {
   computeEffectiveTicketPrice,
   computeMatchDayRevenue,
+  computeMerchSales,
+  computeConcessionRevenue,
   type WorldState,
 } from '@smt/shared';
 import { computeFinancialStatus } from '@smt/shared/sim/economy/bankruptcy';
@@ -36,6 +39,8 @@ export interface EconomyTickResult {
   readonly patchedState: WorldState;
   readonly sponsorRevenue: number;
   readonly merchRevenue: number;
+  /** Tienda (#39): merch + concession sales on home matches. 0 otherwise. */
+  readonly commercialRevenue: number;
   readonly matchDayRevenue: number;
   readonly matchDayAttendance: number;
   readonly matchDayTicketPriceEur: number;
@@ -141,6 +146,7 @@ export async function applyEconomyTick(args: {
   let matchDayRevenue = 0;
   let matchDayAttendance = 0;
   let matchDayTicketPriceEur = 0;
+  let commercialRevenue = 0;
   if (homeFixtureThisWeek) {
     const stadiumCapacity = stateRead['stadium_capacity'] ?? 3000;
     const fanAttendance = stateRead['fan_attendance'] ?? 40;
@@ -171,12 +177,63 @@ export async function applyEconomyTick(args: {
       fanLoyalty,
       stadiumCapacity,
     });
+
+    // Tienda (#39, Pablo 2026-05-27): merch + concession sales. ADDITIVE +
+    // isolated — reads the club's commercial columns, sells against attendance,
+    // decrements merch stock. Wrapped so any failure can't corrupt the core tick.
+    try {
+      const [cc] = await db
+        .select({
+          merchScarfPrice: clubs.merchScarfPrice,
+          merchScarfStock: clubs.merchScarfStock,
+          merchCapPrice: clubs.merchCapPrice,
+          merchCapStock: clubs.merchCapStock,
+          merchShirtPrice: clubs.merchShirtPrice,
+          merchShirtStock: clubs.merchShirtStock,
+          concessionFoodPrice: clubs.concessionFoodPrice,
+          concessionSodaPrice: clubs.concessionSodaPrice,
+          concessionBeerPrice: clubs.concessionBeerPrice,
+          concessionWaterPrice: clubs.concessionWaterPrice,
+        })
+        .from(clubs)
+        .where(eq(clubs.id, clubId))
+        .limit(1);
+      if (cc) {
+        // Deterministic jitter per match (±15%) — seeded by attendance value.
+        const jitter = 0.85 + ((matchDayAttendance * 7919) % 300) / 1000; // [0.85, 1.15)
+        const scarf = computeMerchSales({ kind: 'scarf', price: cc.merchScarfPrice, stock: cc.merchScarfStock }, matchDayAttendance, jitter);
+        const cap = computeMerchSales({ kind: 'cap', price: cc.merchCapPrice, stock: cc.merchCapStock }, matchDayAttendance, jitter);
+        const shirt = computeMerchSales({ kind: 'shirt', price: cc.merchShirtPrice, stock: cc.merchShirtStock }, matchDayAttendance, jitter);
+        // Merch revenue is in € (price is €) → convert to €K for cashflow consistency.
+        const merchEur = scarf.revenue + cap.revenue + shirt.revenue;
+        const concEur = computeConcessionRevenue(
+          { food: cc.concessionFoodPrice, soda: cc.concessionSodaPrice, beer: cc.concessionBeerPrice, water: cc.concessionWaterPrice },
+          matchDayAttendance,
+          jitter,
+        );
+        commercialRevenue = Math.round((merchEur + concEur) / 1000); // €K
+        // Persist stock decrements.
+        if (scarf.sold + cap.sold + shirt.sold > 0) {
+          await db
+            .update(clubs)
+            .set({
+              merchScarfStock: scarf.remainingStock,
+              merchCapStock: cap.remainingStock,
+              merchShirtStock: shirt.remainingStock,
+            })
+            .where(eq(clubs.id, clubId));
+        }
+      }
+    } catch {
+      // Commercial sales must never break the core economy tick.
+    }
   }
 
   const balanceBefore = baseState['financial_balance' as keyof WorldState] ?? 0;
   const cashflow =
     totals.sponsorRevenue +
     merchRevenue +
+    commercialRevenue +
     matchDayRevenue +
     tvWeeklyEurK -
     totals.staffCost -
@@ -208,6 +265,7 @@ export async function applyEconomyTick(args: {
     patchedState,
     sponsorRevenue: totals.sponsorRevenue,
     merchRevenue,
+    commercialRevenue,
     matchDayRevenue,
     matchDayAttendance,
     matchDayTicketPriceEur,

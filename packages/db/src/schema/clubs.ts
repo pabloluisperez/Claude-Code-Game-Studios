@@ -55,6 +55,17 @@ export const clubs = pgTable('clubs', {
   startingLineupPlayerIds: jsonb('starting_lineup_player_ids').$type<string[] | null>(),
   /** Preferred formation for quick-sim and match-session start. */
   preferredFormation: text('preferred_formation').notNull().default('4-4-2'),
+  // ── Tienda (#39, Pablo 2026-05-27) — merch (price + manufactured stock) + concessions (price only) ──
+  merchScarfPrice: integer('merch_scarf_price').notNull().default(15),
+  merchScarfStock: integer('merch_scarf_stock').notNull().default(0),
+  merchCapPrice: integer('merch_cap_price').notNull().default(12),
+  merchCapStock: integer('merch_cap_stock').notNull().default(0),
+  merchShirtPrice: integer('merch_shirt_price').notNull().default(40),
+  merchShirtStock: integer('merch_shirt_stock').notNull().default(0),
+  concessionFoodPrice: integer('concession_food_price').notNull().default(4),
+  concessionSodaPrice: integer('concession_soda_price').notNull().default(3),
+  concessionBeerPrice: integer('concession_beer_price').notNull().default(5),
+  concessionWaterPrice: integer('concession_water_price').notNull().default(2),
   /**
    * Tactical instruction applied to all quick-sim matches.
    *   'PRESS_HIGH'  — aggressive: +5% strength, more cards/injuries

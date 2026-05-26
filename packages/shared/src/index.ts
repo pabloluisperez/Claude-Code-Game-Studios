@@ -247,6 +247,19 @@ export {
   type WeeklyCostBreakdown,
 } from './sim/economy/costs.js';
 export {
+  merchUnitCost,
+  merchBatchCost,
+  computeMerchSales,
+  computeConcessionRevenue,
+  MERCH_BASE_COST,
+  MERCH_FLOOR_COST,
+  type MerchKind,
+  type MerchLine,
+  type MerchSaleResult,
+  type ConcessionKind,
+  type ConcessionPrices,
+} from './sim/economy/commercial.js';
+export {
   computeFinancialStatus,
   bankruptcyTransition,
   FINANCIAL_STATUS_NAMES,

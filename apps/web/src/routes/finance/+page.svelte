@@ -98,9 +98,8 @@
   // directly (no URL change), so this $effect doesn't fight them.
   $effect(() => {
     const t = $page.url.searchParams.get('tab');
-    if (t === 'patrocinadores' || t === 'abonos' || t === 'resumen') {
-      activeTab = t;
-    }
+    // Pablo 2026-05-27: sidebar drives the section now. Plain /finance → resumen.
+    activeTab = t === 'patrocinadores' ? 'patrocinadores' : t === 'abonos' ? 'abonos' : 'resumen';
   });
 </script>
 
@@ -121,50 +120,6 @@
   {:else}
     <!-- a11y P1-4 (Sprint 11 task 11-3): each tab declares aria-selected
          + aria-controls; corresponding tabpanels expose role + id. -->
-    <div role="tablist" class="tabs tabs-boxed w-full" aria-label="Finanzas">
-      <button
-        role="tab"
-        id="tab-finance-resumen"
-        aria-selected={activeTab === 'resumen'}
-        aria-controls="tabpanel-finance-resumen"
-        class="tab flex-1 {activeTab === 'resumen' ? 'tab-active' : ''}"
-        onclick={() => (activeTab = 'resumen')}
-      >
-        📊 Resumen
-      </button>
-      <button
-        role="tab"
-        id="tab-finance-patrocinadores"
-        aria-selected={activeTab === 'patrocinadores'}
-        aria-controls="tabpanel-finance-patrocinadores"
-        class="tab flex-1 {activeTab === 'patrocinadores' ? 'tab-active' : ''}"
-        onclick={() => (activeTab = 'patrocinadores')}
-      >
-        🤝 Patrocinadores
-        {#if data.pendingSponsorOffers && data.pendingSponsorOffers.length > 0}
-          <span class="badge badge-warning badge-sm ml-1">
-            {data.pendingSponsorOffers.length}
-          </span>
-        {/if}
-      </button>
-      <button
-        role="tab"
-        id="tab-finance-abonos"
-        aria-selected={activeTab === 'abonos'}
-        aria-controls="tabpanel-finance-abonos"
-        class="tab flex-1 {activeTab === 'abonos' ? 'tab-active' : ''}"
-        onclick={() => (activeTab = 'abonos')}
-      >
-        🎟 Abonos
-      </button>
-      <a
-        role="tab"
-        class="tab flex-1"
-        href="/finance/tv-rights"
-      >
-        📺 Derechos TV
-      </a>
-    </div>
 
     {#if form?.ok && form.priceEur}
       <div class="alert alert-success">
