@@ -1151,6 +1151,72 @@ export async function runAdvanceTickFull(
     // Sponsor lifecycle is decorative — never block the advance pipeline.
   }
 
+  // ── Phase 8c-bis-3: low merch stock warning (Pablo 2026-05-27) ─────────
+  // If a finance_director is hired, warn when merch stock is low AND nothing
+  // is being manufactured — so the manager reorders before selling out.
+  try {
+    const [financeDir] = await db
+      .select({ id: staff.id, name: staff.name })
+      .from(staff)
+      .where(
+        and(
+          eq(staff.playthroughId, active.id),
+          eq(staff.role, 'finance_director'),
+          eq(staff.status, 'active'),
+        ),
+      )
+      .limit(1);
+
+    if (financeDir) {
+      const [cc] = await db
+        .select({
+          scarfStock: clubs.merchScarfStock, scarfMfg: clubs.merchScarfMfgQty,
+          capStock: clubs.merchCapStock, capMfg: clubs.merchCapMfgQty,
+          shirtStock: clubs.merchShirtStock, shirtMfg: clubs.merchShirtMfgQty,
+        })
+        .from(clubs)
+        .where(eq(clubs.id, active.clubId))
+        .limit(1);
+
+      const LOW = 100;
+      const low: string[] = [];
+      if (cc) {
+        if (cc.scarfStock < LOW && cc.scarfMfg === 0) low.push(`bufandas (${cc.scarfStock})`);
+        if (cc.capStock < LOW && cc.capMfg === 0) low.push(`gorras (${cc.capStock})`);
+        if (cc.shirtStock < LOW && cc.shirtMfg === 0) low.push(`camisetas (${cc.shirtStock})`);
+      }
+
+      if (low.length > 0) {
+        // De-dup: one low-stock warning per week.
+        const existing = await db
+          .select({ id: staffMessages.id })
+          .from(staffMessages)
+          .where(
+            and(
+              eq(staffMessages.playthroughId, active.id),
+              eq(staffMessages.week, nextWeek),
+              eq(staffMessages.templateKey, 'shop:low_stock'),
+            ),
+          )
+          .limit(1);
+        if (!existing[0]) {
+          await db.insert(staffMessages).values({
+            playthroughId: active.id,
+            staffId: financeDir.id,
+            week: nextWeek,
+            season: tvCurrentSeason,
+            priority: 'ROUTINE',
+            templateKey: 'shop:low_stock',
+            content: `📦 ${financeDir.name.split(' ')[0]} (Director financiero): stock bajo de ${low.join(', ')}. Conviene fabricar más en la Tienda antes del próximo partido en casa.`,
+            isRead: false,
+          });
+        }
+      }
+    }
+  } catch {
+    // Low-stock warning is decorative — never block the advance pipeline.
+  }
+
   // ── Phase 8d: contract renewal scans (Pablo 2026-05-25) ────────────────
   // Players whose contract ends in exactly 8 weeks generate a renewal event.
   // One-shot trigger window (== 8) so we don't re-spam every week. Player's
