@@ -80,6 +80,15 @@
 
   // Critical-balance modal state.
   let warningSlug: string | null = $state(null);
+  // Pablo 2026-05-26: tabs por track para evitar scroll largo.
+  let activeTrack: string = $state('');
+  const trackKeys = $derived(Object.keys(grouped));
+  $effect(() => {
+    if (!activeTrack && trackKeys.length > 0) activeTrack = trackKeys[0]!;
+    else if (activeTrack && !trackKeys.includes(activeTrack) && trackKeys.length > 0) {
+      activeTrack = trackKeys[0]!;
+    }
+  });
 
   // Form-action error post-processing.
   $effect(() => {
@@ -175,13 +184,17 @@
     <!-- Active obra widget -->
     {#if data.catalog?.active}
       {@const active = data.catalog.active}
+      {@const activeItem = data.catalog.items.find((i) => i.slug === active.itemSlug)}
       <section class="card bg-warning/10 border border-warning shadow mb-6 sticky top-2 z-10">
         <div class="card-body py-4">
           <div class="flex items-center justify-between gap-4 flex-wrap">
             <div>
               <h2 class="text-sm uppercase opacity-70">Obra activa</h2>
-              <p class="font-semibold">{active.itemSlug}</p>
-              <p class="text-xs opacity-70">
+              <p class="font-semibold">{activeItem?.name ?? active.itemSlug}</p>
+              {#if activeItem?.description}
+                <p class="text-xs opacity-70">{activeItem.description}</p>
+              {/if}
+              <p class="text-xs opacity-70 mt-1">
                 Quedan <span class="font-mono">{active.weeksRemaining}</span> de <span class="font-mono">{active.durationWeeks}</span> semanas
               </p>
             </div>
@@ -222,11 +235,26 @@
       </div>
     {/if}
 
-    <!-- Catalog grid -->
-    <section aria-labelledby="upgrades-h" class="space-y-6">
+    <!-- Catalog grid (tabs por track) -->
+    <section aria-labelledby="upgrades-h" class="space-y-4">
       <h2 id="upgrades-h" class="text-xl font-bold">Catálogo de reformas</h2>
 
+      <!-- Tabs -->
+      <div role="tablist" class="tabs tabs-boxed bg-base-200 flex flex-wrap">
+        {#each trackKeys as track (track)}
+          <button
+            type="button"
+            role="tab"
+            class="tab {activeTrack === track ? 'tab-active' : ''}"
+            onclick={() => (activeTrack = track)}
+          >
+            {TRACK_LABELS[track] ?? track}
+          </button>
+        {/each}
+      </div>
+
       {#each Object.entries(grouped) as [track, tiers] (track)}
+        {#if track === activeTrack}
         <div class="card bg-base-100 shadow">
           <div class="card-body">
             <h3 class="card-title text-lg">{TRACK_LABELS[track] ?? track}</h3>
@@ -287,6 +315,7 @@
             {/each}
           </div>
         </div>
+        {/if}
       {/each}
     </section>
 
