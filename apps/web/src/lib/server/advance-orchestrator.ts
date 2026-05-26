@@ -721,6 +721,32 @@ export async function runAdvanceTickFull(
     week: nextWeek,
   });
 
+  // ── Phase 7-bis: weekly fitness recovery ───────────────────────────────
+  // Pablo 2026-05-26: 'durante la semana deberían recuperarse un poco'.
+  // Applies asymptotic recovery to ALL user-club players (including starters):
+  //   gain = round((100 - fitness) × 0.15)
+  // So fitness=30 → +10, fitness=70 → +4, fitness=95 → +1, fitness=100 → 0.
+  // Combined with the asymptotic match decay (Phase: match-day-runner), this
+  // produces a stable rhythm: starters drop to ~50 after a match, recover to
+  // ~65 by the next match.
+  try {
+    const rosterForRecovery = await db
+      .select({ id: players.id, fitness: players.fitness })
+      .from(players)
+      .where(eq(players.clubId, active.clubId));
+    for (const p of rosterForRecovery) {
+      if (p.fitness >= 100) continue;
+      const gain = Math.round((100 - p.fitness) * 0.15);
+      if (gain <= 0) continue;
+      await db
+        .update(players)
+        .set({ fitness: Math.min(100, p.fitness + gain) })
+        .where(eq(players.id, p.id));
+    }
+  } catch {
+    // Recovery is decorative — never block the advance pipeline.
+  }
+
   // ── Phase 8: career milestone detection ─────────────────────────────────
   const newMilestones = await detectAndPersistMilestones({
     playthroughId: active.id,
@@ -865,6 +891,34 @@ export async function runAdvanceTickFull(
         .from(clubs)
         .where(ne(clubs.id, active.clubId));
 
+      // Scouting director / head coach for inbox notification.
+      const [notifier] = await db
+        .select({ id: staff.id, name: staff.name })
+        .from(staff)
+        .where(
+          and(
+            eq(staff.playthroughId, active.id),
+            eq(staff.role, 'scouting_director'),
+            eq(staff.status, 'active'),
+          ),
+        )
+        .limit(1);
+      const [fallbackCoach] = notifier
+        ? [notifier]
+        : await db
+            .select({ id: staff.id, name: staff.name })
+            .from(staff)
+            .where(
+              and(
+                eq(staff.playthroughId, active.id),
+                eq(staff.role, 'head_coach'),
+                eq(staff.status, 'active'),
+              ),
+            )
+            .limit(1);
+      const notifyStaffId = (notifier ?? fallbackCoach)?.id;
+      const notifyName = (notifier ?? fallbackCoach)?.name ?? 'Tu agente';
+
       if (buyers.length > 0) {
         for (const p of listed) {
           // Idempotency: skip if already a pending offer for this player.
@@ -910,6 +964,20 @@ export async function runAdvanceTickFull(
             status: 'pending',
             bidNumber: 1,
           });
+
+          // Pablo 2026-05-26: surface offer in /inbox via staff_message.
+          if (notifyStaffId) {
+            await db.insert(staffMessages).values({
+              playthroughId: active.id,
+              staffId: notifyStaffId,
+              week: nextWeek,
+              season: tvCurrentSeason,
+              priority: 'URGENT',
+              templateKey: 'transfer:incoming_offer',
+              content: `💸 ${notifyName.split(' ')[0]}: ${buyer.name} ofrece €${feeEurK}K por ${p.firstName} ${p.lastName} (sueldo €${wageOfferEurKWeek}K/sem · 52 semanas). Revisa en /scouting.`,
+              isRead: false,
+            });
+          }
         }
       }
     }

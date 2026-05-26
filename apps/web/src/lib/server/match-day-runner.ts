@@ -470,10 +470,14 @@ async function applyMatchEffects(
     return won ? +1 : args.winner === 'draw' ? 0 : lost ? -1 : 0;
   }
 
-  const FATIGUE_MIN = 8;
-  const FATIGUE_RANGE = 7; // 8..15
+  // Pablo 2026-05-26: asymptotic fatigue (was linear). A 100-fitness player
+  // loses 14, a 50-fitness loses 4, a 30-fitness loses 0 — real players don't
+  // drop to 0. The floor sits at FATIGUE_FLOOR (30).
+  const FATIGUE_FLOOR = 30;
+  const FATIGUE_FACTOR = 0.2;   // decay = (fitness - floor) × factor
+  const FATIGUE_NOISE = 3;      // ±3 jitter so each match feels distinct
   const RECOVERY_MIN = 5;
-  const RECOVERY_RANGE = 5; // 5..10
+  const RECOVERY_RANGE = 5;     // bench recovers 5..10 per match
   const MORALE_FLOOR = 30;
   const MORALE_CEIL = 95;
 
@@ -483,7 +487,12 @@ async function applyMatchEffects(
 
     let nextFit = p.fitness;
     if (isStarter) {
-      nextFit -= FATIGUE_MIN + Math.floor(rng() * (FATIGUE_RANGE + 1));
+      // Asymptotic decay: never crosses FATIGUE_FLOOR (30).
+      const headroom = Math.max(0, p.fitness - FATIGUE_FLOOR);
+      const baseDecay = headroom * FATIGUE_FACTOR;
+      const noise = Math.floor(rng() * (FATIGUE_NOISE * 2 + 1)) - FATIGUE_NOISE;
+      nextFit -= Math.max(0, Math.round(baseDecay + noise));
+      if (nextFit < FATIGUE_FLOOR) nextFit = FATIGUE_FLOOR;
     } else {
       nextFit += RECOVERY_MIN + Math.floor(rng() * (RECOVERY_RANGE + 1));
     }
