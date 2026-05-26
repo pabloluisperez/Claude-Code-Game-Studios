@@ -111,6 +111,18 @@ export const players = pgTable(
      * per advance tick (capped at 95).
      */
     trainingFocus: text('training_focus'),
+    /**
+     * Snapshot of (skill, velocidad, resistencia, agresividad, calidad)
+     * captured at the START of each advance tick. /squad UI diffs this
+     * vs current to show ▲/▼ arrows per attribute. Pablo 2026-05-26.
+     */
+    prevAttrs: jsonb('prev_attrs').$type<{
+      skill: number;
+      velocidad: number;
+      resistencia: number;
+      agresividad: number;
+      calidad: number;
+    } | null>(),
 
     // Lifecycle
     availability: text('availability').notNull().default('available'),

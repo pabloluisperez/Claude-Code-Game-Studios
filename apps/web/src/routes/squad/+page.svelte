@@ -127,6 +127,13 @@
   const trainingAssignedCount = $derived(
     data.hasPlaythrough ? data.players.filter((p) => p.trainingFocus != null).length : 0,
   );
+
+  // Pablo 2026-05-26: ▲/▼ delta indicator next to each attribute.
+  function attrDelta(current: number, prev: number | null | undefined): string {
+    if (prev == null || prev === current) return '';
+    if (current > prev) return ` <span class="text-success text-xs" title="Subió desde ${prev}">▲${current - prev}</span>`;
+    return ` <span class="text-error text-xs" title="Bajó desde ${prev}">▼${prev - current}</span>`;
+  }
 </script>
 
 <div class="space-y-6">
@@ -303,11 +310,11 @@
                   </div>
                 </td>
                 <td><span class="badge badge-outline badge-sm">{posLabel(p.position)}</span></td>
-                <td class="text-right font-mono font-bold border-l border-base-300">{p.skill}</td>
-                <td class="text-right font-mono opacity-90">{p.velocidad}</td>
-                <td class="text-right font-mono opacity-90">{p.resistencia}</td>
-                <td class="text-right font-mono opacity-90">{p.agresividad}</td>
-                <td class="text-right font-mono opacity-90">{p.calidad}</td>
+                <td class="text-right font-mono font-bold border-l border-base-300">{p.skill}{@html attrDelta(p.skill, p.prevAttrs?.skill)}</td>
+                <td class="text-right font-mono opacity-90">{p.velocidad}{@html attrDelta(p.velocidad, p.prevAttrs?.velocidad)}</td>
+                <td class="text-right font-mono opacity-90">{p.resistencia}{@html attrDelta(p.resistencia, p.prevAttrs?.resistencia)}</td>
+                <td class="text-right font-mono opacity-90">{p.agresividad}{@html attrDelta(p.agresividad, p.prevAttrs?.agresividad)}</td>
+                <td class="text-right font-mono opacity-90">{p.calidad}{@html attrDelta(p.calidad, p.prevAttrs?.calidad)}</td>
                 <td class="text-right font-mono opacity-70 border-l border-base-300">{p.form}</td>
                 <td class="text-right font-mono opacity-70">{p.morale}</td>
                 <td class="text-right font-mono opacity-70">{p.fitness}</td>
@@ -338,11 +345,12 @@
 
       {#if selected}
         {@const traits = describeTraits((selected.traits as string[]) ?? [])}
+        {@const prev = selected.prevAttrs as { skill: number; velocidad: number; resistencia: number; agresividad: number; calidad: number } | null | undefined}
         {@const coreAttrs = [
-          { label: 'Velocidad', value: selected.velocidad, hint: 'Pace y contraataques' },
-          { label: 'Resistencia', value: selected.resistencia, hint: 'Aguanta el partido' },
-          { label: 'Agresividad', value: selected.agresividad, hint: 'Más entradas, más tarjetas' },
-          { label: 'Calidad', value: selected.calidad, hint: 'Pase, remate, regate' },
+          { label: 'Velocidad', value: selected.velocidad, prev: prev?.velocidad, hint: 'Pace y contraataques' },
+          { label: 'Resistencia', value: selected.resistencia, prev: prev?.resistencia, hint: 'Aguanta el partido' },
+          { label: 'Agresividad', value: selected.agresividad, prev: prev?.agresividad, hint: 'Más entradas, más tarjetas' },
+          { label: 'Calidad', value: selected.calidad, prev: prev?.calidad, hint: 'Pase, remate, regate' },
         ]}
         <div class="modal modal-open">
           <div class="modal-box max-w-2xl">
@@ -351,8 +359,15 @@
               <div class="flex-1">
                 <h3 class="font-bold text-lg">{selected.firstName} {selected.lastName}</h3>
                 <p class="opacity-60 text-sm">{posLabel(selected.position)} · {selected.nationality}</p>
-                <div class="mt-1">
+                <div class="mt-1 flex items-center gap-2">
                   <span class="badge badge-primary badge-lg">Overall {selected.skill}</span>
+                  {#if prev?.skill != null && prev.skill !== selected.skill}
+                    {#if selected.skill > prev.skill}
+                      <span class="badge badge-success badge-sm" title="Subió desde {prev.skill}">▲{selected.skill - prev.skill}</span>
+                    {:else}
+                      <span class="badge badge-error badge-sm" title="Bajó desde {prev.skill}">▼{prev.skill - selected.skill}</span>
+                    {/if}
+                  {/if}
                 </div>
               </div>
             </div>
@@ -383,7 +398,16 @@
                   <div class="bg-base-200 rounded p-2">
                     <div class="flex justify-between items-baseline">
                       <div class="font-semibold text-sm">{a.label}</div>
-                      <div class="font-mono text-lg">{a.value}</div>
+                      <div class="font-mono text-lg flex items-baseline gap-1">
+                        <span>{a.value}</span>
+                        {#if a.prev != null && a.prev !== a.value}
+                          {#if a.value > a.prev}
+                            <span class="text-success text-xs" title="Subió desde {a.prev}">▲{a.value - a.prev}</span>
+                          {:else}
+                            <span class="text-error text-xs" title="Bajó desde {a.prev}">▼{a.prev - a.value}</span>
+                          {/if}
+                        {/if}
+                      </div>
                     </div>
                     <progress
                       class="progress {a.value >= 75 ? 'progress-success' : a.value >= 50 ? 'progress-primary' : a.value >= 30 ? 'progress-warning' : 'progress-error'}"

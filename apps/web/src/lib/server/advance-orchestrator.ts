@@ -286,6 +286,25 @@ export async function runAdvanceTickFull(
   const nextWeek = ctx.latestWeek + 1;
   const tvCurrentSeason = ctx.currentSeason;
 
+  // ── Phase -1: snapshot player attributes (Pablo 2026-05-26 deltas) ─────
+  // Before any attribute mutation this tick, capture current values into
+  // prev_attrs so /squad can render ▲/▼ arrows per attribute.
+  try {
+    await db.execute(sql`
+      UPDATE players
+      SET prev_attrs = jsonb_build_object(
+        'skill', skill,
+        'velocidad', velocidad,
+        'resistencia', resistencia,
+        'agresividad', agresividad,
+        'calidad', calidad
+      )
+      WHERE club_id = ${active.clubId}
+    `);
+  } catch {
+    // Snapshot is decorative — never block the advance pipeline.
+  }
+
   // ── Phase 0: ensure TV auction event exists (Pablo bug 2026-05-25) ──────
   // The TV auction event was originally generated via rolloverTVSeasonStart
   // at season transitions, but it was never wired into the new-playthrough
