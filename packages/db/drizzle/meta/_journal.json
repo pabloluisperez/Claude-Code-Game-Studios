@@ -288,6 +288,13 @@
       "when": 1779880000000,
       "tag": "0040_club_commercial",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1779885000000,
+      "tag": "0041_merch_manufacture",
+      "breakpoints": true
     }
   ]
 }

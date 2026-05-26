@@ -66,6 +66,16 @@ export const clubs = pgTable('clubs', {
   concessionSodaPrice: integer('concession_soda_price').notNull().default(3),
   concessionBeerPrice: integer('concession_beer_price').notNull().default(5),
   concessionWaterPrice: integer('concession_water_price').notNull().default(2),
+  // ── Tienda rework (#39, Pablo 2026-05-27): manufacture orders (take time) ──
+  merchScarfMfgQty: integer('merch_scarf_mfg_qty').notNull().default(0),
+  merchScarfMfgWeeksLeft: integer('merch_scarf_mfg_weeks_left').notNull().default(0),
+  merchScarfUnitCost: integer('merch_scarf_unit_cost').notNull().default(6),
+  merchCapMfgQty: integer('merch_cap_mfg_qty').notNull().default(0),
+  merchCapMfgWeeksLeft: integer('merch_cap_mfg_weeks_left').notNull().default(0),
+  merchCapUnitCost: integer('merch_cap_unit_cost').notNull().default(5),
+  merchShirtMfgQty: integer('merch_shirt_mfg_qty').notNull().default(0),
+  merchShirtMfgWeeksLeft: integer('merch_shirt_mfg_weeks_left').notNull().default(0),
+  merchShirtUnitCost: integer('merch_shirt_unit_cost').notNull().default(18),
   /**
    * Tactical instruction applied to all quick-sim matches.
    *   'PRESS_HIGH'  — aggressive: +5% strength, more cards/injuries

@@ -39,6 +39,15 @@ export function merchBatchCost(kind: MerchKind, qty: number): number {
   return Math.round(merchUnitCost(kind, qty) * qty);
 }
 
+/**
+ * Manufacturing lead time in weeks — bigger orders take longer.
+ * ceil(qty / 500), clamped to [1, 8]. So 500u→1wk, 2000u→4wk, 4000u+→8wk.
+ */
+export function merchLeadTimeWeeks(qty: number): number {
+  if (qty <= 0) return 0;
+  return Math.max(1, Math.min(8, Math.ceil(qty / 500)));
+}
+
 // ── Match-day commercial sales ───────────────────────────────────────────────
 
 /** Buyer propensity per merch kind (fraction of attendance that wants one). */

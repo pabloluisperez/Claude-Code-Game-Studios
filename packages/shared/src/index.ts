@@ -249,6 +249,7 @@ export {
 export {
   merchUnitCost,
   merchBatchCost,
+  merchLeadTimeWeeks,
   computeMerchSales,
   computeConcessionRevenue,
   MERCH_BASE_COST,

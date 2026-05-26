@@ -744,6 +744,43 @@ export async function runAdvanceTickFull(
     }
   }
 
+  // ── Phase 6g: merch manufacturing tick (Pablo 2026-05-27 Tienda) ───────
+  // Decrement weeks-left on in-progress merch orders; when an order completes,
+  // add the units to stock and clear the order. Cost was debited at order time.
+  try {
+    const [cc] = await db
+      .select({
+        scarfQty: clubs.merchScarfMfgQty, scarfWeeks: clubs.merchScarfMfgWeeksLeft, scarfStock: clubs.merchScarfStock,
+        capQty: clubs.merchCapMfgQty, capWeeks: clubs.merchCapMfgWeeksLeft, capStock: clubs.merchCapStock,
+        shirtQty: clubs.merchShirtMfgQty, shirtWeeks: clubs.merchShirtMfgWeeksLeft, shirtStock: clubs.merchShirtStock,
+      })
+      .from(clubs)
+      .where(eq(clubs.id, active.clubId))
+      .limit(1);
+    if (cc) {
+      const patch: Record<string, number> = {};
+      const tick = (qty: number, weeks: number, stock: number, p: { q: string; w: string; s: string }) => {
+        if (qty <= 0 || weeks <= 0) return;
+        const nextWeeks = weeks - 1;
+        if (nextWeeks <= 0) {
+          patch[p.s] = stock + qty; // arrived
+          patch[p.q] = 0;
+          patch[p.w] = 0;
+        } else {
+          patch[p.w] = nextWeeks;
+        }
+      };
+      tick(cc.scarfQty, cc.scarfWeeks, cc.scarfStock, { q: 'merchScarfMfgQty', w: 'merchScarfMfgWeeksLeft', s: 'merchScarfStock' });
+      tick(cc.capQty, cc.capWeeks, cc.capStock, { q: 'merchCapMfgQty', w: 'merchCapMfgWeeksLeft', s: 'merchCapStock' });
+      tick(cc.shirtQty, cc.shirtWeeks, cc.shirtStock, { q: 'merchShirtMfgQty', w: 'merchShirtMfgWeeksLeft', s: 'merchShirtStock' });
+      if (Object.keys(patch).length > 0) {
+        await db.update(clubs).set(patch).where(eq(clubs.id, active.clubId));
+      }
+    }
+  } catch {
+    // Manufacturing tick is decorative — never block the advance pipeline.
+  }
+
   // ── Phase 7: manager XP grant ───────────────────────────────────────────
   await grantWeeklyManagerXp({
     playthroughId: active.id,
