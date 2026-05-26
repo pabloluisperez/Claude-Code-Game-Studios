@@ -134,9 +134,12 @@
 
     const balance = Math.round(state['financial_balance'] ?? 0);
     const momentum = Math.round(state['fan_momentum'] ?? 0);
-    const fitness = Math.round(state['team_fitness'] ?? 0);
+    // Pablo 2026-05-26: real fitness from players (titulares + plantilla).
+    const startersFit = data.hasPlaythrough ? (data.startersFitnessAvg ?? 0) : 0;
+    const squadFit = data.hasPlaythrough ? (data.squadFitnessAvg ?? 0) : 0;
+    const squadN = data.hasPlaythrough ? (data.squadCount ?? 0) : 0;
     const availPct = Math.round(state['squad_available_pct'] ?? 0);
-    const availPlayers = Math.round((availPct / 100) * ROSTER_SIZE);
+    const availPlayers = Math.round((availPct / 100) * (squadN || ROSTER_SIZE));
 
     return [
       {
@@ -149,21 +152,22 @@
       {
         nodeId: 'fan_momentum',
         label: 'Afición',
-        display: `${momentum}`,
-        subtitle: fanMomentumLabel(momentum),
+        display: fanMomentumLabel(momentum),
+        subtitle: `${momentum}/100`,
         progressValue: momentum,
       },
       {
         nodeId: 'team_fitness',
-        label: 'Estado físico del equipo',
-        display: `${fitness}%`,
-        progressValue: fitness,
+        label: 'Físico (XI)',
+        display: `${startersFit}%`,
+        subtitle: `Plantilla: ${squadFit}%`,
+        progressValue: startersFit,
       },
       {
         nodeId: 'squad_available_pct',
         label: 'Plantilla disp.',
-        display: `${availPlayers} / ${ROSTER_SIZE}`,
-        subtitle: `${availPct}% disponibles`,
+        display: `${availPlayers} / ${squadN || ROSTER_SIZE}`,
+        subtitle: `${availPct}% disp.`,
         progressValue: availPct,
       },
     ];
@@ -483,24 +487,26 @@
 
     <!-- Nodes -->
     {#if nodes.length > 0}
-      <section class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <section class="grid grid-cols-2 lg:grid-cols-4 gap-2">
         {#each nodes as n}
           <div
             class="card bg-base-100 shadow tooltip tooltip-bottom"
             data-tip={nodeTooltip(n.nodeId)}
           >
-            <div class="card-body">
-              <div class="text-xs uppercase opacity-50 tracking-wide">{n.label}</div>
+            <div class="card-body p-3 gap-1">
+              <div class="flex items-baseline justify-between gap-2">
+                <span class="text-xs uppercase opacity-50 tracking-wide truncate">{n.label}</span>
+                {#if n.subtitle}
+                  <span class="text-xs opacity-60 whitespace-nowrap">{n.subtitle}</span>
+                {/if}
+              </div>
               <div
-                class="text-2xl md:text-3xl font-mono font-semibold {n.isNegative ? 'text-error' : ''}"
+                class="text-xl md:text-2xl font-mono font-semibold leading-none {n.isNegative ? 'text-error' : ''}"
               >
                 {n.display}
               </div>
-              {#if n.subtitle}
-                <div class="text-xs opacity-70">{n.subtitle}</div>
-              {/if}
               <progress
-                class="progress {colorFor(n.progressValue)}"
+                class="progress progress-sm {colorFor(n.progressValue)}"
                 value={n.progressValue}
                 max="100"
               ></progress>

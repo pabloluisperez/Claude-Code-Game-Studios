@@ -42,6 +42,28 @@ export const load: PageServerLoad = async ({ parent, url }) => {
     .orderBy(desc(worldSnapshots.week))
     .limit(1);
 
+  // Pablo 2026-05-26: real fitness from players (not the stuck cascade node).
+  // Compute squad avg + starters avg (top 11 by skill as a proxy for the XI).
+  const { players: playersTable, clubs: clubsTable } = await import('@smt/db');
+  const rosterFitness = await db
+    .select({ fitness: playersTable.fitness, skill: playersTable.skill })
+    .from(playersTable)
+    .where(eq(playersTable.clubId, activePlaythrough.clubId));
+  const [clubLineup] = await db
+    .select({ ids: clubsTable.startingLineupPlayerIds })
+    .from(clubsTable)
+    .where(eq(clubsTable.id, activePlaythrough.clubId))
+    .limit(1);
+  const squadCount = rosterFitness.length;
+  const squadFitnessAvg =
+    squadCount > 0 ? Math.round(rosterFitness.reduce((s, p) => s + p.fitness, 0) / squadCount) : 0;
+  // Starters: top 11 by skill (proxy for the XI when no manual lineup details here).
+  const startersFitnessAvg = (() => {
+    const top = [...rosterFitness].sort((a, b) => b.skill - a.skill).slice(0, 11);
+    if (top.length === 0) return 0;
+    return Math.round(top.reduce((s, p) => s + p.fitness, 0) / top.length);
+  })();
+
   const recentMessages = await db
     .select({
       id: staffMessages.id,
@@ -212,6 +234,9 @@ export const load: PageServerLoad = async ({ parent, url }) => {
   return {
     hasPlaythrough: true as const,
     worldState: (latestSnapshot?.worldState ?? null) as Record<string, number> | null,
+    squadFitnessAvg,
+    startersFitnessAvg,
+    squadCount,
     week,
     weekDate: weekToDate(week),
     todayPrecise,
