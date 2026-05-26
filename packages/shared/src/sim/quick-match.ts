@@ -171,9 +171,9 @@ function pickWeighted(
 }
 
 function playerLabel(p: QuickPlayerInput): string {
-  if (p.lastName) return p.lastName;
-  if (p.firstName) return p.firstName;
-  return '—';
+  // Pablo 2026-05-26: full name in match events (was surname only).
+  const full = [p.firstName, p.lastName].filter(Boolean).join(' ').trim();
+  return full || '—';
 }
 
 /** Tactical instructions per ADR-013 + Pablo 2026-05-26 quickSim extension. */

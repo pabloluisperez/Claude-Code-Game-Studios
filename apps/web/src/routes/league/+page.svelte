@@ -459,7 +459,13 @@
           <p class="text-xs opacity-60 mt-1">Jornada {openFixture.matchday} · semana {openFixture.week}</p>
 
           {#if openFixtureEvents.length === 0}
-            <p class="mt-4 text-sm opacity-60 italic">Sin eventos relevantes en este partido.</p>
+            {#if data.hasPlaythrough && data.isMyDivision}
+              <p class="mt-4 text-sm opacity-60 italic">Partido sin goles ni tarjetas.</p>
+            {:else}
+              <p class="mt-4 text-sm opacity-60 italic">
+                No se dispone de información detallada de este partido (simulación rápida de otra división).
+              </p>
+            {/if}
           {:else}
             <div class="mt-4 space-y-1">
               {#each openFixtureEvents as e (e.minute + ':' + (e.playerName ?? '') + ':' + e.type)}
