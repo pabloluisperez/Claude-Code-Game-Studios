@@ -19,9 +19,13 @@
     }
     seenFixtures = out;
   });
-  function shouldHideScore(fx: { week: number; id: string }): boolean {
+  function shouldHideScore(fx: { week: number; id: string; homeClubId: string; awayClubId: string }): boolean {
     if (!data.hasPlaythrough) return false;
     if (fx.week !== data.currentWeek) return false;
+    // Pablo 2026-05-27: only hide the USER's own match (until watched). Rival
+    // results of the same matchday show immediately.
+    const isMine = fx.homeClubId === data.myClubId || fx.awayClubId === data.myClubId;
+    if (!isMine) return false;
     return !seenFixtures.has(fx.id);
   }
 

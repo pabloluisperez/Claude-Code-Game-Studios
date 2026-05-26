@@ -147,6 +147,9 @@ export async function applyEconomyTick(args: {
   let matchDayAttendance = 0;
   let matchDayTicketPriceEur = 0;
   let commercialRevenue = 0;
+  let merchSoldUnits = 0;
+  let merchRevenueEur = 0;
+  let concessionRevenueEur = 0;
   if (homeFixtureThisWeek) {
     const stadiumCapacity = stateRead['stadium_capacity'] ?? 3000;
     const fanAttendance = stateRead['fan_attendance'] ?? 40;
@@ -212,6 +215,9 @@ export async function applyEconomyTick(args: {
           jitter,
         );
         commercialRevenue = Math.round((merchEur + concEur) / 1000); // €K
+        merchRevenueEur = merchEur;
+        concessionRevenueEur = concEur;
+        merchSoldUnits = scarf.sold + cap.sold + shirt.sold;
         // Persist stock decrements.
         if (scarf.sold + cap.sold + shirt.sold > 0) {
           await db
@@ -259,6 +265,12 @@ export async function applyEconomyTick(args: {
     tv_revenue_weekly: tvWeeklyEurK,
     staff_cost_weekly: totals.staffCost,
     player_wages_weekly: totals.playerWages,
+    // Tienda (#39): last home-match economics for the live-match display.
+    last_home_attendance: matchDayAttendance,
+    last_home_gate_eur: Math.round(matchDayRevenue * 1000),
+    last_home_merch_eur: Math.round(merchRevenueEur),
+    last_home_merch_units: merchSoldUnits,
+    last_home_concession_eur: Math.round(concessionRevenueEur),
   } as unknown as WorldState;
 
   return {

@@ -120,6 +120,10 @@ export const load: PageServerLoad = async ({ params, parent }) => {
         attendance: number;
         gateReceiptsEur: number;
         ticketPriceEur: number;
+        merchEur: number;
+        merchUnits: number;
+        concessionEur: number;
+        totalEur: number;
       }
     | null = null;
   if (
@@ -146,20 +150,16 @@ export const load: PageServerLoad = async ({ params, parent }) => {
     if (snapshot) {
       const ws = snapshot.worldState as Record<string, number>;
       const stadiumCapacity = ws['stadium_capacity'] ?? 3000;
-      const fanAttendance = ws['fan_attendance'] ?? 40;
       const fanCultureIndex = ws['fan_culture_index'] ?? 35;
       const ticketPriceIndex = ws['ticket_price_index'] ?? 50;
-      const fanLoyalty = ws['fan_loyalty'] ?? 0;
       const divisionTier: 1 | 2 = clubRow?.division === 'first' ? 1 : 2;
 
-      // Base attendance from fan_attendance % of capacity.
-      const baseAttendance = stadiumCapacity * (fanAttendance / 100);
-      // F-TV4 fan-loyalty boost (0.5% per loyalty point), clamped to capacity.
-      const boostedAttendance =
-        fanLoyalty > 0
-          ? Math.min(stadiumCapacity, baseAttendance * (1 + fanLoyalty * 0.005))
-          : baseAttendance;
-      const attendance = Math.round(boostedAttendance);
+      // Pablo 2026-05-27: use the ACTUAL attendance + commercial figures that
+      // economy-tick computed for this match (stored in the snapshot), instead
+      // of recomputing a flat number. Falls back to a sane default if absent.
+      const attendance = Math.round(
+        ws['last_home_attendance'] ?? stadiumCapacity * ((ws['fan_attendance'] ?? 40) / 100),
+      );
 
       const pricing = computeEffectiveTicketPrice({
         stadiumCapacity,
@@ -168,14 +168,19 @@ export const load: PageServerLoad = async ({ params, parent }) => {
         ticketPriceIndex,
       });
 
-      // Exact gross in euros — no €K rounding. This is the precise figure
-      // the player sees on the match page.
-      const gateReceiptsEur = Math.round(attendance * pricing.effectivePriceEur);
+      const gateReceiptsEur = Math.round(ws['last_home_gate_eur'] ?? attendance * pricing.effectivePriceEur);
+      const merchEur = Math.round(ws['last_home_merch_eur'] ?? 0);
+      const merchUnits = Math.round(ws['last_home_merch_units'] ?? 0);
+      const concessionEur = Math.round(ws['last_home_concession_eur'] ?? 0);
 
       homeMatchEconomics = {
         attendance,
         gateReceiptsEur,
         ticketPriceEur: pricing.effectivePriceEur,
+        merchEur,
+        merchUnits,
+        concessionEur,
+        totalEur: gateReceiptsEur + merchEur + concessionEur,
       };
     }
   }

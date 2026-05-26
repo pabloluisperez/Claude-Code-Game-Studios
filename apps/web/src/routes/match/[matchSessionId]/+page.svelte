@@ -527,18 +527,31 @@
            compacta dentro del scoreboard para que sea visible nada más
            entrar (antes estaba debajo de la crónica, fuera del fold). -->
       {#if data.homeMatchEconomics && !resultHidden}
-        <div class="flex items-center justify-center gap-4 mt-3 text-sm border-t border-base-300 pt-2 flex-wrap">
-          <span class="opacity-70">
-            🎟 <span class="font-mono">{data.homeMatchEconomics.attendance.toLocaleString('es-ES')}</span> espectadores
-          </span>
-          <span class="opacity-40">·</span>
-          <span class="opacity-70">
-            <span class="font-mono">{data.homeMatchEconomics.ticketPriceEur} €</span>/entrada
-          </span>
-          <span class="opacity-40">·</span>
-          <span class="font-semibold text-success">
-            <span class="font-mono">+{data.homeMatchEconomics.gateReceiptsEur.toLocaleString('es-ES')} €</span> taquilla
-          </span>
+        {@const ec = data.homeMatchEconomics}
+        <div class="mt-3 border-t border-base-300 pt-3">
+          <div class="text-center text-sm opacity-70 mb-2">
+            🎟 <span class="font-mono font-bold">{ec.attendance.toLocaleString('es-ES')}</span> espectadores
+            · <span class="font-mono">{ec.ticketPriceEur} €</span>/entrada
+          </div>
+          <!-- Pablo 2026-05-27: desglose de ingresos del partido (taquilla + merch + bar). -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+            <div class="bg-base-200 rounded p-2 text-center">
+              <div class="text-xs opacity-60">🎟 Taquilla</div>
+              <div class="font-mono font-semibold text-success">+{ec.gateReceiptsEur.toLocaleString('es-ES')} €</div>
+            </div>
+            <div class="bg-base-200 rounded p-2 text-center">
+              <div class="text-xs opacity-60">🛍 Merch ({ec.merchUnits} uds)</div>
+              <div class="font-mono font-semibold text-success">+{ec.merchEur.toLocaleString('es-ES')} €</div>
+            </div>
+            <div class="bg-base-200 rounded p-2 text-center">
+              <div class="text-xs opacity-60">🍺 Bar</div>
+              <div class="font-mono font-semibold text-success">+{ec.concessionEur.toLocaleString('es-ES')} €</div>
+            </div>
+            <div class="bg-success/15 rounded p-2 text-center border border-success/30">
+              <div class="text-xs opacity-60">💰 Total partido</div>
+              <div class="font-mono font-bold text-success">+{ec.totalEur.toLocaleString('es-ES')} €</div>
+            </div>
+          </div>
         </div>
       {/if}
 
