@@ -162,59 +162,58 @@
           </div>
         </div>
 
-        <div class="mt-6 rounded bg-gradient-to-b from-base-200 to-base-300 p-4 text-center overflow-hidden">
+        <div class="mt-6 rounded bg-gradient-to-b from-base-200 to-base-300 p-4 overflow-hidden relative">
+          <!-- Active obra widget — overlaid encima de la imagen del estadio (Pablo 2026-05-26). -->
+          {#if data.catalog?.active}
+            {@const active = data.catalog.active}
+            {@const activeItem = data.catalog.items.find((i) => i.slug === active.itemSlug)}
+            {@const progress = active.weeksRemaining != null && active.durationWeeks > 0
+              ? Math.round(((active.durationWeeks - active.weeksRemaining) / active.durationWeeks) * 100)
+              : 0}
+            <div class="relative z-10 bg-warning/95 text-warning-content border-2 border-warning-content/20 rounded shadow-xl px-4 py-3 mb-3 flex items-center gap-3">
+              <div class="text-4xl flex-shrink-0 animate-pulse">🚧</div>
+              <div class="flex-1 min-w-0">
+                <div class="text-xs uppercase font-bold opacity-80">Obra en marcha</div>
+                <div class="font-bold text-base truncate">{activeItem?.name ?? active.itemSlug}</div>
+                <div class="text-xs">
+                  Quedan <span class="font-mono font-bold">{active.weeksRemaining}</span> de <span class="font-mono">{active.durationWeeks}</span> sem
+                  · <span class="font-mono">{progress}%</span> completado
+                </div>
+                <progress class="progress progress-success w-full mt-1" value={progress} max="100"></progress>
+              </div>
+              <form method="POST" action="?/cancel" use:enhance class="flex-shrink-0">
+                <input type="hidden" name="clubId" value={data.club?.id ?? ''} />
+                <input type="hidden" name="itemId" value={active.id} />
+                <button
+                  type="submit"
+                  class="btn btn-sm btn-outline"
+                  onclick={(e) => {
+                    if (!confirm('¿Cancelar obra y recuperar 50% del coste?')) e.preventDefault();
+                  }}
+                  title="Cancelar obra"
+                >
+                  ✕
+                </button>
+              </form>
+            </div>
+          {/if}
           <img
             src={visualLevelSprite(data.stadium.visualLevel)}
             alt="Estadio nivel visual {data.stadium.visualLevel}"
-            class="mx-auto max-w-full h-auto"
+            class="mx-auto max-w-full h-auto block"
             style="image-rendering: pixelated; max-height: 480px;"
             width="1536"
             height="1152"
             loading="eager"
             decoding="async"
           />
-          <p class="text-xs opacity-60 mt-3">
+          <p class="text-xs opacity-60 mt-3 text-center">
             <span class="sr-only">Estadio nivel visual: {data.stadium.visualLevel}</span>
             Cada reforma terminada acerca tu estadio a su forma final.
           </p>
         </div>
       </div>
     </section>
-
-    <!-- Active obra widget -->
-    {#if data.catalog?.active}
-      {@const active = data.catalog.active}
-      {@const activeItem = data.catalog.items.find((i) => i.slug === active.itemSlug)}
-      <section class="card bg-warning/10 border border-warning shadow mb-6 sticky top-2 z-10">
-        <div class="card-body py-4">
-          <div class="flex items-center justify-between gap-4 flex-wrap">
-            <div>
-              <h2 class="text-sm uppercase opacity-70">Obra activa</h2>
-              <p class="font-semibold">{activeItem?.name ?? active.itemSlug}</p>
-              {#if activeItem?.description}
-                <p class="text-xs opacity-70">{activeItem.description}</p>
-              {/if}
-              <p class="text-xs opacity-70 mt-1">
-                Quedan <span class="font-mono">{active.weeksRemaining}</span> de <span class="font-mono">{active.durationWeeks}</span> semanas
-              </p>
-            </div>
-            <form method="POST" action="?/cancel" use:enhance>
-              <input type="hidden" name="clubId" value={data.club?.id ?? ''} />
-              <input type="hidden" name="itemId" value={active.id} />
-              <button
-                type="submit"
-                class="btn btn-warning btn-sm"
-                onclick={(e) => {
-                  if (!confirm('¿Cancelar obra y recuperar 50% del coste?')) e.preventDefault();
-                }}
-              >
-                Cancelar obra
-              </button>
-            </form>
-          </div>
-        </div>
-      </section>
-    {/if}
 
     {#if form?.action === 'cancel' && 'refundEurK' in form}
       <div class="alert alert-info mb-4">

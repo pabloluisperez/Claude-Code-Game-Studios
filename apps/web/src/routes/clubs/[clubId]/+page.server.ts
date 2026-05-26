@@ -11,7 +11,7 @@
 
 import type { PageServerLoad, Actions } from './$types';
 import { error, fail, redirect } from '@sveltejs/kit';
-import { db, clubs, players, playthroughs, loadAdvanceContext, eq, asc, desc } from '@smt/db';
+import { db, clubs, players, playthroughs, staff, loadAdvanceContext, eq, and, asc, desc } from '@smt/db';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
   if (!locals.user) throw redirect(303, '/login');
@@ -83,6 +83,20 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     };
   });
 
+  // Scout director presence + tier (Pablo 2026-05-26 scout gate).
+  const [scoutDir] = await db
+    .select({ tier: staff.qualityTier })
+    .from(staff)
+    .where(
+      and(
+        eq(staff.playthroughId, ctx.playthrough.id),
+        eq(staff.role, 'scouting_director'),
+        eq(staff.status, 'active'),
+      ),
+    )
+    .limit(1);
+  const scoutTier = scoutDir?.tier ?? 0;
+
   return {
     hasPlaythrough: true as const,
     club: target,
@@ -90,6 +104,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     isOwnClub,
     myClubId: ctx.playthrough.clubId,
     currentWeek: ctx.playthrough.currentWeek,
+    scoutTier,
   };
 };
 

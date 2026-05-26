@@ -131,10 +131,14 @@
                   </td>
                   <td>
                     {#if !data.isOwnClub}
+                      {@const isOpenMarket = p.contractStatus === 'free_agent' || (p.contractEndWeek - data.currentWeek <= 8)}
+                      {@const canOffer = isOpenMarket || (data.scoutTier ?? 0) > 0}
                       <button
                         type="button"
-                        class="btn btn-xs btn-primary"
-                        onclick={() => openOffer(p)}
+                        class="btn btn-xs {canOffer ? 'btn-primary' : 'btn-disabled'}"
+                        onclick={() => canOffer && openOffer(p)}
+                        disabled={!canOffer}
+                        title={!canOffer ? 'Necesitas un Director de Scouting para ofertar a jugadores de otros clubes' : ''}
                       >
                         💸 Ofertar
                       </button>
@@ -149,8 +153,11 @@
         {#if !data.isOwnClub}
           <p class="text-xs opacity-60 mt-3 italic">
             Skill exacto y salario ocultos. Para ver datos detallados, hacé scouting desde /scouting.
-            Podés enviar oferta a cualquier jugador — aunque no esté transferible, el club puede aceptar
-            si es lo suficientemente alta.
+            {#if (data.scoutTier ?? 0) > 0}
+              Tu Director de Scouting (tier {data.scoutTier}) consigue {data.scoutTier === 3 ? '~15%' : data.scoutTier === 2 ? '~8%' : '0%'} de descuento sobre lo que pide el club.
+            {:else}
+              ⚠️ Sin Director de Scouting no podés ofertar por jugadores con contrato activo de otros clubes — solo agentes libres y jugadores en últimos 8 sem de contrato.
+            {/if}
           </p>
         {/if}
       </div>

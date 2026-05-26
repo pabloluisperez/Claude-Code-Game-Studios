@@ -65,6 +65,7 @@ function errorStatus(code: string): 400 | 402 | 404 | 409 | 500 {
   switch (code) {
     case 'PLAYER_NOT_FOUND': return 404;
     case 'OWN_PLAYER_BLOCKED': return 400;
+    case 'NO_SCOUT': return 400;
     case 'ALREADY_SCOUTED': return 409;
     case 'ALREADY_PENDING_OFFER': return 409;
     case 'INSUFFICIENT_BALANCE': return 402;

@@ -439,6 +439,7 @@ export async function respondToIncomingOffer(params: {
 export type OfferError =
   | 'PLAYER_NOT_FOUND'
   | 'OWN_PLAYER_BLOCKED'
+  | 'NO_SCOUT'
   | 'ALREADY_PENDING_OFFER'
   | 'INSUFFICIENT_BALANCE'
   | 'INVALID_OFFER';
@@ -488,6 +489,26 @@ export async function makeOffer(
       .limit(1);
     if (!player) return err('PLAYER_NOT_FOUND' as const);
     if (player.clubId === params.clubId) return err('OWN_PLAYER_BLOCKED' as const);
+
+    // Pablo 2026-05-26: scout gating.
+    // Without a scouting_director, the manager can only sign:
+    //   - Free agents (contractStatus = 'free_agent')
+    //   - Expiring contracts (≤8 weeks left — Bosman)
+    //   - Players from their own club (already blocked above)
+    // Players from other clubs with active contracts require a scout to
+    // mediate the deal. Scout tier also affects acceptance threshold:
+    //   tier 1 → 1.00 × club bargainFactor
+    //   tier 2 → 0.92 × (8% discount)
+    //   tier 3 → 0.85 × (15% discount)
+    const isExpiringPre =
+      params.currentWeek !== undefined &&
+      player.contractEndWeek - params.currentWeek <= 8;
+    const isOpenMarket = player.contractStatus === 'free_agent' || isExpiringPre;
+    const scoutTier = await getScoutDirectorTier(tx, params.clubId);
+    if (!isOpenMarket && scoutTier === 0) {
+      return err('NO_SCOUT' as const);
+    }
+    const scoutBargainMul = scoutTier === 3 ? 0.85 : scoutTier === 2 ? 0.92 : 1.0;
 
     const existing = await tx
       .select({ id: transferOffers.id })
@@ -542,7 +563,9 @@ export async function makeOffer(
       // Pablo 2026-05-26: ofertas a no-transferibles = club pide premium.
       // transferListed=true → bargainFactor 1.0 (price as marked)
       // transferListed=false → 1.4 (40% premium because they don't want to sell)
-      const bargainFactor = player.transferListed ? 1.0 : 1.4;
+      // Plus scout-tier discount: better scout = better deals.
+      const baseBargainFactor = player.transferListed ? 1.0 : 1.4;
+      const bargainFactor = baseBargainFactor * scoutBargainMul;
       const auction: AuctionResult = aiClubAcceptance(
         params.feeEurK,
         { transferValueEurK },
