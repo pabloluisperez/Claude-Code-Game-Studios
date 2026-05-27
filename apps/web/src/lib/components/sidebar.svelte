@@ -10,7 +10,7 @@
 
   interface Props {
     open: boolean;
-    badges: { pendingStops: number; unreadUrgent: number } | null | undefined;
+    badges: { pendingStops: number; unreadUrgent: number; pendingSponsorDecisions?: number; lineupHasUnavailable?: number } | null | undefined;
     clubInfo?: {
       name: string;
       division: string;
@@ -46,6 +46,8 @@
     if (!badges) return 0;
     if (href === '/calendar') return badges.pendingStops;
     if (href === '/dashboard') return badges.unreadUrgent;
+    if (href === '/finance?tab=patrocinadores') return badges.pendingSponsorDecisions ?? 0;
+    if (href === '/lineup') return badges.lineupHasUnavailable ?? 0;
     return 0;
   }
 

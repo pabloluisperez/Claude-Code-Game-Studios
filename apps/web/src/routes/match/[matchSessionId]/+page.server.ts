@@ -166,7 +166,10 @@ export const load: PageServerLoad = async ({ params, parent }) => {
       });
 
       const ticketPrice = Math.round(ws['last_home_ticket_price'] ?? pricing.effectivePriceEur);
-      const gateReceiptsEur = Math.round(ws['last_home_gate_eur'] ?? attendance * ticketPrice);
+      // Pablo 2026-05-27: exact gate = attendance × ticketPrice (no €K rounding).
+      // last_home_gate_eur was derived from the €K-rounded matchday revenue
+      // (1274×10=12.740 became 13.000), so recompute exactly here.
+      const gateReceiptsEur = attendance * ticketPrice;
 
       // Homogeneous line items: [units, unit price, total] per concept.
       const lines: EcoLine[] = [

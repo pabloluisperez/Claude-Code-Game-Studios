@@ -10,11 +10,13 @@ import {
   leagues,
   fixtures,
   standings,
+  players,
   eq,
   and,
   or,
   desc,
   sql,
+  inArray,
 } from '@smt/db';
 import { weekToDate } from '@smt/shared';
 
@@ -44,6 +46,8 @@ export const load: LayoutServerLoad = async ({ locals }) => {
     return { user: locals.user, activePlaythrough: null, badges: null };
   }
 
+  // Pablo 2026-05-27: sponsor events are now decided in Finanzas → Patrocinadores,
+  // so they badge there, NOT the Eventos calendar. Count the two separately.
   const [pendingStops] = await db
     .select({ count: sql<number>`COUNT(*)::int` })
     .from(calendarEvents)
@@ -52,8 +56,43 @@ export const load: LayoutServerLoad = async ({ locals }) => {
         eq(calendarEvents.playthroughId, active.id),
         eq(calendarEvents.status, 'pending'),
         eq(calendarEvents.priority, 'STOP'),
+        sql`${calendarEvents.type} NOT IN ('sponsor_offer', 'sponsor_renewal')`,
       ),
     );
+
+  const [pendingSponsorDecisions] = await db
+    .select({ count: sql<number>`COUNT(*)::int` })
+    .from(calendarEvents)
+    .where(
+      and(
+        eq(calendarEvents.playthroughId, active.id),
+        eq(calendarEvents.status, 'pending'),
+        sql`${calendarEvents.type} IN ('sponsor_offer', 'sponsor_renewal')`,
+      ),
+    );
+
+  // Lineup badge: does the saved XI contain an injured/suspended player?
+  let lineupHasUnavailable = 0;
+  {
+    const [clubRow] = await db
+      .select({ ids: clubs.startingLineupPlayerIds })
+      .from(clubs)
+      .where(eq(clubs.id, active.clubId))
+      .limit(1);
+    const ids = (clubRow?.ids ?? []) as string[];
+    if (ids.length > 0) {
+      const [{ count = 0 } = { count: 0 }] = await db
+        .select({ count: sql<number>`COUNT(*)::int` })
+        .from(players)
+        .where(
+          and(
+            inArray(players.id, ids),
+            sql`(${players.suspendedMatchesRemaining} > 0 OR ${players.availability} IN ('injured','leaving'))`,
+          ),
+        );
+      lineupHasUnavailable = Number(count);
+    }
+  }
 
   const [unreadUrgent] = await db
     .select({ count: sql<number>`COUNT(*)::int` })
@@ -173,6 +212,8 @@ export const load: LayoutServerLoad = async ({ locals }) => {
       pendingStops: Number(pendingStops?.count ?? 0),
       unreadUrgent: Number(unreadUrgent?.count ?? 0),
       inboxUnread: Number(unreadTotal?.count ?? 0),
+      pendingSponsorDecisions: Number(pendingSponsorDecisions?.count ?? 0),
+      lineupHasUnavailable,
     },
   };
 };
