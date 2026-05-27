@@ -11,7 +11,7 @@
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
   import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
-  import { formatEurK, formatEurKSigned } from '$lib/format';
+  import { formatEurK, formatEurKSigned, formatEur } from '$lib/format';
   import RecoveryLeversPanel from '$lib/components/recovery-levers-panel.svelte';
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -298,78 +298,78 @@
       staffCostEurK={Math.round(stateRead['staff_cost_weekly'] ?? 0)}
     />
 
-    {@const incSponsor = Math.round(stateRead['sponsor_revenue_weekly'] ?? 0)}
-    {@const incMatchday = Math.round(stateRead['matchday_revenue_weekly'] ?? 0)}
-    {@const incTV = Math.round((stateRead['tv_revenue_weekly'] ?? 0) * 10) / 10}
-    {@const incMerch = Math.round(stateRead['merch_revenue_weekly'] ?? 0)}
-    {@const incTienda = Math.round((stateRead['last_home_merch_eur'] ?? 0) / 1000)}
-    {@const incBar = Math.round((stateRead['last_home_concession_eur'] ?? 0) / 1000)}
-    {@const totalIncome = incSponsor + incMatchday + incTV + incMerch + incTienda + incBar}
-    {@const costStaff = Math.round(stateRead['staff_cost_weekly'] ?? 0)}
-    {@const costPlayers = Math.round(stateRead['player_wages_weekly'] ?? 0)}
-    {@const costStadium = Math.round(stateRead['stadium_reform_cost_weekly'] ?? 0)}
-    {@const totalCost = costStaff + costPlayers + costStadium}
+    {@const incSponsorEur = Math.round((stateRead['sponsor_revenue_weekly'] ?? 0) * 1000)}
+    {@const incMatchdayEur = Math.round((stateRead['last_home_attendance'] ?? 0) * (stateRead['last_home_ticket_price'] ?? 0))}
+    {@const incTiendaEur = Math.round(stateRead['last_home_merch_eur'] ?? 0)}
+    {@const incBarEur = Math.round(stateRead['last_home_concession_eur'] ?? 0)}
+    {@const incTVEur = Math.round((stateRead['tv_revenue_weekly'] ?? 0) * 1000)}
+    {@const incMerchEur = Math.round((stateRead['merch_revenue_weekly'] ?? 0) * 1000)}
+    {@const totalIncomeEur = incSponsorEur + incMatchdayEur + incTiendaEur + incBarEur + incTVEur + incMerchEur}
+    {@const costStaffEur = Math.round((stateRead['staff_cost_weekly'] ?? 0) * 1000)}
+    {@const costPlayersEur = Math.round((stateRead['player_wages_weekly'] ?? 0) * 1000)}
+    {@const costStadiumEur = Math.round((stateRead['stadium_reform_cost_weekly'] ?? 0) * 1000)}
+    {@const totalCostEur = costStaffEur + costPlayersEur + costStadiumEur}
     <section class="card bg-base-100 shadow">
       <div class="card-body">
         <h2 class="card-title text-base">Desglose del cashflow semanal</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
           <!-- INGRESOS -->
           <div>
-            <div class="text-xs uppercase opacity-70 mb-2">📈 Ingresos · +{formatEurK(totalIncome)}</div>
+            <div class="text-xs uppercase opacity-70 mb-2">📈 Ingresos · +{formatEur(totalIncomeEur)}</div>
             <table class="table table-sm">
               <tbody>
                 <tr>
                   <td>Patrocinadores</td>
-                  <td class="text-right font-mono text-success">+{formatEurK(incSponsor)}</td>
+                  <td class="text-right font-mono text-success">+{formatEur(incSponsorEur)}</td>
                 </tr>
                 <tr>
                   <td>Taquilla (partido en casa)</td>
-                  <td class="text-right font-mono {incMatchday > 0 ? 'text-success' : 'opacity-40'}">
-                    {incMatchday > 0 ? '+' : ''}{formatEurK(incMatchday)}
+                  <td class="text-right font-mono {incMatchdayEur > 0 ? 'text-success' : 'opacity-40'}">
+                    {incMatchdayEur > 0 ? '+' : ''}{formatEur(incMatchdayEur)}
                   </td>
                 </tr>
                 <tr>
                   <td>🛍 Tienda (partido en casa)</td>
-                  <td class="text-right font-mono {incTienda > 0 ? 'text-success' : 'opacity-40'}">
-                    {incTienda > 0 ? '+' : ''}{formatEurK(incTienda)}
+                  <td class="text-right font-mono {incTiendaEur > 0 ? 'text-success' : 'opacity-40'}">
+                    {incTiendaEur > 0 ? '+' : ''}{formatEur(incTiendaEur)}
                   </td>
                 </tr>
                 <tr>
                   <td>🍺 Bar (partido en casa)</td>
-                  <td class="text-right font-mono {incBar > 0 ? 'text-success' : 'opacity-40'}">
-                    {incBar > 0 ? '+' : ''}{formatEurK(incBar)}
+                  <td class="text-right font-mono {incBarEur > 0 ? 'text-success' : 'opacity-40'}">
+                    {incBarEur > 0 ? '+' : ''}{formatEur(incBarEur)}
                   </td>
                 </tr>
                 <tr>
                   <td>Derechos de TV</td>
-                  <td class="text-right font-mono {incTV > 0 ? 'text-success' : 'opacity-40'}">
-                    {incTV > 0 ? '+' : ''}{formatEurK(incTV)}
+                  <td class="text-right font-mono {incTVEur > 0 ? 'text-success' : 'opacity-40'}">
+                    {incTVEur > 0 ? '+' : ''}{formatEur(incTVEur)}
                   </td>
                 </tr>
                 <tr>
                   <td>Merchandising (online)</td>
-                  <td class="text-right font-mono text-success">+{formatEurK(incMerch)}</td>
+                  <td class="text-right font-mono text-success">+{formatEur(incMerchEur)}</td>
                 </tr>
               </tbody>
             </table>
           </div>
           <!-- GASTOS -->
           <div>
-            <div class="text-xs uppercase opacity-70 mb-2">📉 Gastos · −{formatEurK(totalCost)}</div>
+            <div class="text-xs uppercase opacity-70 mb-2">📉 Gastos · −{formatEur(totalCostEur)}</div>
             <table class="table table-sm">
               <tbody>
                 <tr>
                   <td>Salarios de jugadores</td>
-                  <td class="text-right font-mono text-error">−{formatEurK(costPlayers)}</td>
+                  <td class="text-right font-mono text-error">−{formatEur(costPlayersEur)}</td>
                 </tr>
                 <tr>
                   <td>Salarios del staff</td>
-                  <td class="text-right font-mono text-error">−{formatEurK(costStaff)}</td>
+                  <td class="text-right font-mono text-error">−{formatEur(costStaffEur)}</td>
                 </tr>
                 <tr>
                   <td>Reformas del estadio</td>
-                  <td class="text-right font-mono {costStadium > 0 ? 'text-error' : 'opacity-40'}">
-                    {costStadium > 0 ? '−' : ''}{formatEurK(costStadium)}
+                  <td class="text-right font-mono {costStadiumEur > 0 ? 'text-error' : 'opacity-40'}">
+                    {costStadiumEur > 0 ? '−' : ''}{formatEur(costStadiumEur)}
                   </td>
                 </tr>
               </tbody>

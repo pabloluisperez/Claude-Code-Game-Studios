@@ -12,6 +12,7 @@
   import { generateHeadlines, weekToDate } from '@smt/shared';
   import AdvanceTransition from '$lib/components/advance-transition.svelte';
   import { formatEurK } from '$lib/format';
+  import { eventDisplay } from '$lib/event-labels';
 
   let { data }: { data: PageData } = $props();
 
@@ -573,7 +574,7 @@
                      {e.priority === 'STOP' ? 'bg-error/10 border border-error/30' : 'bg-base-200'}"
             >
               <div>
-                <div class="text-xs opacity-60">{eventIcon(e.type)} {e.type} · {e.date.display}</div>
+                <div class="text-xs opacity-60">{eventDisplay(e.type).icon} {eventDisplay(e.type).label} · {e.date.display}</div>
                 <div class="font-semibold text-sm">
                   {e.priority === 'STOP' ? 'Decisión pendiente' : 'Aviso'}
                 </div>

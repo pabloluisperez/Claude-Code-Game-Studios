@@ -22,6 +22,16 @@ export function formatEurK(eurK: number): string {
 }
 
 /**
+ * Format an EXACT euro amount (not €K) with Spanish locale.
+ * Use when the underlying figure has euro precision (gate, merch, bar) so we
+ * don't round 2.341 € to 2.000 €.
+ *   formatEur(2341) → '2.341 €'
+ */
+export function formatEur(eur: number): string {
+  return `${Math.round(eur).toLocaleString('es-ES')} €`;
+}
+
+/**
  * Like `formatEurK` but signed — adds a leading '+' for positive values.
  * Used for cashflow deltas where the sign matters visually.
  *
