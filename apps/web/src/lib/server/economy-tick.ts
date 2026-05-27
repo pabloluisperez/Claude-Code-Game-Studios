@@ -30,7 +30,7 @@ import {
   computeEffectiveTicketPrice,
   computeMatchDayRevenue,
   computeMerchSales,
-  computeConcessionRevenue,
+  computeConcessionSales,
   type WorldState,
 } from '@smt/shared';
 import { computeFinancialStatus } from '@smt/shared/sim/economy/bankruptcy';
@@ -150,6 +150,8 @@ export async function applyEconomyTick(args: {
   let merchSoldUnits = 0;
   let merchRevenueEur = 0;
   let concessionRevenueEur = 0;
+  // Per-line breakdown for the match recap (Pablo 2026-05-27). [units, price].
+  const lineBreakdown: Record<string, number> = {};
   if (homeFixtureThisWeek) {
     const stadiumCapacity = stateRead['stadium_capacity'] ?? 3000;
     const fanAttendance = stateRead['fan_attendance'] ?? 40;
@@ -209,15 +211,24 @@ export async function applyEconomyTick(args: {
         const shirt = computeMerchSales({ kind: 'shirt', price: cc.merchShirtPrice, stock: cc.merchShirtStock }, matchDayAttendance, jitter);
         // Merch revenue is in € (price is €) → convert to €K for cashflow consistency.
         const merchEur = scarf.revenue + cap.revenue + shirt.revenue;
-        const concEur = computeConcessionRevenue(
+        const conc = computeConcessionSales(
           { food: cc.concessionFoodPrice, soda: cc.concessionSodaPrice, beer: cc.concessionBeerPrice, water: cc.concessionWaterPrice },
           matchDayAttendance,
           jitter,
         );
+        const concEur = conc.total;
         commercialRevenue = Math.round((merchEur + concEur) / 1000); // €K
         merchRevenueEur = merchEur;
         concessionRevenueEur = concEur;
         merchSoldUnits = scarf.sold + cap.sold + shirt.sold;
+        // Per-line breakdown ([units, price] per item) for the match recap.
+        lineBreakdown['scarf_u'] = scarf.sold; lineBreakdown['scarf_p'] = cc.merchScarfPrice;
+        lineBreakdown['cap_u'] = cap.sold; lineBreakdown['cap_p'] = cc.merchCapPrice;
+        lineBreakdown['shirt_u'] = shirt.sold; lineBreakdown['shirt_p'] = cc.merchShirtPrice;
+        for (const l of conc.lines) {
+          lineBreakdown[`${l.kind}_u`] = l.units;
+          lineBreakdown[`${l.kind}_p`] = l.price;
+        }
         // Persist stock decrements.
         if (scarf.sold + cap.sold + shirt.sold > 0) {
           await db
@@ -267,10 +278,19 @@ export async function applyEconomyTick(args: {
     player_wages_weekly: totals.playerWages,
     // Tienda (#39): last home-match economics for the live-match display.
     last_home_attendance: matchDayAttendance,
+    last_home_ticket_price: matchDayTicketPriceEur,
     last_home_gate_eur: Math.round(matchDayRevenue * 1000),
     last_home_merch_eur: Math.round(merchRevenueEur),
     last_home_merch_units: merchSoldUnits,
     last_home_concession_eur: Math.round(concessionRevenueEur),
+    // Per-line breakdown ([units, price] per item) for the homogeneous table.
+    last_home_scarf_u: lineBreakdown['scarf_u'] ?? 0, last_home_scarf_p: lineBreakdown['scarf_p'] ?? 0,
+    last_home_cap_u: lineBreakdown['cap_u'] ?? 0, last_home_cap_p: lineBreakdown['cap_p'] ?? 0,
+    last_home_shirt_u: lineBreakdown['shirt_u'] ?? 0, last_home_shirt_p: lineBreakdown['shirt_p'] ?? 0,
+    last_home_food_u: lineBreakdown['food_u'] ?? 0, last_home_food_p: lineBreakdown['food_p'] ?? 0,
+    last_home_soda_u: lineBreakdown['soda_u'] ?? 0, last_home_soda_p: lineBreakdown['soda_p'] ?? 0,
+    last_home_beer_u: lineBreakdown['beer_u'] ?? 0, last_home_beer_p: lineBreakdown['beer_p'] ?? 0,
+    last_home_water_u: lineBreakdown['water_u'] ?? 0, last_home_water_p: lineBreakdown['water_p'] ?? 0,
   } as unknown as WorldState;
 
   return {

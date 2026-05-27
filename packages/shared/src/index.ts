@@ -252,6 +252,7 @@ export {
   merchLeadTimeWeeks,
   computeMerchSales,
   computeConcessionRevenue,
+  computeConcessionSales,
   MERCH_BASE_COST,
   MERCH_FLOOR_COST,
   type MerchKind,
@@ -259,6 +260,8 @@ export {
   type MerchSaleResult,
   type ConcessionKind,
   type ConcessionPrices,
+  type ConcessionLine,
+  type ConcessionResult,
 } from './sim/economy/commercial.js';
 export {
   computeFinancialStatus,

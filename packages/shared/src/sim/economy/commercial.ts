@@ -105,12 +105,16 @@ export function computeMerchSales(
 
 export type ConcessionKind = 'food' | 'soda' | 'beer' | 'water';
 
-/** Base buy-rate per attendee at the reference price. */
+/**
+ * Base buy-rate per attendee at the reference price.
+ * Pablo 2026-05-27: lowered for realism — a Tercera crowd spends modestly;
+ * not everyone buys. ~1.6 €/spectator on concessions at reference prices.
+ */
 const CONCESSION_BASE_RATE: Readonly<Record<ConcessionKind, number>> = Object.freeze({
-  food: 0.35,
-  soda: 0.4,
-  beer: 0.3,
-  water: 0.25,
+  food: 0.12,
+  soda: 0.15,
+  beer: 0.12,
+  water: 0.08,
 });
 const CONCESSION_REF_PRICE: Readonly<Record<ConcessionKind, number>> = Object.freeze({
   food: 4,
@@ -126,24 +130,48 @@ export interface ConcessionPrices {
   readonly water: number;
 }
 
+export interface ConcessionLine {
+  readonly kind: ConcessionKind;
+  readonly units: number;
+  readonly price: number;
+  readonly revenue: number;
+}
+
+export interface ConcessionResult {
+  readonly lines: readonly ConcessionLine[];
+  readonly total: number;
+}
+
 /**
- * Total concession revenue for one home match.
- * Per item: buyers = attendance × baseRate × priceFactor; revenue += buyers × price.
- * priceFactor = (ref/price) clamped [0.4, 1.5].
+ * Concession sales for one home match, per item.
+ *   buyers = attendance × baseRate × priceFactor × jitter
+ *   priceFactor = (ref/price) clamped [0.4, 1.5]
  */
-export function computeConcessionRevenue(
+export function computeConcessionSales(
   prices: ConcessionPrices,
   attendance: number,
   jitter: number,
-): number {
+): ConcessionResult {
   const kinds: ConcessionKind[] = ['food', 'soda', 'beer', 'water'];
+  const lines: ConcessionLine[] = [];
   let total = 0;
   for (const k of kinds) {
     const price = prices[k];
     const ref = CONCESSION_REF_PRICE[k];
     const priceFactor = Math.max(0.4, Math.min(1.5, ref / Math.max(1, price)));
-    const buyers = attendance * CONCESSION_BASE_RATE[k] * priceFactor * jitter;
-    total += buyers * price;
+    const units = Math.round(attendance * CONCESSION_BASE_RATE[k] * priceFactor * jitter);
+    const revenue = units * price;
+    lines.push({ kind: k, units, price, revenue });
+    total += revenue;
   }
-  return Math.round(total);
+  return { lines, total: Math.round(total) };
+}
+
+/** Back-compat total-only helper. */
+export function computeConcessionRevenue(
+  prices: ConcessionPrices,
+  attendance: number,
+  jitter: number,
+): number {
+  return computeConcessionSales(prices, attendance, jitter).total;
 }

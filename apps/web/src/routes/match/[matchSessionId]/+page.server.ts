@@ -115,14 +115,11 @@ export const load: PageServerLoad = async ({ params, parent }) => {
   // For the player-facing match recap we compute the EXACT gross in euros
   // here (attendance × ticketPrice with F-TV4 boost) — this is display-only
   // and doesn't affect the persisted balance.
+  type EcoLine = { label: string; icon: string; units: number; price: number; total: number };
   let homeMatchEconomics:
     | {
         attendance: number;
-        gateReceiptsEur: number;
-        ticketPriceEur: number;
-        merchEur: number;
-        merchUnits: number;
-        concessionEur: number;
+        lines: EcoLine[];
         totalEur: number;
       }
     | null = null;
@@ -168,20 +165,23 @@ export const load: PageServerLoad = async ({ params, parent }) => {
         ticketPriceIndex,
       });
 
-      const gateReceiptsEur = Math.round(ws['last_home_gate_eur'] ?? attendance * pricing.effectivePriceEur);
-      const merchEur = Math.round(ws['last_home_merch_eur'] ?? 0);
-      const merchUnits = Math.round(ws['last_home_merch_units'] ?? 0);
-      const concessionEur = Math.round(ws['last_home_concession_eur'] ?? 0);
+      const ticketPrice = Math.round(ws['last_home_ticket_price'] ?? pricing.effectivePriceEur);
+      const gateReceiptsEur = Math.round(ws['last_home_gate_eur'] ?? attendance * ticketPrice);
 
-      homeMatchEconomics = {
-        attendance,
-        gateReceiptsEur,
-        ticketPriceEur: pricing.effectivePriceEur,
-        merchEur,
-        merchUnits,
-        concessionEur,
-        totalEur: gateReceiptsEur + merchEur + concessionEur,
-      };
+      // Homogeneous line items: [units, unit price, total] per concept.
+      const lines: EcoLine[] = [
+        { label: 'Entradas', icon: '🎟', units: attendance, price: ticketPrice, total: gateReceiptsEur },
+        { label: 'Bufandas', icon: '🧣', units: ws['last_home_scarf_u'] ?? 0, price: ws['last_home_scarf_p'] ?? 0, total: (ws['last_home_scarf_u'] ?? 0) * (ws['last_home_scarf_p'] ?? 0) },
+        { label: 'Gorras', icon: '🧢', units: ws['last_home_cap_u'] ?? 0, price: ws['last_home_cap_p'] ?? 0, total: (ws['last_home_cap_u'] ?? 0) * (ws['last_home_cap_p'] ?? 0) },
+        { label: 'Camisetas', icon: '👕', units: ws['last_home_shirt_u'] ?? 0, price: ws['last_home_shirt_p'] ?? 0, total: (ws['last_home_shirt_u'] ?? 0) * (ws['last_home_shirt_p'] ?? 0) },
+        { label: 'Bocadillos', icon: '🥪', units: ws['last_home_food_u'] ?? 0, price: ws['last_home_food_p'] ?? 0, total: (ws['last_home_food_u'] ?? 0) * (ws['last_home_food_p'] ?? 0) },
+        { label: 'Refrescos', icon: '🥤', units: ws['last_home_soda_u'] ?? 0, price: ws['last_home_soda_p'] ?? 0, total: (ws['last_home_soda_u'] ?? 0) * (ws['last_home_soda_p'] ?? 0) },
+        { label: 'Cerveza', icon: '🍺', units: ws['last_home_beer_u'] ?? 0, price: ws['last_home_beer_p'] ?? 0, total: (ws['last_home_beer_u'] ?? 0) * (ws['last_home_beer_p'] ?? 0) },
+        { label: 'Agua', icon: '💧', units: ws['last_home_water_u'] ?? 0, price: ws['last_home_water_p'] ?? 0, total: (ws['last_home_water_u'] ?? 0) * (ws['last_home_water_p'] ?? 0) },
+      ];
+      const totalEur = lines.reduce((s, l) => s + l.total, 0);
+
+      homeMatchEconomics = { attendance, lines, totalEur };
     }
   }
 

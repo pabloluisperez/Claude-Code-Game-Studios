@@ -528,29 +528,39 @@
            entrar (antes estaba debajo de la crónica, fuera del fold). -->
       {#if data.homeMatchEconomics && !resultHidden}
         {@const ec = data.homeMatchEconomics}
+        {@const fmt = (n: number) => n.toLocaleString('es-ES')}
+        <!-- Pablo 2026-05-27: ingresos del partido — tabla homogénea por concepto. -->
         <div class="mt-3 border-t border-base-300 pt-3">
-          <div class="text-center text-sm opacity-70 mb-2">
-            🎟 <span class="font-mono font-bold">{ec.attendance.toLocaleString('es-ES')}</span> espectadores
-            · <span class="font-mono">{ec.ticketPriceEur} €</span>/entrada
-          </div>
-          <!-- Pablo 2026-05-27: desglose de ingresos del partido (taquilla + merch + bar). -->
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
-            <div class="bg-base-200 rounded p-2 text-center">
-              <div class="text-xs opacity-60">🎟 Taquilla</div>
-              <div class="font-mono font-semibold text-success">+{ec.gateReceiptsEur.toLocaleString('es-ES')} €</div>
-            </div>
-            <div class="bg-base-200 rounded p-2 text-center">
-              <div class="text-xs opacity-60">🛍 Merch ({ec.merchUnits} uds)</div>
-              <div class="font-mono font-semibold text-success">+{ec.merchEur.toLocaleString('es-ES')} €</div>
-            </div>
-            <div class="bg-base-200 rounded p-2 text-center">
-              <div class="text-xs opacity-60">🍺 Bar</div>
-              <div class="font-mono font-semibold text-success">+{ec.concessionEur.toLocaleString('es-ES')} €</div>
-            </div>
-            <div class="bg-success/15 rounded p-2 text-center border border-success/30">
-              <div class="text-xs opacity-60">💰 Total partido</div>
-              <div class="font-mono font-bold text-success">+{ec.totalEur.toLocaleString('es-ES')} €</div>
-            </div>
+          <div class="text-sm font-semibold mb-2">💰 Ingresos del partido</div>
+          <div class="overflow-x-auto">
+            <table class="table table-xs">
+              <thead>
+                <tr class="text-xs opacity-60">
+                  <th>Concepto</th>
+                  <th class="text-right">Unidades</th>
+                  <th class="text-right">Precio</th>
+                  <th class="text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each ec.lines as l (l.label)}
+                  <tr class={l.total === 0 ? 'opacity-40' : ''}>
+                    <td>{l.icon} {l.label}</td>
+                    <td class="text-right font-mono">{fmt(l.units)}</td>
+                    <td class="text-right font-mono">{fmt(l.price)} €</td>
+                    <td class="text-right font-mono text-success">+{fmt(l.total)} €</td>
+                  </tr>
+                {/each}
+              </tbody>
+              <tfoot>
+                <tr class="border-t-2 border-base-300">
+                  <td class="font-bold">Total</td>
+                  <td></td>
+                  <td></td>
+                  <td class="text-right font-mono font-bold text-success">+{fmt(ec.totalEur)} €</td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
         </div>
       {/if}
