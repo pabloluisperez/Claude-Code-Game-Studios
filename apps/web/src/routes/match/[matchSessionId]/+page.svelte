@@ -529,38 +529,80 @@
       {#if data.homeMatchEconomics && !resultHidden}
         {@const ec = data.homeMatchEconomics}
         {@const fmt = (n: number) => n.toLocaleString('es-ES')}
-        <!-- Pablo 2026-05-27: ingresos del partido — tabla homogénea por concepto. -->
-        <div class="mt-3 border-t border-base-300 pt-3">
-          <div class="text-sm font-semibold mb-2">💰 Ingresos del partido</div>
-          <div class="overflow-x-auto">
-            <table class="table table-xs">
-              <thead>
-                <tr class="text-xs opacity-60">
-                  <th>Concepto</th>
-                  <th class="text-right">Unidades</th>
-                  <th class="text-right">Precio</th>
-                  <th class="text-right">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {#each ec.lines as l (l.label)}
-                  <tr class={l.total === 0 ? 'opacity-40' : ''}>
-                    <td>{l.icon} {l.label}</td>
-                    <td class="text-right font-mono">{fmt(l.units)}</td>
-                    <td class="text-right font-mono">{fmt(l.price)} €</td>
-                    <td class="text-right font-mono text-success">+{fmt(l.total)} €</td>
-                  </tr>
-                {/each}
-              </tbody>
-              <tfoot>
-                <tr class="border-t-2 border-base-300">
-                  <td class="font-bold">Total</td>
-                  <td></td>
-                  <td></td>
-                  <td class="text-right font-mono font-bold text-success">+{fmt(ec.totalEur)} €</td>
-                </tr>
-              </tfoot>
-            </table>
+        {@const entradas = ec.lines[0]}
+        {@const tienda = ec.lines.slice(1, 4)}
+        {@const bar = ec.lines.slice(4, 8)}
+        {@const tiendaUnits = tienda.reduce((s, l) => s + l.units, 0)}
+        {@const tiendaTotal = tienda.reduce((s, l) => s + l.total, 0)}
+        {@const barUnits = bar.reduce((s, l) => s + l.units, 0)}
+        {@const barTotal = bar.reduce((s, l) => s + l.total, 0)}
+        <!-- Pablo 2026-05-27: ingresos agrupados (Entradas/Tienda/Bar) desplegables. -->
+        <div class="mt-3 border-t border-base-300 pt-3 space-y-2">
+          <div class="text-sm font-semibold">💰 Ingresos del partido</div>
+
+          <!-- Entradas — destacado grande -->
+          <div class="flex items-center justify-between bg-base-200 rounded-lg p-3">
+            <div>
+              <div class="text-lg font-bold">{entradas.icon} Entradas</div>
+              <div class="text-xs opacity-60">{fmt(entradas.units)} espectadores × {fmt(entradas.price)} €</div>
+            </div>
+            <div class="text-2xl font-mono font-bold text-success">+{fmt(entradas.total)} €</div>
+          </div>
+
+          <!-- Tienda — desplegable -->
+          <details class="bg-base-200 rounded-lg">
+            <summary class="flex items-center justify-between p-3 cursor-pointer list-none">
+              <div>
+                <span class="font-semibold">🛍 Tienda</span>
+                <span class="text-xs opacity-60 ml-2">{fmt(tiendaUnits)} uds</span>
+              </div>
+              <span class="font-mono font-bold text-success">+{fmt(tiendaTotal)} €</span>
+            </summary>
+            <div class="px-3 pb-2">
+              <table class="table table-xs">
+                <tbody>
+                  {#each tienda as l (l.label)}
+                    <tr class={l.total === 0 ? 'opacity-40' : ''}>
+                      <td>{l.icon} {l.label}</td>
+                      <td class="text-right font-mono">{fmt(l.units)}</td>
+                      <td class="text-right font-mono opacity-70">{fmt(l.price)} €</td>
+                      <td class="text-right font-mono text-success">+{fmt(l.total)} €</td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          </details>
+
+          <!-- Bar — desplegable -->
+          <details class="bg-base-200 rounded-lg">
+            <summary class="flex items-center justify-between p-3 cursor-pointer list-none">
+              <div>
+                <span class="font-semibold">🍺 Bar</span>
+                <span class="text-xs opacity-60 ml-2">{fmt(barUnits)} consumiciones</span>
+              </div>
+              <span class="font-mono font-bold text-success">+{fmt(barTotal)} €</span>
+            </summary>
+            <div class="px-3 pb-2">
+              <table class="table table-xs">
+                <tbody>
+                  {#each bar as l (l.label)}
+                    <tr class={l.total === 0 ? 'opacity-40' : ''}>
+                      <td>{l.icon} {l.label}</td>
+                      <td class="text-right font-mono">{fmt(l.units)}</td>
+                      <td class="text-right font-mono opacity-70">{fmt(l.price)} €</td>
+                      <td class="text-right font-mono text-success">+{fmt(l.total)} €</td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          </details>
+
+          <!-- Total — destacado grande -->
+          <div class="flex items-center justify-between bg-success/15 border border-success/30 rounded-lg p-3">
+            <div class="text-lg font-bold">Total del partido</div>
+            <div class="text-2xl font-mono font-bold text-success">+{fmt(ec.totalEur)} €</div>
           </div>
         </div>
       {/if}
