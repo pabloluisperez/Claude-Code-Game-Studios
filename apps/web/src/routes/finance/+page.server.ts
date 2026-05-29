@@ -17,13 +17,15 @@ import {
   leagues,
   calendarEvents,
   staff,
+  staffMessages,
   eq,
   and,
+  or,
   desc,
   asc,
   sql,
 } from '@smt/db';
-import { LEAGUE_KICKOFF_WEEK } from '@smt/shared';
+import { LEAGUE_KICKOFF_WEEK, renderNarrative, sponsorRenewalTemplates } from '@smt/shared';
 
 /**
  * The window in which the user can change the season-ticket price for the
@@ -472,6 +474,48 @@ export const actions: Actions = {
             updatedAt: new Date(),
           })
           .where(eq(sponsors.id, meta.sponsorId));
+
+        // Narrative reaction (Sprint 26 wiring of sponsorRenewalTemplates).
+        const [seasonRow] = await tx
+          .select({ n: seasons.seasonNumber })
+          .from(seasons)
+          .innerJoin(leagues, eq(leagues.id, seasons.leagueId))
+          .where(and(eq(leagues.playthroughId, active.id), eq(seasons.status, 'active')))
+          .orderBy(desc(seasons.seasonNumber))
+          .limit(1);
+        const [notifier] = await tx
+          .select({ id: staff.id })
+          .from(staff)
+          .where(
+            and(
+              eq(staff.playthroughId, active.id),
+              or(
+                eq(staff.role, 'finance_director'),
+                eq(staff.role, 'commercial_director'),
+                eq(staff.role, 'head_coach'),
+              ),
+              eq(staff.status, 'active'),
+            ),
+          )
+          .limit(1);
+        if (notifier) {
+          const body = renderNarrative(sponsorRenewalTemplates, {
+            seed: active.currentWeek * 53 + (meta.brand?.length ?? 0),
+            variables: { sponsorName: meta.brand ?? 'El patrocinador', amountEurK: meta.proposedWeeklyEurK },
+          });
+          if (body) {
+            await tx.insert(staffMessages).values({
+              playthroughId: active.id,
+              staffId: notifier.id,
+              week: active.currentWeek,
+              season: seasonRow?.n ?? 1,
+              priority: 'ROUTINE',
+              templateKey: 'sponsor:renewed',
+              content: `🤝 ${body}`,
+              isRead: false,
+            });
+          }
+        }
       }
     });
 

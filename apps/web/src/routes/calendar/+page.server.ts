@@ -18,6 +18,10 @@ import {
   clubs,
   players,
   playthroughs,
+  staff,
+  staffMessages,
+  seasons,
+  leagues,
   eq,
   and,
   asc,
@@ -25,7 +29,13 @@ import {
   desc,
   alias,
 } from '@smt/db';
-import { weekToDate, dayOfSeasonToDate } from '@smt/shared';
+import {
+  weekToDate,
+  dayOfSeasonToDate,
+  renderNarrative,
+  contractRenewalTemplates,
+  sponsorRenewalTemplates,
+} from '@smt/shared';
 
 export const load: PageServerLoad = async ({ parent }) => {
   const { user, activePlaythrough } = await parent();
@@ -248,6 +258,51 @@ export const actions: Actions = {
               updatedAt: new Date(),
             })
             .where(eq(sponsors.id, metadata.sponsorId));
+
+          // Narrative reaction (Sprint 26 wiring of sponsorRenewalTemplates).
+          const [seasonRow] = await tx
+            .select({ n: seasons.seasonNumber })
+            .from(seasons)
+            .innerJoin(leagues, eq(leagues.id, seasons.leagueId))
+            .where(and(eq(leagues.playthroughId, active.id), eq(seasons.status, 'active')))
+            .orderBy(desc(seasons.seasonNumber))
+            .limit(1);
+          const [notifier] = await tx
+            .select({ id: staff.id })
+            .from(staff)
+            .where(
+              and(
+                eq(staff.playthroughId, active.id),
+                or(
+                  eq(staff.role, 'finance_director'),
+                  eq(staff.role, 'commercial_director'),
+                  eq(staff.role, 'head_coach'),
+                ),
+                eq(staff.status, 'active'),
+              ),
+            )
+            .limit(1);
+          if (notifier) {
+            const body = renderNarrative(sponsorRenewalTemplates, {
+              seed: active.currentWeek * 53 + (metadata.brand?.length ?? 0),
+              variables: {
+                sponsorName: metadata.brand ?? 'El patrocinador',
+                amountEurK: metadata.proposedWeeklyEurK,
+              },
+            });
+            if (body) {
+              await tx.insert(staffMessages).values({
+                playthroughId: active.id,
+                staffId: notifier.id,
+                week: active.currentWeek,
+                season: seasonRow?.n ?? 1,
+                priority: 'ROUTINE',
+                templateKey: 'sponsor:renewed',
+                content: `🤝 ${body}`,
+                isRead: false,
+              });
+            }
+          }
         }
       }
 
@@ -310,6 +365,45 @@ export const actions: Actions = {
               weeksUnsigned: 0,
             })
             .where(eq(players.id, metadata.playerId));
+
+          // Narrative reaction (Sprint 26 wiring of contractRenewalTemplates).
+          const playerName = metadata.playerName ?? 'El jugador';
+          const [seasonRow] = await tx
+            .select({ n: seasons.seasonNumber })
+            .from(seasons)
+            .innerJoin(leagues, eq(leagues.id, seasons.leagueId))
+            .where(and(eq(leagues.playthroughId, active.id), eq(seasons.status, 'active')))
+            .orderBy(desc(seasons.seasonNumber))
+            .limit(1);
+          const [notifier] = await tx
+            .select({ id: staff.id })
+            .from(staff)
+            .where(
+              and(
+                eq(staff.playthroughId, active.id),
+                or(eq(staff.role, 'head_coach'), eq(staff.role, 'scouting_director')),
+                eq(staff.status, 'active'),
+              ),
+            )
+            .limit(1);
+          if (notifier) {
+            const body = renderNarrative(contractRenewalTemplates, {
+              seed: active.currentWeek * 47 + playerName.length,
+              variables: { playerName },
+            });
+            if (body) {
+              await tx.insert(staffMessages).values({
+                playthroughId: active.id,
+                staffId: notifier.id,
+                week: active.currentWeek,
+                season: seasonRow?.n ?? 1,
+                priority: 'ROUTINE',
+                templateKey: 'contract:renewed',
+                content: `✍️ ${body}`,
+                isRead: false,
+              });
+            }
+          }
         }
         // For 'walked' outcome we don't touch the player — contract still
         // expires at contractEndWeek per existing data; downstream lifecycle
