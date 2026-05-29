@@ -52,7 +52,31 @@ Implemented in parallel by web-backend + web-frontend specialists, then orchestr
 #### COMMITTED + PUSHED to origin/project/SoccerManagerTotal (2026-05-29)
 - 61f7f4b feat(sprint-25): close v1.1 backlog (83 files, .mcp.json + scratch .cjs excluded)
 - 1b8852e test(web): fix 2 pre-existing test-drift reds (VAR rate, league headings)
-Reminder: .mcp.json (plaintext SSH password) is still uncommitted — never stage it.
+- 22a6450 docs(retro): Sprint 25 retrospective
+
+---
+
+## Sprint 26 kickoff (2026-05-29) — piloto automático
+
+### Phase A — retro action items (DONE, committed 687f3e1)
+- A1 ✅ `.mcp.json` → `${SSH_BOSGAME_PASSWORD}`; untracked + gitignored; `.mcp.json.example` added.
+      ⚠️ Password still in git HISTORY — user must rotate the real SSH credential on the server
+      and (optionally) scrub history. And `export SSH_BOSGAME_PASSWORD=...` before next CC restart
+      or the ssh-bosgame MCP server won't connect.
+- A2 ✅ `typecheck` task in turbo + api/web/shared scripts; CI runs `pnpm typecheck` (real gate,
+      replacing `pnpm build` which skipped web/shared type errors).
+- A3 ✅ vitest globalSetup schema guard (apps/api/vitest.config.ts + tests/global-setup.ts).
+- A4 ✅ removed dead `view` $state in /league.
+- A5 ✅ sprint-status.yaml reconciled to Sprint 25 closed.
+- Verified: pnpm typecheck 3/3 clean; shared 1165, api 156, web 217 — all green.
+
+### Phase B — template generator PLAN (DRAFT, awaiting user approval before implementation)
+- `design/gdd/narrative-generator.md` — 8-section GDD for the deterministic narrative generator
+  that replaces Pillar D LLM (supersedes ADR-025..028).
+- `production/sprints/sprint-26.md` — Sprint 26 plan: 8 Must Have (26-1 ADR … 26-8 QA), ~7.5d.
+- Engine already scaffolded in `packages/shared/src/sim/narrative/` (render + slots + vocab +
+  5 template groups). Sprint 26 = coverage + vocab variety + hardening/safety + integration + ADR.
+- NEXT: user validates GDD + plan → then create story files + implement (the "grueso").
 
 ### Previously completed (2026-05-27)
 - [x] Migration 0040 + schema columns
