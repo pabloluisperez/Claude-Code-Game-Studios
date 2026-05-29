@@ -42,12 +42,17 @@ Implemented in parallel by web-backend + web-frontend specialists, then orchestr
   `Parameters<…>[1]` cast from 25-3).
 
 #### Verification (Postgres+Redis via docker compose, DATABASE_URL :5433)
-- shared: 1165/1165 ✓ · api: 156/156 ✓ · web svelte-check: 0 errors
-- web vitest: 5 PRE-EXISTING failures unrelated to Sprint 25 (finance tab-bar a11y — tabs were
-  removed in a prior session so the regression tests are now obsolete; /league h1/h2; match VAR
-  probability). NOT caused by this batch — all advance-orchestrator tests pass.
+- shared: 1165/1165 ✓ · api: 156/156 ✓ · web: 217/217 ✓ (5 todo) · svelte-check: 0 errors
+- Fixed the 5 pre-existing web reds (all stale guards vs deliberate prior-session changes,
+  NOT regressions): 3× removed obsolete /finance + /league tab-bar a11y guards (tab bars
+  were removed → sidebar-driven nav; /league `view` state is now dead); 1× league h1 became
+  dynamic divisionName + h2 gained `text-sm` (relaxed regexes to assert heading structure);
+  1× VAR rate intentionally bumped 8%→18% (updated assertion + renamed test).
 
-#### NOT committed — awaiting user. Reminder: never stage .mcp.json (plaintext SSH password).
+#### COMMITTED + PUSHED to origin/project/SoccerManagerTotal (2026-05-29)
+- 61f7f4b feat(sprint-25): close v1.1 backlog (83 files, .mcp.json + scratch .cjs excluded)
+- 1b8852e test(web): fix 2 pre-existing test-drift reds (VAR rate, league headings)
+Reminder: .mcp.json (plaintext SSH password) is still uncommitted — never stage it.
 
 ### Previously completed (2026-05-27)
 - [x] Migration 0040 + schema columns
