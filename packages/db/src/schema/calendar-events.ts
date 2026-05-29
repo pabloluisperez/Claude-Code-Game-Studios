@@ -24,7 +24,6 @@ import {
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { playthroughs } from './playthroughs.js';
-
 export const calendarEvents = pgTable(
   'calendar_events',
   {

@@ -148,20 +148,38 @@
                     <p class="text-xs opacity-60 italic p-2">Estás en mitad de la semana {data.currentWeek}. No hay eventos hoy mismo, pero quedan {7 - data.dayInWeek} día(s) por terminar.</p>
                   {:else}
                     {#each todayEvents as e}
-                      <button
-                        class="w-full flex items-center justify-between p-2 rounded text-left
-                               {e.priority === 'STOP' && e.status === 'pending' ? 'bg-error/15 border border-error/40 hover:bg-error/25' : 'bg-base-100'}"
-                        onclick={() => (openEventId = e.id)}
-                        type="button"
-                      >
-                        <div>
-                          <div class="text-xs opacity-60">{eventIcon(e.type)} {eventLabel(e.type)}</div>
-                          <div class="text-sm font-semibold">
-                            {e.status === 'pending' ? 'Pendiente — Decisión hoy' : e.status === 'resolved' ? 'Resuelto' : e.status}
+                      {@const sponsorRedirect = (e.type === 'sponsor_offer' || e.type === 'sponsor_renewal') && e.status === 'pending'}
+                      {@const tvRedirect = (e.type === 'tv_auction' || e.type === 'tv_midseason_offer') && e.status === 'pending'}
+                      {#if sponsorRedirect || tvRedirect}
+                        <a
+                          href={tvRedirect ? '/finance/tv-rights' : '/finance?tab=patrocinadores'}
+                          class="w-full flex items-center justify-between p-2 rounded text-left no-underline
+                                 bg-error/15 border border-error/40 hover:bg-error/25"
+                        >
+                          <div>
+                            <div class="text-xs opacity-60">{eventIcon(e.type)} {eventLabel(e.type)}</div>
+                            <div class="text-sm font-semibold">
+                              {tvRedirect ? 'Decidir en Derechos TV →' : 'Decidir en Patrocinadores →'}
+                            </div>
                           </div>
-                        </div>
-                        <span class="badge {priorityColor(e.priority)}">{e.priority}</span>
-                      </button>
+                          <span class="badge {priorityColor(e.priority)}">{e.priority}</span>
+                        </a>
+                      {:else}
+                        <button
+                          class="w-full flex items-center justify-between p-2 rounded text-left
+                                 {e.priority === 'STOP' && e.status === 'pending' ? 'bg-error/15 border border-error/40 hover:bg-error/25' : 'bg-base-100'}"
+                          onclick={() => (openEventId = e.id)}
+                          type="button"
+                        >
+                          <div>
+                            <div class="text-xs opacity-60">{eventIcon(e.type)} {eventLabel(e.type)}</div>
+                            <div class="text-sm font-semibold">
+                              {e.status === 'pending' ? 'Pendiente — Decisión hoy' : e.status === 'resolved' ? 'Resuelto' : e.status}
+                            </div>
+                          </div>
+                          <span class="badge {priorityColor(e.priority)}">{e.priority}</span>
+                        </button>
+                      {/if}
                     {/each}
                   {/if}
                 </div>
@@ -214,6 +232,7 @@
 
                 {#each dayEvents as e}
                   {@const sponsorHome = (e.type === 'sponsor_offer' || e.type === 'sponsor_renewal') && e.status === 'pending'}
+                  {@const tvHome = (e.type === 'tv_auction' || e.type === 'tv_midseason_offer') && e.status === 'pending'}
                   {#if sponsorHome}
                     <!-- Pablo 2026-05-26: sponsor decisions taken in Finanzas → Patrocinadores. -->
                     <a
@@ -224,6 +243,20 @@
                       <div>
                         <div class="text-xs opacity-60">{eventIcon(e.type)} {eventLabel(e.type)}</div>
                         <div class="text-sm">Decidir en Finanzas → Patrocinadores →</div>
+                      </div>
+                      <span class="badge {priorityColor(e.priority)}">{e.priority}</span>
+                    </a>
+                  {:else if tvHome}
+                    <!-- Pablo 2026-05-27: TV auctions decided in Finanzas → Derechos TV
+                         (tier + duration choice — the generic modal can't sign a contract). -->
+                    <a
+                      href="/finance/tv-rights"
+                      class="w-full flex items-center justify-between p-2 rounded text-left no-underline
+                             bg-error/10 border border-error/30 hover:bg-error/20"
+                    >
+                      <div>
+                        <div class="text-xs opacity-60">{eventIcon(e.type)} {eventLabel(e.type)}</div>
+                        <div class="text-sm">Decidir en Finanzas → Derechos TV →</div>
                       </div>
                       <span class="badge {priorityColor(e.priority)}">{e.priority}</span>
                     </a>

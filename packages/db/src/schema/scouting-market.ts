@@ -28,7 +28,6 @@ import {
 import { relations } from 'drizzle-orm';
 import { clubs } from './clubs.js';
 import { players } from './players.js';
-
 export const scoutingActions = pgTable(
   'scouting_actions',
   {

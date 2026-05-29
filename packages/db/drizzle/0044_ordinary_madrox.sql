@@ -1,0 +1,1 @@
+ALTER TABLE "playthroughs" ADD COLUMN "transfer_window_open" boolean DEFAULT false NOT NULL;

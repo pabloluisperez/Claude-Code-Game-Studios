@@ -36,7 +36,7 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
 
   const ctx = await loadAdvanceContext(db, locals.user.id);
   if (!ctx) {
-    return { hasPlaythrough: false, club: null, pool: [] as PoolEntry[] };
+    return { hasPlaythrough: false, club: null, pool: [] as PoolEntry[], transferWindowOpen: false };
   }
 
   const [club] = await db
@@ -45,14 +45,16 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
     .where(eq(clubs.id, ctx.playthrough.clubId));
 
   let pool: PoolEntry[] = [];
+  let transferWindowOpen = false;
   if (club) {
     try {
       const res = await fetch(
         `/api/scouting/market?clubId=${encodeURIComponent(club.id)}&currentWeek=${ctx.playthrough.currentWeek}`,
       );
       if (res.ok) {
-        const body = (await res.json()) as { pool: PoolEntry[] };
+        const body = (await res.json()) as { pool: PoolEntry[]; transferWindowOpen: boolean };
         pool = body.pool;
+        transferWindowOpen = body.transferWindowOpen;
       }
     } catch {
       // Tolerate transient API errors — empty pool renders gracefully.
@@ -99,7 +101,7 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
         )
     : [];
 
-  return { hasPlaythrough: true, club: club ?? null, pool, ownRoster, incomingOffers };
+  return { hasPlaythrough: true, club: club ?? null, pool, ownRoster, incomingOffers, transferWindowOpen };
 };
 
 export const actions = {

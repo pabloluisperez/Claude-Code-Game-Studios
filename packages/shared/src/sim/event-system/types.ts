@@ -173,6 +173,16 @@ export interface StadiumUpgradeOfferPayload {
   readonly defaultOption: 'defer';
 }
 
+export interface TransferWindowOpenPayload {
+  readonly kind: 'transfer_window_open';
+  readonly defaultOption: 'open';
+}
+
+export interface TransferWindowClosePayload {
+  readonly kind: 'transfer_window_close';
+  readonly defaultOption: 'close';
+}
+
 export type EventDecisionPayload =
   | BoardMeetingCrisisPayload
   | BoardMeetingQuiebraPayload
@@ -186,9 +196,13 @@ export type EventDecisionPayload =
   | YouthPromotionPayload
   | AlcaldeMeetingPayload
   | ExternalManagerOfferPayload
-  | StadiumUpgradeOfferPayload;
+  | StadiumUpgradeOfferPayload
+  | TransferWindowOpenPayload
+  | TransferWindowClosePayload;
 
-export type EventChoiceId<P extends EventDecisionPayload> = keyof P['options'] & string;
+export type EventChoiceId<P extends EventDecisionPayload> = P extends { options: Record<string, EventOption> }
+  ? keyof P['options'] & string
+  : string;
 
 // ── Resolver outputs ──────────────────────────────────────────────────────────
 
@@ -211,4 +225,6 @@ export interface ResolutionResult {
   readonly deltas: Readonly<Record<string, number>>;
   /** Side effects executed by the caller (DB writes, follow-up events, etc.). */
   readonly sideEffects: readonly SideEffect[];
+  /** Transfer window state change (NOTIFY-only, not a WorldState numeric delta). */
+  readonly transferWindowOpen?: boolean;
 }

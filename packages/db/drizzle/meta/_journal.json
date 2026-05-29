@@ -295,6 +295,20 @@
       "when": 1779885000000,
       "tag": "0041_merch_manufacture",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1779895150650,
+      "tag": "0042_confused_madame_hydra",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1779898680948,
+      "tag": "0044_ordinary_madrox",
+      "breakpoints": true
     }
   ]
 }

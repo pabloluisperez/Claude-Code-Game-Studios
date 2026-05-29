@@ -1,11 +1,12 @@
 <!--
-  /scouting — v1.2 (Sprint 25-26).
+  /scouting — v1.3 (Sprint 25 stories 25-4 + 25-6).
   Player pool with tier visibility + scout/deep-scout actions + offer flow +
-  client filters + sortable columns + comparator modal on player-name click
-  + incoming offers panel for transfer-listed players.
+  counter-offer UI + client filters + sortable columns + comparator modal on
+  player-name click + incoming offers panel for transfer-listed players.
 -->
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import { invalidateAll } from '$app/navigation';
   import Avatar from '$lib/components/avatar.svelte';
   import type { PageData, ActionData } from './$types';
 
@@ -16,6 +17,18 @@
   let offerFee = $state(0);
   let offerWage = $state(5);
   let offerContractWeeks = $state(52);
+  /** True while the offer form POST is in-flight. */
+  let offerSubmitting = $state(false);
+
+  // ── Counter-offer state (story 25-6) ──────────────────────────────────
+  /** Set when the AI club returns a counter-offer instead of accepting. */
+  let pendingCounter = $state<{ playerId: string; playerName: string; counterOfferEurK: number } | null>(null);
+  /** True while the counter-accept re-POST is in-flight. */
+  let counterSubmitting = $state(false);
+
+  // ── Respond-offer loading state ────────────────────────────────────────
+  /** offerId currently being accepted/rejected via the incoming-offers panel. */
+  let respondingOfferId = $state<string | null>(null);
 
   // ── Compare modal state ────────────────────────────────────────────────
   let comparePlayerId = $state<string | null>(null);
@@ -98,10 +111,27 @@
     return t >= 3 ? 'badge-success' : t === 2 ? 'badge-info' : t === 1 ? 'badge-warning' : 'badge-ghost';
   }
 
-  function closeOffer(): void { offerPlayerId = null; }
+  function closeOffer(): void {
+    offerPlayerId = null;
+    offerSubmitting = false;
+  }
+  function closeCounter(): void {
+    pendingCounter = null;
+    counterSubmitting = false;
+  }
 
-  // Pablo 2026-05-26: after sending offer, give feedback + close modal.
-  // Toast holds 4s so the user sees the outcome even after modal closes.
+  /** Map server error codes to es-ES copy. */
+  function offerErrorMsg(raw: string): string {
+    switch (raw) {
+      case 'NO_SCOUT': return 'Necesitas un director de scouting para fichar a jugadores con contrato.';
+      case 'INSUFFICIENT_BALANCE': return 'Saldo insuficiente para esta operación.';
+      case 'ALREADY_PENDING_OFFER': return 'Ya tienes una oferta pendiente por este jugador.';
+      case 'INVALID_OFFER': return 'Oferta inválida. Revisa los importes introducidos.';
+      default: return `Error: ${raw}`;
+    }
+  }
+
+  // Toast (shared across offer outcomes + incoming-offer responses).
   let lastOutcomeToast = $state<{ kind: string; msg: string } | null>(null);
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
   function showToast(kind: string, msg: string) {
@@ -128,6 +158,14 @@
   {#if !data.hasPlaythrough}
     <div class="alert alert-info">Necesitas una carrera activa para ver el mercado.</div>
   {:else}
+    <!-- Transfer window status -->
+    <div class="flex items-center gap-2 text-sm">
+      {#if data.transferWindowOpen}
+        <span class="badge badge-success badge-sm">⚽ Ventana de fichajes abierta</span>
+      {:else}
+        <span class="badge badge-ghost badge-sm">🔒 Ventana de fichajes cerrada</span>
+      {/if}
+    </div>
     <!-- Incoming offers panel -->
     {#if (data.incomingOffers ?? []).length > 0}
       <section aria-labelledby="incoming-h" class="card bg-base-100 shadow border-2 border-success/40">
@@ -151,17 +189,62 @@
                     <td class="text-right font-mono font-semibold">{o.feeEurK} k€</td>
                     <td>
                       <div class="flex gap-1">
-                        <form method="POST" action="?/respondOffer" use:enhance>
+                        <form
+                          method="POST"
+                          action="?/respondOffer"
+                          use:enhance={() => {
+                            respondingOfferId = o.offerId;
+                            return async ({ update, result }) => {
+                              await update({ reset: false });
+                              respondingOfferId = null;
+                              if (result.type === 'success') {
+                                const body = (result.data ?? {}) as { status?: string; feeEurK?: number };
+                                if (body.status === 'accepted') {
+                                  showToast('success', `Venta aceptada — recibiste ${body.feeEurK ?? 0} k€.`);
+                                } else {
+                                  showToast('info', 'Oferta rechazada. El jugador sigue transferible.');
+                                }
+                                await invalidateAll();
+                              } else if (result.type === 'failure') {
+                                const rawErr = (result.data as { error?: string })?.error ?? 'desconocido';
+                                showToast('error', `Error: ${rawErr}`);
+                              }
+                            };
+                          }}
+                        >
                           <input type="hidden" name="clubId" value={data.club?.id ?? ''} />
                           <input type="hidden" name="offerId" value={o.offerId} />
                           <input type="hidden" name="responseAction" value="accept" />
-                          <button type="submit" class="btn btn-xs btn-success">Aceptar</button>
+                          <button type="submit" class="btn btn-xs btn-success" disabled={respondingOfferId === o.offerId}>
+                            {#if respondingOfferId === o.offerId}
+                              <span class="loading loading-spinner loading-xs"></span>
+                            {:else}
+                              Aceptar
+                            {/if}
+                          </button>
                         </form>
-                        <form method="POST" action="?/respondOffer" use:enhance>
+                        <form
+                          method="POST"
+                          action="?/respondOffer"
+                          use:enhance={() => {
+                            respondingOfferId = o.offerId;
+                            return async ({ update, result }) => {
+                              await update({ reset: false });
+                              respondingOfferId = null;
+                              if (result.type === 'success') {
+                                showToast('info', 'Oferta rechazada. El jugador sigue transferible.');
+                                await invalidateAll();
+                              } else if (result.type === 'failure') {
+                                const rawErr = (result.data as { error?: string })?.error ?? 'desconocido';
+                                showToast('error', `Error: ${rawErr}`);
+                              }
+                            };
+                          }}
+                        >
                           <input type="hidden" name="clubId" value={data.club?.id ?? ''} />
                           <input type="hidden" name="offerId" value={o.offerId} />
                           <input type="hidden" name="responseAction" value="reject" />
-                          <button type="submit" class="btn btn-xs btn-ghost">Rechazar</button>
+                          <button type="submit" class="btn btn-xs btn-ghost" disabled={respondingOfferId === o.offerId}>Rechazar</button>
                         </form>
                       </div>
                     </td>
@@ -286,29 +369,33 @@
                 </td>
                 <td>
                   <div class="flex gap-1 items-center">
-                    {#if p.visibilityTier < 2}
-                      <form method="POST" action="?/scout" use:enhance>
-                        <input type="hidden" name="clubId" value={data.club?.id ?? ''} />
-                        <input type="hidden" name="playerId" value={p.id} />
-                        <input type="hidden" name="actionType" value="scout" />
-                        <button type="submit" class="btn btn-xs btn-outline">Scout</button>
-                      </form>
+                    {#if data.transferWindowOpen}
+                      {#if p.visibilityTier < 2}
+                        <form method="POST" action="?/scout" use:enhance>
+                          <input type="hidden" name="clubId" value={data.club?.id ?? ''} />
+                          <input type="hidden" name="playerId" value={p.id} />
+                          <input type="hidden" name="actionType" value="scout" />
+                          <button type="submit" class="btn btn-xs btn-outline">Scout</button>
+                        </form>
+                      {/if}
+                      {#if p.visibilityTier < 3}
+                        <form method="POST" action="?/scout" use:enhance>
+                          <input type="hidden" name="clubId" value={data.club?.id ?? ''} />
+                          <input type="hidden" name="playerId" value={p.id} />
+                          <input type="hidden" name="actionType" value="deep_scout" />
+                          <button type="submit" class="btn btn-xs btn-primary">Deep</button>
+                        </form>
+                      {/if}
+                      <button
+                        type="button"
+                        class="btn btn-xs btn-success"
+                        onclick={() => { offerPlayerId = p.id; offerFee = p.transferValueEstimate ?? p.transferValueExact ?? 100; offerWage = 5; }}
+                      >
+                        Ofertar
+                      </button>
+                    {:else}
+                      <span class="text-xs opacity-50">Ventana cerrada</span>
                     {/if}
-                    {#if p.visibilityTier < 3}
-                      <form method="POST" action="?/scout" use:enhance>
-                        <input type="hidden" name="clubId" value={data.club?.id ?? ''} />
-                        <input type="hidden" name="playerId" value={p.id} />
-                        <input type="hidden" name="actionType" value="deep_scout" />
-                        <button type="submit" class="btn btn-xs btn-primary">Deep</button>
-                      </form>
-                    {/if}
-                    <button
-                      type="button"
-                      class="btn btn-xs btn-success"
-                      onclick={() => { offerPlayerId = p.id; offerFee = p.transferValueEstimate ?? p.transferValueExact ?? 100; offerWage = 5; }}
-                    >
-                      Ofertar
-                    </button>
                   </div>
                 </td>
               </tr>
@@ -406,18 +493,22 @@
 
           <div class="card-actions justify-end mt-4 gap-2">
             <button type="button" class="btn btn-ghost" onclick={() => { comparePlayerId = null; }}>Cerrar</button>
-            <button
-              type="button"
-              class="btn btn-success"
-              onclick={() => {
-                offerPlayerId = comparePlayer!.id;
-                offerFee = comparePlayer!.transferValueEstimate ?? comparePlayer!.transferValueExact ?? 100;
-                offerWage = 5;
-                comparePlayerId = null;
-              }}
-            >
-              💰 Ofertar por este jugador
-            </button>
+            {#if data.transferWindowOpen}
+              <button
+                type="button"
+                class="btn btn-success"
+                onclick={() => {
+                  offerPlayerId = comparePlayer!.id;
+                  offerFee = comparePlayer!.transferValueEstimate ?? comparePlayer!.transferValueExact ?? 100;
+                  offerWage = 5;
+                  comparePlayerId = null;
+                }}
+              >
+                💰 Ofertar por este jugador
+              </button>
+            {:else}
+              <button type="button" class="btn btn-success btn-disabled" disabled>Ventana cerrada</button>
+            {/if}
           </div>
         </div>
       </div>
@@ -429,6 +520,93 @@
     <div class="toast toast-end z-50">
       <div class="alert alert-{lastOutcomeToast.kind === 'warning' ? 'warning' : lastOutcomeToast.kind === 'error' ? 'error' : lastOutcomeToast.kind === 'success' ? 'success' : 'info'}">
         <span>{lastOutcomeToast.msg}</span>
+      </div>
+    </div>
+  {/if}
+
+  <!-- Counter-offer modal (story 25-6) ───────────────────────────────────────
+       When the AI club responds with kind:'counter', we capture it in pendingCounter
+       and show this dialog. Accept = re-POST /offer at counterOfferEurK. -->
+  {#if pendingCounter}
+    {@const cp = data.pool.find((x) => x.id === pendingCounter!.playerId)}
+    <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="counter-title">
+      <div class="card bg-base-100 shadow-xl max-w-sm w-full">
+        <div class="card-body">
+          <h3 id="counter-title" class="card-title text-warning">Contraoferta recibida</h3>
+          <p class="text-sm">
+            El club vendedor pide
+            <span class="font-mono font-bold text-lg text-warning">{pendingCounter.counterOfferEurK} k€</span>
+            por <strong>{pendingCounter.playerName}</strong>.
+          </p>
+          <p class="text-xs opacity-60 mt-1">
+            Aceptar enviará automáticamente una nueva oferta a ese precio manteniendo sueldo
+            ({offerWage} k€/sem) y duración ({offerContractWeeks} sem) previos.
+          </p>
+
+          <!-- Accept counter: re-POST /offer at counterOfferEurK -->
+          <form
+            method="POST"
+            action="?/offer"
+            class="mt-4"
+            use:enhance={() => {
+              counterSubmitting = true;
+              return async ({ update, result }) => {
+                await update({ reset: false });
+                counterSubmitting = false;
+                if (result.type === 'success') {
+                  const body = (result.data ?? {}) as { kind?: string; feeEurK?: number; finalWageEurKWeek?: number; counterOfferEurK?: number; reason?: string };
+                  if (body.kind === 'accepted') {
+                    showToast('success', `Traspaso completado — fee ${body.feeEurK ?? 0} k€ + sueldo ${body.finalWageEurKWeek ?? 0} k€/sem`);
+                    closeCounter();
+                    await invalidateAll();
+                  } else if (body.kind === 'counter') {
+                    // Another counter — update the pending counter in-place.
+                    pendingCounter = {
+                      playerId: pendingCounter!.playerId,
+                      playerName: pendingCounter!.playerName,
+                      counterOfferEurK: body.counterOfferEurK ?? 0,
+                    };
+                  } else if (body.kind === 'rejected') {
+                    const reasonMsg = body.reason === 'wage_low' ? 'sueldo bajo' : 'oferta rechazada';
+                    showToast('error', `Contraoferta rechazada (${reasonMsg}).`);
+                    closeCounter();
+                  } else {
+                    showToast('info', 'Respuesta enviada.');
+                    closeCounter();
+                  }
+                } else if (result.type === 'failure') {
+                  const rawErr = (result.data as { error?: string })?.error ?? 'desconocido';
+                  showToast('error', offerErrorMsg(rawErr));
+                }
+              };
+            }}
+          >
+            <input type="hidden" name="clubId" value={data.club?.id ?? ''} />
+            <input type="hidden" name="playerId" value={pendingCounter.playerId} />
+            <input type="hidden" name="feeEurK" value={pendingCounter.counterOfferEurK} />
+            <input type="hidden" name="wageOfferEurKWeek" value={cp?.contractStatus !== 'in_contract' ? offerWage : offerWage} />
+            <input type="hidden" name="contractWeeks" value={offerContractWeeks} />
+
+            <div class="card-actions justify-end gap-2">
+              <button
+                type="button"
+                class="btn btn-ghost btn-sm"
+                onclick={closeCounter}
+                disabled={counterSubmitting}
+              >
+                Rechazar
+              </button>
+              <button type="submit" class="btn btn-warning btn-sm" disabled={counterSubmitting}>
+                {#if counterSubmitting}
+                  <span class="loading loading-spinner loading-xs"></span>
+                  Enviando…
+                {:else}
+                  Aceptar contraoferta ({pendingCounter.counterOfferEurK} k€)
+                {/if}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   {/if}
@@ -453,23 +631,35 @@
               method="POST"
               action="?/offer"
               use:enhance={() => {
+                offerSubmitting = true;
                 return async ({ update, result }) => {
                   await update({ reset: false });
+                  offerSubmitting = false;
                   if (result.type === 'success') {
                     const body = (result.data ?? {}) as { kind?: string; counterOfferEurK?: number; reason?: string; feeEurK?: number; finalWageEurKWeek?: number };
                     if (body.kind === 'accepted') {
-                      showToast('success', `✅ Oferta aceptada — fee ${body.feeEurK ?? 0} k€ + sueldo ${body.finalWageEurKWeek ?? 0} k€/sem`);
+                      showToast('success', `Oferta aceptada — fee ${body.feeEurK ?? 0} k€ + sueldo ${body.finalWageEurKWeek ?? 0} k€/sem`);
+                      closeOffer();
+                      await invalidateAll();
                     } else if (body.kind === 'counter') {
-                      showToast('warning', `🤝 Contraoferta: ${body.counterOfferEurK} k€`);
+                      // Story 25-6: capture counter — do NOT close modal, show counter UI.
+                      pendingCounter = {
+                        playerId: p.id,
+                        playerName: p.name,
+                        counterOfferEurK: body.counterOfferEurK ?? 0,
+                      };
+                      closeOffer();
                     } else if (body.kind === 'rejected') {
-                      showToast('error', `❌ Oferta rechazada (${body.reason === 'wage_low' ? 'sueldo bajo' : 'lejos del valor de mercado'})`);
+                      const reasonMsg = body.reason === 'wage_low' ? 'sueldo bajo' : 'oferta lejos del valor de mercado';
+                      showToast('error', `Oferta rechazada (${reasonMsg}).`);
+                      closeOffer();
                     } else {
                       showToast('info', 'Oferta enviada.');
+                      closeOffer();
                     }
-                    closeOffer();
                   } else if (result.type === 'failure') {
-                    const err = (result.data as { error?: string })?.error ?? 'desconocido';
-                    showToast('error', `Error al enviar oferta: ${err}`);
+                    const rawErr = (result.data as { error?: string })?.error ?? 'desconocido';
+                    showToast('error', offerErrorMsg(rawErr));
                   }
                 };
               }}
@@ -479,38 +669,45 @@
 
               {#if p.contractStatus === 'in_contract'}
                 <label class="form-control w-full mt-3">
-                  <span class="label-text">Fee (k€)</span>
+                  <span class="label-text">Fee de traspaso (k€)</span>
                   <input type="number" name="feeEurK" bind:value={offerFee} min="0" class="input input-bordered input-sm" />
                 </label>
               {:else}
                 <input type="hidden" name="feeEurK" value="0" />
                 <p class="text-xs mt-2 italic">
                   {#if p.contractStatus === 'free_agent'}
-                    🆓 Agente libre — no se paga fee, sólo sueldo.
+                    Agente libre — no se paga fee de traspaso, sólo sueldo.
                   {:else}
-                    📋 Pre-contrato — el contrato expira pronto, podés ficharlo sin fee (negociación al estilo Bosman).
+                    Pre-contrato — el contrato expira pronto, fichaje sin fee al estilo Bosman.
                   {/if}
                 </p>
               {/if}
 
               <label class="form-control w-full mt-2">
-                <span class="label-text">Sueldo semanal (k€)</span>
+                <span class="label-text">Sueldo semanal ofrecido (k€)</span>
                 <input type="number" name="wageOfferEurKWeek" bind:value={offerWage} min="0" class="input input-bordered input-sm" />
               </label>
 
               <label class="form-control w-full mt-2">
-                <span class="label-text">Duración contrato (semanas)</span>
+                <span class="label-text">Duración contrato (semanas, 1–260)</span>
                 <input type="number" name="contractWeeks" bind:value={offerContractWeeks} min="1" max="260" class="input input-bordered input-sm" />
               </label>
 
               <p class="text-xs opacity-60 mt-2">
                 Compromiso total: <span class="font-mono">{(p.contractStatus === 'in_contract' ? offerFee : 0) + offerWage * offerContractWeeks} k€</span> ·
-                Buffer requerido: <span class="font-mono">{(p.contractStatus === 'in_contract' ? offerFee : 0) + offerWage * 4} k€</span> (fee + 4 sem)
+                Buffer requerido: <span class="font-mono">{(p.contractStatus === 'in_contract' ? offerFee : 0) + offerWage * 4} k€</span> (fee + 4 semanas)
               </p>
 
               <div class="card-actions justify-end mt-4">
-                <button type="button" class="btn btn-ghost" onclick={closeOffer}>Cancelar</button>
-                <button type="submit" class="btn btn-success">Enviar oferta</button>
+                <button type="button" class="btn btn-ghost" onclick={closeOffer} disabled={offerSubmitting}>Cancelar</button>
+                <button type="submit" class="btn btn-success" disabled={offerSubmitting}>
+                  {#if offerSubmitting}
+                    <span class="loading loading-spinner loading-sm"></span>
+                    Enviando…
+                  {:else}
+                    Enviar oferta
+                  {/if}
+                </button>
               </div>
             </form>
           </div>

@@ -65,7 +65,7 @@ export async function updateStatus(
   tx: Tx,
   id: string,
   status: 'complete' | 'cancelled',
-  fields: { completedAt?: Date; cancelledAt?: Date } = {},
+  fields: { completedAt?: Date; cancelledAt?: Date; weeksRemaining?: number } = {},
 ): Promise<void> {
   await tx
     .update(stadiumUpgradeItems)
@@ -73,6 +73,7 @@ export async function updateStatus(
       status,
       ...(fields.completedAt ? { completedAt: fields.completedAt } : {}),
       ...(fields.cancelledAt ? { cancelledAt: fields.cancelledAt } : {}),
+      ...(fields.weeksRemaining !== undefined ? { weeksRemaining: fields.weeksRemaining } : {}),
     })
     .where(eq(stadiumUpgradeItems.id, id));
 }

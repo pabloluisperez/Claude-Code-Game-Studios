@@ -11,6 +11,7 @@
  */
 
 import {
+  boolean,
   integer,
   jsonb,
   pgTable,
@@ -22,7 +23,6 @@ import {
 import { relations } from 'drizzle-orm';
 import { users } from './users.js';
 import { clubs } from './clubs.js';
-
 export const playthroughs = pgTable('playthroughs', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id')
@@ -76,6 +76,13 @@ export const playthroughs = pgTable('playthroughs', {
    * to EMPTY_TIER_HISTORY when read.
    */
   tierHistory: jsonb('tier_history'),
+  /**
+   * Whether the transfer window is currently open.
+   *
+   * Set by the event-system when transfer_window_open / transfer_window_close
+   * NOTIFY events are resolved during the advance pipeline (Story 25-3).
+   */
+  transferWindowOpen: boolean('transfer_window_open').notNull().default(false),
   lastTickAt: timestamp('last_tick_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()

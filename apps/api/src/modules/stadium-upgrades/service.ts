@@ -352,7 +352,10 @@ export async function tickClub(clubId: string, deps: ServiceDeps = {}): Promise<
     const finalPaid = Math.max(0, active.costPaidEurK - alreadyPaid);
 
     // Transition to Complete + side effects in the same transaction.
-    await repo.updateStatus(tx, active.id, 'complete', { completedAt: new Date() });
+    // Zero out weeksRemaining so a completed obra is canonical (no phantom
+    // "1 week left" on a finished item). finalPaid was already computed above
+    // from the pre-tick weeksRemaining, so this does not affect billing.
+    await repo.updateStatus(tx, active.id, 'complete', { completedAt: new Date(), weeksRemaining: 0 });
 
     // Increment WorldState counter (atomic SQL on world_snapshots).
     // We update the latest snapshot for the club. Implementation note: this

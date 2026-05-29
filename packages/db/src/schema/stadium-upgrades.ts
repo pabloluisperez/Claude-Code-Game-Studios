@@ -14,7 +14,6 @@
 import { integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { clubs } from './clubs.js';
-
 /**
  * Stadium upgrade items purchased by a club.
  * Each row is one reform/upgrade lifecycle entry.

@@ -34,6 +34,7 @@ import {
   visibilityTierOf,
   freeAgentAcceptance,
   aiClubAcceptance,
+  classifyContractStatus,
   type AuctionResult,
   type ManagerScoutState,
   type PoolPlayer,
@@ -178,7 +179,7 @@ export type MarketPoolEntry = PoolPlayer & { clubName: string | null };
  */
 export async function getMarket(
   clubId: string,
-  options: { windowId?: string; currentWeek?: number; limit?: number } = {},
+  options: { windowId?: string; currentWeek?: number | undefined; limit?: number } = {},
 ): Promise<MarketPoolEntry[]> {
   const windowId = options.windowId ?? '00000000-0000-0000-0000-000000000001';
   const currentWeek = options.currentWeek ?? 1;
@@ -223,16 +224,13 @@ export async function getMarket(
         state,
         currentWeek,
       );
-      // Compute real contract status: free_agent > expiring > in_contract.
-      const weeksUntilExpiry = p.contractEndWeek - currentWeek;
-      let contractStatusOut: 'in_contract' | 'expiring' | 'free_agent';
-      if (p.contractStatus === 'free_agent' || !p.clubId) {
-        contractStatusOut = 'free_agent';
-      } else if (weeksUntilExpiry <= 8) {
-        contractStatusOut = 'expiring';
-      } else {
-        contractStatusOut = 'in_contract';
-      }
+      // Classify contract status: free_agent > expiring > in_contract.
+      const contractStatusOut = classifyContractStatus({
+        contractStatus: p.contractStatus,
+        clubId: p.clubId,
+        contractEndWeek: p.contractEndWeek ?? 0,
+        currentWeek,
+      });
       const full: PoolPlayer = {
         id: p.id,
         name: `${p.firstName} ${p.lastName}`,
@@ -461,7 +459,7 @@ export type MakeOfferParams = {
    * to contractEndWeek) as free-agent equivalents — no fee required.
    * If omitted, only the static contractStatus column is used.
    */
-  currentWeek?: number;
+  currentWeek?: number | undefined;
 };
 
 export async function makeOffer(
@@ -500,9 +498,12 @@ export async function makeOffer(
     //   tier 1 → 1.00 × club bargainFactor
     //   tier 2 → 0.92 × (8% discount)
     //   tier 3 → 0.85 × (15% discount)
-    const isExpiringPre =
-      params.currentWeek !== undefined &&
-      player.contractEndWeek - params.currentWeek <= 8;
+    const isExpiringPre = params.currentWeek !== undefined && classifyContractStatus({
+      contractStatus: player.contractStatus,
+      clubId: player.clubId,
+      contractEndWeek: player.contractEndWeek,
+      currentWeek: params.currentWeek,
+    }) === 'expiring';
     const isOpenMarket = player.contractStatus === 'free_agent' || isExpiringPre;
     const scoutTier = await getScoutDirectorTier(tx, params.clubId);
     if (!isOpenMarket && scoutTier === 0) {
@@ -544,9 +545,12 @@ export async function makeOffer(
 
     // Pablo 2026-05-26: 'expiring' (≤8 weeks left) acts like free agent — no fee,
     // wage acceptance only. Lets manager pre-sign for next season at no cost.
-    const isExpiring =
-      params.currentWeek !== undefined &&
-      player.contractEndWeek - params.currentWeek <= 8;
+    const isExpiring = params.currentWeek !== undefined && classifyContractStatus({
+      contractStatus: player.contractStatus,
+      clubId: player.clubId,
+      contractEndWeek: player.contractEndWeek,
+      currentWeek: params.currentWeek,
+    }) === 'expiring';
     if (player.contractStatus === 'free_agent' || isExpiring) {
       const accepted = freeAgentAcceptance(params.wageOfferEurKWeek, {
         wageExpectationEurKWeek: player.wageExpectationEurKWeek,

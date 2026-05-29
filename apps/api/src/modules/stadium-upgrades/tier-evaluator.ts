@@ -90,24 +90,40 @@ export async function evaluateTierUp(
  * Run stadium tick for every club with an active upgrade. Intended to be called
  * once per week-tick by the advance pipeline.
  *
- * The current advance-orchestrator lives in apps/web/src/lib/server/ and
- * predates this module; wiring is deferred to a follow-up commit that
- * crosses the apps/web ↔ apps/api boundary (architectural debt documented
- * in active.md). This function is the canonical entry point for that wire-up.
+ * @param opts.excludeClubId - Optional club ID to skip. Used by the advance
+ *   orchestrator to avoid double-ticking the player's club (which is already
+ *   ticked in Phase 3b via `tickStadiumForClubInTx`). The skipped club is NOT
+ *   counted in the `ticked` return value.
  */
-export async function tickAllClubsWithActiveUpgrades(): Promise<{ ticked: number }> {
+export async function tickAllClubsWithActiveUpgrades(
+  opts: { excludeClubId?: string } = {},
+): Promise<{ ticked: number }> {
+  const { excludeClubId } = opts;
+
   // Query distinct club_ids that currently have an in_progress item.
   const result = await dbClient.execute(
     sql`SELECT DISTINCT club_id FROM stadium_upgrade_items WHERE status = 'in_progress'`,
   );
   const rows = (result as unknown as { rows?: Array<{ club_id: string }> }).rows
     ?? (result as unknown as Array<{ club_id: string }>);
-  const clubIds = rows.map((r) => r.club_id);
+  const allClubIds = rows.map((r) => r.club_id);
 
-  // Tick each club. Use dynamic import to avoid circular dep with service.ts.
+  // Exclude the player's club if requested (it is already ticked by Phase 3b
+  // in the advance orchestrator — we must not double-tick it).
+  const clubIds = excludeClubId
+    ? allClubIds.filter((id) => id !== excludeClubId)
+    : allClubIds;
+
+  // Tick each AI club. Wire evaluateTierUp so that completing an obra
+  // immediately triggers the doble-gate check, just like the player path
+  // does via the orchestrator. Dynamic import avoids a circular dep with
+  // service.ts (tier-evaluator already imports from service for
+  // getCompletedItemsCountByLevel).
   const { tickClub } = await import('./service.js');
   for (const clubId of clubIds) {
-    await tickClub(clubId);
+    await tickClub(clubId, {
+      evaluateTierUp: async (cId, tx) => evaluateTierUp(cId, tx),
+    });
   }
   return { ticked: clubIds.length };
 }

@@ -14,7 +14,6 @@ import { index, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-c
 import { relations } from 'drizzle-orm';
 import { clubs } from './clubs.js';
 import { playthroughs } from './playthroughs.js';
-
 export const sponsors = pgTable(
   'sponsors',
   {

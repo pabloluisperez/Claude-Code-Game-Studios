@@ -191,6 +191,75 @@ describeDB('tier-up doble-gate evaluator', () => {
     expect(cItems).toHaveLength(0); // c never bought anything
   });
 
+  it('test_tick_all_clubs_excludeClubId_skips_excluded_club', async () => {
+    // Arrange: 2 clubs both with in_progress items. Exclude club A.
+    // Assert: club A is NOT ticked (weeksRemaining stays at 6); club B IS ticked.
+    const a = await setupClub({ budget: 10000 });
+    const b = await setupClub({ budget: 10000 });
+    track(a);
+    track(b);
+
+    await buy({ clubId: a.clubId, itemSlug: 'gradas-n1-norte' });
+    await buy({ clubId: b.clubId, itemSlug: 'gradas-n1-norte' });
+
+    // Act: exclude club A (simulates Phase 3b already ticking the player's club).
+    const result = await tickAllClubsWithActiveUpgrades({ excludeClubId: a.clubId });
+
+    // Assert: ticked count does NOT include the excluded club.
+    // (There may be other clubs from parallel test runs — use greaterThanOrEqual
+    // for the ticked count.)
+    expect(result.ticked).toBeGreaterThanOrEqual(1);
+
+    const allItems = await db
+      .select()
+      .from(stadiumUpgradeItems)
+      .where(eq(stadiumUpgradeItems.status, 'in_progress'));
+
+    const aItem = allItems.find((i) => i.clubId === a.clubId);
+    const bItem = allItems.find((i) => i.clubId === b.clubId);
+
+    // Club B was ticked: weeksRemaining decremented from 6 → 5.
+    expect(bItem?.weeksRemaining).toBe(5);
+    // Club A was NOT ticked: weeksRemaining stays at 6.
+    expect(aItem?.weeksRemaining).toBe(6);
+  });
+
+  it('test_tick_all_clubs_obra_progresses_week_by_week_and_completes', async () => {
+    // Arrange: club with a T1 item (duration=6 weeks).
+    const ids = await setupClub({ budget: 100_000 });
+    track(ids);
+
+    const bought = await buy({ clubId: ids.clubId, itemSlug: 'gradas-n1-norte' });
+    expect(bought.ok).toBe(true);
+    if (!bought.ok) return;
+
+    // Act + Assert: week-by-week via tickAllClubsWithActiveUpgrades.
+    // Use a non-existent club UUID as the excludeClubId so our club IS ticked.
+    const noExclude = '00000000-0000-0000-0000-000000000000';
+
+    for (let week = 1; week <= 5; week++) {
+      const r = await tickAllClubsWithActiveUpgrades({ excludeClubId: noExclude });
+      expect(r.ticked).toBeGreaterThanOrEqual(1);
+
+      const items = await db
+        .select()
+        .from(stadiumUpgradeItems)
+        .where(eq(stadiumUpgradeItems.id, bought.value.itemId));
+      // After tick N the item should still be in_progress with weeksRemaining = 6 - N.
+      expect(items[0]?.status).toBe('in_progress');
+      expect(items[0]?.weeksRemaining).toBe(6 - week);
+    }
+
+    // 6th tick: item completes.
+    await tickAllClubsWithActiveUpgrades({ excludeClubId: noExclude });
+    const completed = await db
+      .select()
+      .from(stadiumUpgradeItems)
+      .where(eq(stadiumUpgradeItems.id, bought.value.itemId));
+    expect(completed[0]?.status).toBe('complete');
+    expect(completed[0]?.weeksRemaining).toBe(0);
+  });
+
   it('test_tick_determinism_same_state_same_outcome', async () => {
     // Setup club with active item at weeks_remaining=5; tick once.
     // Reset weeks_remaining to 5 and tick again. Must reach the same final state.

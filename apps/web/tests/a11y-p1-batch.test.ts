@@ -82,34 +82,19 @@ describe('Sprint 11 task 11-3 — A11y P1 batch regression guards', () => {
   });
 
   describe('P1-4: tab bars aria-selected + aria-controls', () => {
-    it('test_finance_tabs_declare_aria_selected', () => {
-      const source = readComponent('routes/finance/+page.svelte');
-      expect(source).toMatch(/aria-selected=\{activeTab\s*===\s*['"]resumen['"]\}/);
-      expect(source).toMatch(/aria-selected=\{activeTab\s*===\s*['"]patrocinadores['"]\}/);
-      expect(source).toMatch(/aria-selected=\{activeTab\s*===\s*['"]abonos['"]\}/);
-    });
-
-    it('test_finance_tabs_declare_aria_controls', () => {
-      const source = readComponent('routes/finance/+page.svelte');
-      expect(source).toMatch(/aria-controls="tabpanel-finance-resumen"/);
-      expect(source).toMatch(/aria-controls="tabpanel-finance-patrocinadores"/);
-      expect(source).toMatch(/aria-controls="tabpanel-finance-abonos"/);
-    });
+    // NOTE (Sprint 25, 2026-05-29): the in-page tab BARS for /finance and /league
+    // were removed in the Sprint 24/25 sidebar restructure — navigation is now
+    // sidebar-driven (/finance reads ?tab= and renders the matching section;
+    // /league shows a single fixtures view). The aria-selected / aria-controls
+    // guards for those removed tab BUTTONS no longer apply and were dropped here.
+    // The finance content panels still carry role="tabpanel"+id (guarded below),
+    // and /inbox keeps a real tab bar (also still guarded below).
 
     it('test_finance_tabpanels_declare_role_and_id', () => {
       const source = readComponent('routes/finance/+page.svelte');
       expect(source).toMatch(/role="tabpanel"[\s\S]*?id="tabpanel-finance-resumen"/);
       expect(source).toMatch(/role="tabpanel"[\s\S]*?id="tabpanel-finance-patrocinadores"/);
       expect(source).toMatch(/role="tabpanel"[\s\S]*?id="tabpanel-finance-abonos"/);
-    });
-
-    it('test_league_tabs_declare_aria_attributes', () => {
-      const source = readComponent('routes/league/+page.svelte');
-      expect(source).toMatch(/aria-selected=\{view\s*===\s*['"]upcoming3['"]\}/);
-      expect(source).toMatch(/aria-selected=\{view\s*===\s*['"]all['"]\}/);
-      expect(source).toMatch(/aria-selected=\{view\s*===\s*['"]past['"]\}/);
-      expect(source).toMatch(/aria-controls="tabpanel-league-fixtures"/);
-      expect(source).toMatch(/role="tabpanel"[\s\S]*?id="tabpanel-league-fixtures"/);
     });
 
     it('test_inbox_tabs_declare_aria_attributes', () => {

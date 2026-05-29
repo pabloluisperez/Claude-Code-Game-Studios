@@ -88,11 +88,19 @@
     <li><strong>Acceder</strong> a los datos que tenemos sobre ti.</li>
     <li><strong>Rectificar</strong> datos incorrectos.</li>
     <li><strong>Eliminar</strong> tu cuenta y todos los datos asociados.</li>
-    <li><strong>Portabilidad</strong>: exportar tu estado de juego en formato JSON.</li>
+    <li>
+      <strong>Portabilidad</strong>: exportar tu estado de juego en formato JSON.
+      Si tienes sesión iniciada, puedes descargar el archivo completo ahora:
+      <a
+        href="/api/me/export"
+        download="mis-datos-total-soccer-manager.json"
+        class="underline font-medium"
+      >Descargar mis datos (JSON)</a>.
+    </li>
     <li><strong>Oposición</strong>: oponerte a tratamientos que no sean
       estrictamente necesarios.</li>
   </ul>
-  <p>Para ejercerlos, contacta con el responsable del Servicio.</p>
+  <p>Para ejercer el resto de derechos, contacta con el responsable del Servicio.</p>
 
   <h2>8. Cookies</h2>
   <p>Solo usamos UNA cookie técnica:</p>

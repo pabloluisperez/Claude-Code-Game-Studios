@@ -7,10 +7,32 @@
  * playthroughs.userId → users.id (ver packages/db/src/schema/playthroughs.ts).
  * Eliminar la fila de `users` arrastra todas las dependencias tabla a tabla
  * automáticamente. Esta función NO necesita borrar manualmente cada tabla.
+ *
+ * Note on cross-module DB access in exportUserData: GDPR export is the
+ * documented exception — reading across all tables IS the purpose. The
+ * existing code already read worldSnapshots/calendarEvents directly; this
+ * expands that established pattern to bundle all user-owned data.
  */
 
-import { eq } from 'drizzle-orm';
-import { db, users, playthroughs, worldSnapshots, calendarEvents } from '@smt/db';
+import { eq, or, inArray, type Column } from 'drizzle-orm';
+import {
+  db,
+  users,
+  playthroughs,
+  worldSnapshots,
+  calendarEvents,
+  clubs,
+  players,
+  staff,
+  stadiumUpgradeItems,
+  tvContracts,
+  sponsors,
+  fixtures,
+  standings,
+  careerMilestones,
+  managerProfiles,
+  skillXpEvents,
+} from '@smt/db';
 
 /** Cooldown antes de que un delete-request se ejecute. */
 export const DELETION_COOLDOWN_MS = 24 * 60 * 60 * 1000;
@@ -31,6 +53,17 @@ export type ExportBundle = {
     createdAt: string;
     updatedAt: string;
   }>;
+  clubs: Array<unknown>;
+  players: Array<unknown>;
+  staff: Array<unknown>;
+  stadiumUpgradeItems: Array<unknown>;
+  tvContracts: Array<unknown>;
+  sponsors: Array<unknown>;
+  fixtures: Array<unknown>;
+  standings: Array<unknown>;
+  milestones: Array<unknown>;
+  managerProfiles: Array<unknown>;
+  skillXpEvents: Array<unknown>;
   worldSnapshots: Array<unknown>;
   calendarEvents: Array<unknown>;
 };
@@ -54,6 +87,7 @@ export async function exportUserData(userId: string): Promise<ExportBundle> {
     throw new Error(`User ${userId} not found`);
   }
 
+  // --- playthroughs (owned directly by userId) ---
   const ptRows = await db
     .select({
       id: playthroughs.id,
@@ -68,6 +102,15 @@ export async function exportUserData(userId: string): Promise<ExportBundle> {
 
   const ptIds = ptRows.map((p) => p.id);
 
+  // --- clubs (where managerId = userId) ---
+  const clubRows = await db
+    .select()
+    .from(clubs)
+    .where(eq(clubs.managerId, userId));
+
+  const clubIds = clubRows.map((c) => c.id);
+
+  // --- tables keyed by playthroughId ---
   const wsRows = ptIds.length
     ? await db
         .select()
@@ -81,6 +124,84 @@ export async function exportUserData(userId: string): Promise<ExportBundle> {
         .from(calendarEvents)
         .where(inAny(calendarEvents.playthroughId, ptIds))
     : [];
+
+  const staffRows = ptIds.length
+    ? await db
+        .select()
+        .from(staff)
+        .where(inAny(staff.playthroughId, ptIds))
+    : [];
+
+  const tvContractRows = ptIds.length
+    ? await db
+        .select()
+        .from(tvContracts)
+        .where(inAny(tvContracts.playthroughId, ptIds))
+    : [];
+
+  const sponsorRows = ptIds.length
+    ? await db
+        .select()
+        .from(sponsors)
+        .where(inAny(sponsors.playthroughId, ptIds))
+    : [];
+
+  const milestoneRows = ptIds.length
+    ? await db
+        .select()
+        .from(careerMilestones)
+        .where(inAny(careerMilestones.playthroughId, ptIds))
+    : [];
+
+  const managerProfileRows = ptIds.length
+    ? await db
+        .select()
+        .from(managerProfiles)
+        .where(inAny(managerProfiles.playthroughId, ptIds))
+    : [];
+
+  const skillXpRows = ptIds.length
+    ? await db
+        .select()
+        .from(skillXpEvents)
+        .where(inAny(skillXpEvents.playthroughId, ptIds))
+    : [];
+
+  // --- tables keyed by clubId ---
+  const playerRows = clubIds.length
+    ? await db
+        .select()
+        .from(players)
+        .where(inAny(players.clubId, clubIds))
+    : [];
+
+  const stadiumUpgradeRows = clubIds.length
+    ? await db
+        .select()
+        .from(stadiumUpgradeItems)
+        .where(inAny(stadiumUpgradeItems.clubId, clubIds))
+    : [];
+
+  const standingRows = clubIds.length
+    ? await db
+        .select()
+        .from(standings)
+        .where(inAny(standings.clubId, clubIds))
+    : [];
+
+  // fixtures — user's clubs appear as either home or away
+  const fixtureRows =
+    clubIds.length
+      ? await db
+          .select()
+          .from(fixtures)
+          .where(
+            or(
+              inArray(fixtures.homeClubId, clubIds),
+              inArray(fixtures.awayClubId, clubIds),
+            ),
+          )
+      : [];
 
   return {
     exportedAt: new Date().toISOString(),
@@ -98,12 +219,21 @@ export async function exportUserData(userId: string): Promise<ExportBundle> {
       createdAt: p.createdAt.toISOString(),
       updatedAt: p.updatedAt.toISOString(),
     })),
+    clubs: clubRows,
+    players: playerRows,
+    staff: staffRows,
+    stadiumUpgradeItems: stadiumUpgradeRows,
+    tvContracts: tvContractRows,
+    sponsors: sponsorRows,
+    fixtures: fixtureRows,
+    standings: standingRows,
+    milestones: milestoneRows,
+    managerProfiles: managerProfileRows,
+    skillXpEvents: skillXpRows,
     worldSnapshots: wsRows,
     calendarEvents: ceRows,
   };
 }
-
-import { inArray, type Column } from 'drizzle-orm';
 
 function inAny<T>(col: Column, vals: readonly T[]) {
   return inArray(col, vals as T[]);

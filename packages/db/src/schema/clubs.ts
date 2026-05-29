@@ -1,7 +1,6 @@
 import { integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { users } from './users.js';
-
 export const divisionEnum = pgEnum('division', ['fifth', 'fourth', 'third', 'second', 'first']);
 
 export const clubs = pgTable('clubs', {

@@ -1,0 +1,3919 @@
+{
+  "id": "7bd9c6cb-e30f-4139-830f-95d9086d4b1d",
+  "prevId": "3b53710d-ad97-49d4-bebc-b172194ee522",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.ai_club_window_state": {
+      "name": "ai_club_window_state",
+      "schema": "",
+      "columns": {
+        "bargain_factor": {
+          "name": "bargain_factor",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "club_id": {
+          "name": "club_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rotation_completed": {
+          "name": "rotation_completed",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "false"
+        },
+        "transfer_budget_used_eur_k": {
+          "name": "transfer_budget_used_eur_k",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "window_id": {
+          "name": "window_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "foreignKeys": {
+        "ai_club_window_state_club_id_clubs_id_fk": {
+          "name": "ai_club_window_state_club_id_clubs_id_fk",
+          "tableFrom": "ai_club_window_state",
+          "tableTo": "clubs",
+          "columnsFrom": [
+            "club_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "ai_club_window_state_pk": {
+          "name": "ai_club_window_state_pk",
+          "nullsNotDistinct": false,
+          "columns": [
+            "club_id",
+            "window_id"
+          ]
+        }
+      },
+      "indexes": {
+        "ai_club_window_state_pk": {
+          "name": "ai_club_window_state_pk",
+          "columns": [
+            {
+              "expression": "club_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "window_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.calendar_events": {
+      "name": "calendar_events",
+      "schema": "",
+      "columns": {
+        "consumed": {
+          "name": "consumed",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "false"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
+        },
+        "playthrough_id": {
+          "name": "playthrough_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "priority": {
+          "name": "priority",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "resolved_at": {
+          "name": "resolved_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "scheduled_day_of_season": {
+          "name": "scheduled_day_of_season",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "season": {
+          "name": "season",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "week": {
+          "name": "week",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "foreignKeys": {
+        "calendar_events_playthrough_id_playthroughs_id_fk": {
+          "name": "calendar_events_playthrough_id_playthroughs_id_fk",
+          "tableFrom": "calendar_events",
+          "tableTo": "playthroughs",
+          "columnsFrom": [
+            "playthrough_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "calendar_events_pkey": {
+          "name": "calendar_events_pkey",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
+          ]
+        },
+        "calendar_events_tv_unique_per_season": {
+          "name": "calendar_events_tv_unique_per_season",
+          "nullsNotDistinct": false,
+          "columns": [
+            "playthrough_id",
+            "season",
+            "type"
+          ]
+        }
+      },
+      "indexes": {
+        "calendar_events_pending_week": {
+          "name": "calendar_events_pending_week",
+          "columns": [
+            {
+              "expression": "playthrough_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "week",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "calendar_events_tv_unique_per_season": {
+          "name": "calendar_events_tv_unique_per_season",
+          "columns": [
+            {
+              "expression": "playthrough_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "season",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.career_milestones": {
+      "name": "career_milestones",
+      "schema": "",
+      "columns": {
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "icon": {
+          "name": "icon",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "playthrough_id": {
+          "name": "playthrough_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "unlocked_at": {
+          "name": "unlocked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "week": {
+          "name": "week",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "foreignKeys": {
+        "career_milestones_playthrough_id_playthroughs_id_fk": {
+          "name": "career_milestones_playthrough_id_playthroughs_id_fk",
+          "tableFrom": "career_milestones",
+          "tableTo": "playthroughs",
+          "columnsFrom": [
+            "playthrough_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "career_milestones_pkey": {
+          "name": "career_milestones_pkey",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
+          ]
+        },
+        "career_milestones_pt_kind": {
+          "name": "career_milestones_pt_kind",
+          "nullsNotDistinct": false,
+          "columns": [
+            "playthrough_id",
+            "kind"
+          ]
+        }
+      },
+      "indexes": {
+        "career_milestones_pt_kind": {
+          "name": "career_milestones_pt_kind",
+          "columns": [
+            {
+              "expression": "playthrough_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "kind",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.clubs": {
+      "name": "clubs",
+      "schema": "",
+      "columns": {
+        "boards_capacity": {
+          "name": "boards_capacity",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "4"
+        },
+        "budget": {
+          "name": "budget",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "10000"
+        },
+        "city": {
+          "name": "city",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "city_tier": {
+          "name": "city_tier",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "1"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "current_season": {
+          "name": "current_season",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "1"
+        },
+        "default_match_instruction": {
+          "name": "default_match_instruction",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'HOLD_SHAPE'"
+        },
+        "division": {
+          "name": "division",
+          "type": "USER-DEFINED",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'fifth'"
+        },
+        "fan_base": {
+          "name": "fan_base",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "500"
+        },
+        "group_index": {
+          "name": "group_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "kit_primary_color": {
+          "name": "kit_primary_color",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'#1e3a8a'"
+        },
+        "kit_secondary_color": {
+          "name": "kit_secondary_color",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'#f8fafc'"
+        },
+        "last_season_ticket_paid_season": {
+          "name": "last_season_ticket_paid_season",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "manager_id": {
+          "name": "manager_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "merch_scarf_mfg_qty": {
+          "name": "merch_scarf_mfg_qty",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "merch_scarf_price": {
+          "name": "merch_scarf_price",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "15"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "preferred_formation": {
+          "name": "preferred_formation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'4-4-2'"
+        },
+        "prestige": {
+          "name": "prestige",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "1"
+        },
+        "season_ticket_holders": {
+          "name": "season_ticket_holders",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "100"
+        },
+        "season_ticket_holders_collected": {
+          "name": "season_ticket_holders_collected",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "season_ticket_price_eur": {
+          "name": "season_ticket_price_eur",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "35"
+        },
+        "season_ticket_price_locked_season": {
+          "name": "season_ticket_price_locked_season",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "starting_lineup_player_ids": {
+          "name": "starting_lineup_player_ids",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "strength_rating": {
+          "name": "strength_rating",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "30"
+        },
+        "tier": {
+          "name": "tier",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "5"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "foreignKeys": {
+        "clubs_manager_id_users_id_fk": {
+          "name": "clubs_manager_id_users_id_fk",
+          "tableFrom": "clubs",
+          "tableTo": "users",
+          "columnsFrom": [
+            "manager_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "clubs_pkey": {
+          "name": "clubs_pkey",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "indexes": {
+        "idx_clubs_tier_group": {
+          "name": "idx_clubs_tier_group",
+          "columns": [
+            {
+              "expression": "tier",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "group_index",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.divisions": {
+      "name": "divisions",
+      "schema": "",
+      "columns": {
+        "club_count": {
+          "name": "club_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "20"
+        },
+        "group_index": {
+          "name": "group_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "league_id": {
+          "name": "league_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tier": {
+          "name": "tier",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "foreignKeys": {
+        "divisions_league_id_leagues_id_fk": {
+          "name": "divisions_league_id_leagues_id_fk",
+          "tableFrom": "divisions",
+          "tableTo": "leagues",
+          "columnsFrom": [
+            "league_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "divisions_pkey": {
+          "name": "divisions_pkey",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "indexes": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.fixtures": {
+      "name": "fixtures",
+      "schema": "",
+      "columns": {
+        "away_club_id": {
+          "name": "away_club_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "away_score": {
+          "name": "away_score",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "division_id": {
+          "name": "division_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "home_club_id": {
+          "name": "home_club_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "home_score": {
+          "name": "home_score",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "match_outcome_data": {
+          "name": "match_outcome_data",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "matchday": {
+          "name": "matchday",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "played_at": {
+          "name": "played_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "season_id": {
+          "name": "season_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'scheduled'"
+        },
+        "week": {
+          "name": "week",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "foreignKeys": {
+        "fixtures_away_club_id_clubs_id_fk": {
+          "name": "fixtures_away_club_id_clubs_id_fk",
+          "tableFrom": "fixtures",
+          "tableTo": "clubs",
+          "columnsFrom": [
+            "away_club_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fixtures_division_id_divisions_id_fk": {
+          "name": "fixtures_division_id_divisions_id_fk",
+          "tableFrom": "fixtures",
+          "tableTo": "divisions",
+          "columnsFrom": [
+            "division_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "fixtures_home_club_id_clubs_id_fk": {
+          "name": "fixtures_home_club_id_clubs_id_fk",
+          "tableFrom": "fixtures",
+          "tableTo": "clubs",
+          "columnsFrom": [
+            "home_club_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "fixtures_season_id_seasons_id_fk": {
+          "name": "fixtures_season_id_seasons_id_fk",
+          "tableFrom": "fixtures",
+          "tableTo": "seasons",
+          "columnsFrom": [
+            "season_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "fixtures_pkey": {
+          "name": "fixtures_pkey",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
+          ]
+        },
+        "fixtures_season_week_home": {
+          "name": "fixtures_season_week_home",
+          "nullsNotDistinct": false,
+          "columns": [
+            "season_id",
+            "week",
+            "home_club_id"
+          ]
+        }
+      },
+      "indexes": {
+        "fixtures_season_week_home": {
+          "name": "fixtures_season_week_home",
+          "columns": [
+            {
+              "expression": "season_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "week",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "home_club_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.leagues": {
+      "name": "leagues",
+      "schema": "",
+      "columns": {
+        "country": {
+          "name": "country",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'ES'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "playthrough_id": {
+          "name": "playthrough_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "foreignKeys": {
+        "leagues_playthrough_id_playthroughs_id_fk": {
+          "name": "leagues_playthrough_id_playthroughs_id_fk",
+          "tableFrom": "leagues",
+          "tableTo": "playthroughs",
+          "columnsFrom": [
+            "playthrough_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "leagues_pkey": {
+          "name": "leagues_pkey",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "indexes": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.manager_profiles": {
+      "name": "manager_profiles",
+      "schema": "",
+      "columns": {
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "fan_loyalty": {
+          "name": "fan_loyalty",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "playthrough_id": {
+          "name": "playthrough_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "skills": {
+          "name": "skills",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "foreignKeys": {
+        "manager_profiles_playthrough_id_playthroughs_id_fk": {
+          "name": "manager_profiles_playthrough_id_playthroughs_id_fk",
+          "tableFrom": "manager_profiles",
+          "tableTo": "playthroughs",
+          "columnsFrom": [
+            "playthrough_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "manager_profiles_pkey": {
+          "name": "manager_profiles_pkey",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
+          ]
+        },
+        "manager_profiles_playthrough_id_unique": {
+          "name": "manager_profiles_playthrough_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "playthrough_id"
+          ]
+        }
+      },
+      "indexes": {
+        "manager_profiles_playthrough_id_unique": {
+          "name": "manager_profiles_playthrough_id_unique",
+          "columns": [
+            {
+              "expression": "playthrough_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.match_sessions": {
+      "name": "match_sessions",
+      "schema": "",
+      "columns": {
+        "active_instruction_away": {
+          "name": "active_instruction_away",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "active_instruction_home": {
+          "name": "active_instruction_home",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "away_substitutions_used": {
+          "name": "away_substitutions_used",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "current_formation_away": {
+          "name": "current_formation_away",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "current_formation_home": {
+          "name": "current_formation_home",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "current_lineup_away": {
+          "name": "current_lineup_away",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "current_lineup_home": {
+          "name": "current_lineup_home",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "current_tick": {
+          "name": "current_tick",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "events_accumulated": {
+          "name": "events_accumulated",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'"
+        },
+        "fixture_id": {
+          "name": "fixture_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "home_momentum": {
+          "name": "home_momentum",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "50"
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "player_club_id": {
+          "name": "player_club_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "player_club_side": {
+          "name": "player_club_side",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "playthrough_id": {
+          "name": "playthrough_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pre_match_snapshot": {
+          "name": "pre_match_snapshot",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "prng_state": {
+          "name": "prng_state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "seed": {
+          "name": "seed",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pre_match'"
+        },
+        "substitutions_used": {
+          "name": "substitutions_used",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "timeout_job_id": {
+          "name": "timeout_job_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "yellow_cards_by_player_id": {
+          "name": "yellow_cards_by_player_id",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
+        }
+      },
+      "foreignKeys": {
+        "match_sessions_fixture_id_fixtures_id_fk": {
+          "name": "match_sessions_fixture_id_fixtures_id_fk",
+          "tableFrom": "match_sessions",
+          "tableTo": "fixtures",
+          "columnsFrom": [
+            "fixture_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "match_sessions_player_club_id_clubs_id_fk": {
+          "name": "match_sessions_player_club_id_clubs_id_fk",
+          "tableFrom": "match_sessions",
+          "tableTo": "clubs",
+          "columnsFrom": [
+            "player_club_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "match_sessions_playthrough_id_playthroughs_id_fk": {
+          "name": "match_sessions_playthrough_id_playthroughs_id_fk",
+          "tableFrom": "match_sessions",
+          "tableTo": "playthroughs",
+          "columnsFrom": [
+            "playthrough_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "match_sessions_active_playthrough": {
+          "name": "match_sessions_active_playthrough",
+          "nullsNotDistinct": false,
+          "columns": [
+            "playthrough_id"
+          ]
+        },
+        "match_sessions_pkey": {
+          "name": "match_sessions_pkey",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "indexes": {
+        "match_sessions_active_playthrough": {
+          "name": "match_sessions_active_playthrough",
+          "columns": [
+            {
+              "expression": "playthrough_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "match_sessions_by_playthrough_created": {
+          "name": "match_sessions_by_playthrough_created",
+          "columns": [
+            {
+              "expression": "playthrough_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.player_buyer_rejections": {
+      "name": "player_buyer_rejections",
+      "schema": "",
+      "columns": {
+        "buyer_club_id": {
+          "name": "buyer_club_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "player_id": {
+          "name": "player_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "window_id": {
+          "name": "window_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "foreignKeys": {
+        "player_buyer_rejections_buyer_club_id_clubs_id_fk": {
+          "name": "player_buyer_rejections_buyer_club_id_clubs_id_fk",
+          "tableFrom": "player_buyer_rejections",
+          "tableTo": "clubs",
+          "columnsFrom": [
+            "buyer_club_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "player_buyer_rejections_player_id_players_id_fk": {
+          "name": "player_buyer_rejections_player_id_players_id_fk",
+          "tableFrom": "player_buyer_rejections",
+          "tableTo": "players",
+          "columnsFrom": [
+            "player_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "player_buyer_rejections_pk": {
+          "name": "player_buyer_rejections_pk",
+          "nullsNotDistinct": false,
+          "columns": [
+            "player_id",
+            "buyer_club_id",
+            "window_id"
+          ]
+        }
+      },
+      "indexes": {
+        "player_buyer_rejections_pk": {
+          "name": "player_buyer_rejections_pk",
+          "columns": [
+            {
+              "expression": "player_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "buyer_club_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "window_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.players": {
+      "name": "players",
+      "schema": "",
+      "columns": {
+        "agresividad": {
+          "name": "agresividad",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "50"
+        },
+        "availability": {
+          "name": "availability",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'available'"
+        },
+        "birth_week": {
+          "name": "birth_week",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "calidad": {
+          "name": "calidad",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "50"
+        },
+        "club_id": {
+          "name": "club_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "contract_end_week": {
+          "name": "contract_end_week",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "contract_start_week": {
+          "name": "contract_start_week",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "contract_status": {
+          "name": "contract_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'in_contract'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "dribbling": {
+          "name": "dribbling",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "finishing": {
+          "name": "finishing",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "first_name": {
+          "name": "first_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fitness": {
+          "name": "fitness",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "90"
+        },
+        "form": {
+          "name": "form",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "60"
+        },
+        "handling": {
+          "name": "handling",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "injured_until_week": {
+          "name": "injured_until_week",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kicking": {
+          "name": "kicking",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_name": {
+          "name": "last_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "morale": {
+          "name": "morale",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "60"
+        },
+        "nationality": {
+          "name": "nationality",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'ES'"
+        },
+        "passing": {
+          "name": "passing",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "playthrough_id": {
+          "name": "playthrough_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "positioning": {
+          "name": "positioning",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "potential_ceiling": {
+          "name": "potential_ceiling",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prev_attrs": {
+          "name": "prev_attrs",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "recent_ratings": {
+          "name": "recent_ratings",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'"
+        },
+        "reflexes": {
+          "name": "reflexes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resistencia": {
+          "name": "resistencia",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "50"
+        },
+        "salary_eur_k": {
+          "name": "salary_eur_k",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "skill": {
+          "name": "skill",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "speed": {
+          "name": "speed",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stamina": {
+          "name": "stamina",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "75"
+        },
+        "strength": {
+          "name": "strength",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "suspended_matches_remaining": {
+          "name": "suspended_matches_remaining",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tackling": {
+          "name": "tackling",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "training_focus": {
+          "name": "training_focus",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "traits": {
+          "name": "traits",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'"
+        },
+        "transfer_listed": {
+          "name": "transfer_listed",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "false"
+        },
+        "velocidad": {
+          "name": "velocidad",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "50"
+        },
+        "vision": {
+          "name": "vision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wage_expectation_eur_k_week": {
+          "name": "wage_expectation_eur_k_week",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "5"
+        },
+        "weeks_unsigned": {
+          "name": "weeks_unsigned",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "work_rate": {
+          "name": "work_rate",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "yellow_cards_season": {
+          "name": "yellow_cards_season",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        }
+      },
+      "foreignKeys": {
+        "players_club_id_clubs_id_fk": {
+          "name": "players_club_id_clubs_id_fk",
+          "tableFrom": "players",
+          "tableTo": "clubs",
+          "columnsFrom": [
+            "club_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "players_playthrough_id_playthroughs_id_fk": {
+          "name": "players_playthrough_id_playthroughs_id_fk",
+          "tableFrom": "players",
+          "tableTo": "playthroughs",
+          "columnsFrom": [
+            "playthrough_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "players_pkey": {
+          "name": "players_pkey",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "indexes": {
+        "players_by_club": {
+          "name": "players_by_club",
+          "columns": [
+            {
+              "expression": "playthrough_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "club_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "players_by_playthrough": {
+          "name": "players_by_playthrough",
+          "columns": [
+            {
+              "expression": "playthrough_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_players_contract_status": {
+          "name": "idx_players_contract_status",
+          "columns": [
+            {
+              "expression": "contract_status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_players_transfer_listed": {
+          "name": "idx_players_transfer_listed",
+          "columns": [
+            {
+              "expression": "transfer_listed",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_players_training_focus": {
+          "name": "idx_players_training_focus",
+          "columns": [
+            {
+              "expression": "training_focus",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.playthroughs": {
+      "name": "playthroughs",
+      "schema": "",
+      "columns": {
+        "advance_resume_day": {
+          "name": "advance_resume_day",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "club_id": {
+          "name": "club_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "current_day_of_season": {
+          "name": "current_day_of_season",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "current_week": {
+          "name": "current_week",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "last_tick_at": {
+          "name": "last_tick_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tier_history": {
+          "name": "tier_history",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "training_intensity": {
+          "name": "training_intensity",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "50"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "foreignKeys": {
+        "playthroughs_club_id_clubs_id_fk": {
+          "name": "playthroughs_club_id_clubs_id_fk",
+          "tableFrom": "playthroughs",
+          "tableTo": "clubs",
+          "columnsFrom": [
+            "club_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "playthroughs_user_id_users_id_fk": {
+          "name": "playthroughs_user_id_users_id_fk",
+          "tableFrom": "playthroughs",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "playthroughs_pkey": {
+          "name": "playthroughs_pkey",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "indexes": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.saved_searches": {
+      "name": "saved_searches",
+      "schema": "",
+      "columns": {
+        "club_id": {
+          "name": "club_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "filters_json": {
+          "name": "filters_json",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "foreignKeys": {
+        "saved_searches_club_id_clubs_id_fk": {
+          "name": "saved_searches_club_id_clubs_id_fk",
+          "tableFrom": "saved_searches",
+          "tableTo": "clubs",
+          "columnsFrom": [
+            "club_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "saved_searches_pkey": {
+          "name": "saved_searches_pkey",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
+          ]
+        },
+        "uniq_saved_search_club_name": {
+          "name": "uniq_saved_search_club_name",
+          "nullsNotDistinct": false,
+          "columns": [
+            "club_id",
+            "name"
+          ]
+        }
+      },
+      "indexes": {
+        "uniq_saved_search_club_name": {
+          "name": "uniq_saved_search_club_name",
+          "columns": [
+            {
+              "expression": "club_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.scouting_actions": {
+      "name": "scouting_actions",
+      "schema": "",
+      "columns": {
+        "action_type": {
+          "name": "action_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "club_id": {
+          "name": "club_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completes_at_week": {
+          "name": "completes_at_week",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cost_paid_eur_k": {
+          "name": "cost_paid_eur_k",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "initiated_at": {
+          "name": "initiated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "player_id": {
+          "name": "player_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "refunded_eur_k": {
+          "name": "refunded_eur_k",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "window_id": {
+          "name": "window_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "foreignKeys": {
+        "scouting_actions_club_id_clubs_id_fk": {
+          "name": "scouting_actions_club_id_clubs_id_fk",
+          "tableFrom": "scouting_actions",
+          "tableTo": "clubs",
+          "columnsFrom": [
+            "club_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "scouting_actions_player_id_players_id_fk": {
+          "name": "scouting_actions_player_id_players_id_fk",
+          "tableFrom": "scouting_actions",
+          "tableTo": "players",
+          "columnsFrom": [
+            "player_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "scouting_actions_pkey": {
+          "name": "scouting_actions_pkey",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "indexes": {
+        "idx_scout_window_club": {
+          "name": "idx_scout_window_club",
+          "columns": [
+            {
+              "expression": "window_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "club_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_scout_pending": {
+          "name": "idx_scout_pending",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "completes_at_week",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.scouting_market_window_status": {
+      "name": "scouting_market_window_status",
+      "schema": "",
+      "columns": {
+        "rotation_completed_at": {
+          "name": "rotation_completed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rotation_started_at": {
+          "name": "rotation_started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "window_id": {
+          "name": "window_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "scouting_market_window_status_pkey": {
+          "name": "scouting_market_window_status_pkey",
+          "nullsNotDistinct": false,
+          "columns": [
+            "window_id"
+          ]
+        }
+      },
+      "indexes": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.seasons": {
+      "name": "seasons",
+      "schema": "",
+      "columns": {
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "division_id": {
+          "name": "division_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "end_week": {
+          "name": "end_week",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "league_id": {
+          "name": "league_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "season_number": {
+          "name": "season_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_week": {
+          "name": "start_week",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'upcoming'"
+        }
+      },
+      "foreignKeys": {
+        "seasons_division_id_divisions_id_fk": {
+          "name": "seasons_division_id_divisions_id_fk",
+          "tableFrom": "seasons",
+          "tableTo": "divisions",
+          "columnsFrom": [
+            "division_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "seasons_league_id_leagues_id_fk": {
+          "name": "seasons_league_id_leagues_id_fk",
+          "tableFrom": "seasons",
+          "tableTo": "leagues",
+          "columnsFrom": [
+            "league_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "seasons_pkey": {
+          "name": "seasons_pkey",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "indexes": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sessions": {
+      "name": "sessions",
+      "schema": "",
+      "columns": {
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "foreignKeys": {
+        "sessions_user_id_users_id_fk": {
+          "name": "sessions_user_id_users_id_fk",
+          "tableFrom": "sessions",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "sessions_pkey": {
+          "name": "sessions_pkey",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "indexes": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.skill_xp_events": {
+      "name": "skill_xp_events",
+      "schema": "",
+      "columns": {
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "playthrough_id": {
+          "name": "playthrough_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "season": {
+          "name": "season",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "skill_id": {
+          "name": "skill_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "week": {
+          "name": "week",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "xp_granted": {
+          "name": "xp_granted",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "foreignKeys": {
+        "skill_xp_events_playthrough_id_playthroughs_id_fk": {
+          "name": "skill_xp_events_playthrough_id_playthroughs_id_fk",
+          "tableFrom": "skill_xp_events",
+          "tableTo": "playthroughs",
+          "columnsFrom": [
+            "playthrough_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "skill_xp_events_pkey": {
+          "name": "skill_xp_events_pkey",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "indexes": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sponsors": {
+      "name": "sponsors",
+      "schema": "",
+      "columns": {
+        "cancellation_reason": {
+          "name": "cancellation_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "club_id": {
+          "name": "club_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "ends_week": {
+          "name": "ends_week",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "playthrough_id": {
+          "name": "playthrough_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quality_contribution": {
+          "name": "quality_contribution",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slot": {
+          "name": "slot",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'kit'"
+        },
+        "started_week": {
+          "name": "started_week",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        },
+        "tier": {
+          "name": "tier",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "weekly_eur_k": {
+          "name": "weekly_eur_k",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "foreignKeys": {
+        "sponsors_club_id_clubs_id_fk": {
+          "name": "sponsors_club_id_clubs_id_fk",
+          "tableFrom": "sponsors",
+          "tableTo": "clubs",
+          "columnsFrom": [
+            "club_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "sponsors_playthrough_id_playthroughs_id_fk": {
+          "name": "sponsors_playthrough_id_playthroughs_id_fk",
+          "tableFrom": "sponsors",
+          "tableTo": "playthroughs",
+          "columnsFrom": [
+            "playthrough_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "sponsors_pkey": {
+          "name": "sponsors_pkey",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "indexes": {
+        "sponsors_club_status": {
+          "name": "sponsors_club_status",
+          "columns": [
+            {
+              "expression": "playthrough_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "club_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.stadium_upgrade_items": {
+      "name": "stadium_upgrade_items",
+      "schema": "",
+      "columns": {
+        "cancelled_at": {
+          "name": "cancelled_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "club_id": {
+          "name": "club_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cost_paid_eur_k": {
+          "name": "cost_paid_eur_k",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "director_skill_snapshot": {
+          "name": "director_skill_snapshot",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duration_weeks": {
+          "name": "duration_weeks",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "item_slug": {
+          "name": "item_slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tier": {
+          "name": "tier",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "track": {
+          "name": "track",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "weeks_remaining": {
+          "name": "weeks_remaining",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "foreignKeys": {
+        "stadium_upgrade_items_club_id_clubs_id_fk": {
+          "name": "stadium_upgrade_items_club_id_clubs_id_fk",
+          "tableFrom": "stadium_upgrade_items",
+          "tableTo": "clubs",
+          "columnsFrom": [
+            "club_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "stadium_upgrade_items_pkey": {
+          "name": "stadium_upgrade_items_pkey",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
+          ]
+        },
+        "stadium_upgrade_one_active_per_club": {
+          "name": "stadium_upgrade_one_active_per_club",
+          "nullsNotDistinct": false,
+          "columns": [
+            "club_id"
+          ]
+        }
+      },
+      "indexes": {
+        "stadium_upgrade_one_active_per_club": {
+          "name": "stadium_upgrade_one_active_per_club",
+          "columns": [
+            {
+              "expression": "club_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.staff": {
+      "name": "staff",
+      "schema": "",
+      "columns": {
+        "club_id": {
+          "name": "club_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "hired_week": {
+          "name": "hired_week",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "playthrough_id": {
+          "name": "playthrough_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quality_tier": {
+          "name": "quality_tier",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "1"
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        },
+        "weekly_eur_k": {
+          "name": "weekly_eur_k",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "foreignKeys": {
+        "staff_club_id_clubs_id_fk": {
+          "name": "staff_club_id_clubs_id_fk",
+          "tableFrom": "staff",
+          "tableTo": "clubs",
+          "columnsFrom": [
+            "club_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "staff_playthrough_id_playthroughs_id_fk": {
+          "name": "staff_playthrough_id_playthroughs_id_fk",
+          "tableFrom": "staff",
+          "tableTo": "playthroughs",
+          "columnsFrom": [
+            "playthrough_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "staff_pkey": {
+          "name": "staff_pkey",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "indexes": {
+        "staff_club_status": {
+          "name": "staff_club_status",
+          "columns": [
+            {
+              "expression": "playthrough_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "club_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.staff_messages": {
+      "name": "staff_messages",
+      "schema": "",
+      "columns": {
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "is_read": {
+          "name": "is_read",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "false"
+        },
+        "playthrough_id": {
+          "name": "playthrough_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "priority": {
+          "name": "priority",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "season": {
+          "name": "season",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "staff_id": {
+          "name": "staff_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "template_key": {
+          "name": "template_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "week": {
+          "name": "week",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "foreignKeys": {
+        "staff_messages_playthrough_id_playthroughs_id_fk": {
+          "name": "staff_messages_playthrough_id_playthroughs_id_fk",
+          "tableFrom": "staff_messages",
+          "tableTo": "playthroughs",
+          "columnsFrom": [
+            "playthrough_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "staff_messages_staff_id_staff_id_fk": {
+          "name": "staff_messages_staff_id_staff_id_fk",
+          "tableFrom": "staff_messages",
+          "tableTo": "staff",
+          "columnsFrom": [
+            "staff_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "staff_messages_pkey": {
+          "name": "staff_messages_pkey",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "indexes": {
+        "staff_messages_week": {
+          "name": "staff_messages_week",
+          "columns": [
+            {
+              "expression": "playthrough_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "week",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.standings": {
+      "name": "standings",
+      "schema": "",
+      "columns": {
+        "club_id": {
+          "name": "club_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "division_id": {
+          "name": "division_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "draws": {
+          "name": "draws",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "goals_against": {
+          "name": "goals_against",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "goals_for": {
+          "name": "goals_for",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "losses": {
+          "name": "losses",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "played": {
+          "name": "played",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "points": {
+          "name": "points",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "season_id": {
+          "name": "season_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "wins": {
+          "name": "wins",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        }
+      },
+      "foreignKeys": {
+        "standings_club_id_clubs_id_fk": {
+          "name": "standings_club_id_clubs_id_fk",
+          "tableFrom": "standings",
+          "tableTo": "clubs",
+          "columnsFrom": [
+            "club_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "standings_division_id_divisions_id_fk": {
+          "name": "standings_division_id_divisions_id_fk",
+          "tableFrom": "standings",
+          "tableTo": "divisions",
+          "columnsFrom": [
+            "division_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "standings_season_id_seasons_id_fk": {
+          "name": "standings_season_id_seasons_id_fk",
+          "tableFrom": "standings",
+          "tableTo": "seasons",
+          "columnsFrom": [
+            "season_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "standings_club_per_season_div": {
+          "name": "standings_club_per_season_div",
+          "nullsNotDistinct": false,
+          "columns": [
+            "season_id",
+            "division_id",
+            "club_id"
+          ]
+        },
+        "standings_pkey": {
+          "name": "standings_pkey",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "indexes": {
+        "standings_club_per_season_div": {
+          "name": "standings_club_per_season_div",
+          "columns": [
+            {
+              "expression": "season_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "division_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "club_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.transfer_offers": {
+      "name": "transfer_offers",
+      "schema": "",
+      "columns": {
+        "bid_number": {
+          "name": "bid_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "buyer_club_id": {
+          "name": "buyer_club_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "contract_weeks": {
+          "name": "contract_weeks",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "counter_offer_eur_k": {
+          "name": "counter_offer_eur_k",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "fee_eur_k": {
+          "name": "fee_eur_k",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "player_id": {
+          "name": "player_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "resolved_at": {
+          "name": "resolved_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "seller_club_id": {
+          "name": "seller_club_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "wage_offer_eur_k_week": {
+          "name": "wage_offer_eur_k_week",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "window_id": {
+          "name": "window_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "foreignKeys": {
+        "transfer_offers_buyer_club_id_clubs_id_fk": {
+          "name": "transfer_offers_buyer_club_id_clubs_id_fk",
+          "tableFrom": "transfer_offers",
+          "tableTo": "clubs",
+          "columnsFrom": [
+            "buyer_club_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "transfer_offers_player_id_players_id_fk": {
+          "name": "transfer_offers_player_id_players_id_fk",
+          "tableFrom": "transfer_offers",
+          "tableTo": "players",
+          "columnsFrom": [
+            "player_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "transfer_offers_seller_club_id_clubs_id_fk": {
+          "name": "transfer_offers_seller_club_id_clubs_id_fk",
+          "tableFrom": "transfer_offers",
+          "tableTo": "clubs",
+          "columnsFrom": [
+            "seller_club_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "transfer_offers_pkey": {
+          "name": "transfer_offers_pkey",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "indexes": {
+        "idx_offers_buyer_window": {
+          "name": "idx_offers_buyer_window",
+          "columns": [
+            {
+              "expression": "buyer_club_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "window_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_offers_player_window": {
+          "name": "idx_offers_player_window",
+          "columns": [
+            {
+              "expression": "player_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "window_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.tv_contracts": {
+      "name": "tv_contracts",
+      "schema": "",
+      "columns": {
+        "cancelled_at": {
+          "name": "cancelled_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancelled_reason": {
+          "name": "cancelled_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "division_at_signing": {
+          "name": "division_at_signing",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "duration_seasons": {
+          "name": "duration_seasons",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "playthrough_id": {
+          "name": "playthrough_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "season": {
+          "name": "season",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "season_in_contract": {
+          "name": "season_in_contract",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "1"
+        },
+        "signed_at": {
+          "name": "signed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'NONE'"
+        },
+        "tier": {
+          "name": "tier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "weekly_rate_eur_k": {
+          "name": "weekly_rate_eur_k",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "foreignKeys": {
+        "tv_contracts_playthrough_id_playthroughs_id_fk": {
+          "name": "tv_contracts_playthrough_id_playthroughs_id_fk",
+          "tableFrom": "tv_contracts",
+          "tableTo": "playthroughs",
+          "columnsFrom": [
+            "playthrough_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "tv_contracts_pkey": {
+          "name": "tv_contracts_pkey",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
+          ]
+        },
+        "tv_contracts_playthrough_season_unique": {
+          "name": "tv_contracts_playthrough_season_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "playthrough_id",
+            "season"
+          ]
+        }
+      },
+      "indexes": {
+        "tv_contracts_playthrough_season_unique": {
+          "name": "tv_contracts_playthrough_season_unique",
+          "columns": [
+            {
+              "expression": "playthrough_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "season",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "tv_contracts_playthrough_status": {
+          "name": "tv_contracts_playthrough_status",
+          "columns": [
+            {
+              "expression": "playthrough_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deletion_requested_at": {
+          "name": "deletion_requested_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "password_hash": {
+          "name": "password_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "username": {
+          "name": "username",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_email_unique": {
+          "name": "users_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        },
+        "users_pkey": {
+          "name": "users_pkey",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
+          ]
+        },
+        "users_username_unique": {
+          "name": "users_username_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "username"
+          ]
+        }
+      },
+      "indexes": {
+        "users_email_unique": {
+          "name": "users_email_unique",
+          "columns": [
+            {
+              "expression": "email",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "users_username_unique": {
+          "name": "users_username_unique",
+          "columns": [
+            {
+              "expression": "username",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.world_snapshots": {
+      "name": "world_snapshots",
+      "schema": "",
+      "columns": {
+        "cascade_log": {
+          "name": "cascade_log",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "delayed_effects_buffer": {
+          "name": "delayed_effects_buffer",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'"
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "playthrough_id": {
+          "name": "playthrough_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "seed_state": {
+          "name": "seed_state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stadium_upgrade_count": {
+          "name": "stadium_upgrade_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "threshold_crossings": {
+          "name": "threshold_crossings",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "training_facility_level": {
+          "name": "training_facility_level",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "week": {
+          "name": "week",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "world_state": {
+          "name": "world_state",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "youth_academy_level": {
+          "name": "youth_academy_level",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        }
+      },
+      "foreignKeys": {
+        "world_snapshots_playthrough_id_playthroughs_id_fk": {
+          "name": "world_snapshots_playthrough_id_playthroughs_id_fk",
+          "tableFrom": "world_snapshots",
+          "tableTo": "playthroughs",
+          "columnsFrom": [
+            "playthrough_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "world_snapshots_pkey": {
+          "name": "world_snapshots_pkey",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
+          ]
+        },
+        "world_snapshots_playthrough_week": {
+          "name": "world_snapshots_playthrough_week",
+          "nullsNotDistinct": false,
+          "columns": [
+            "playthrough_id",
+            "week"
+          ]
+        }
+      },
+      "indexes": {
+        "world_snapshots_playthrough_week": {
+          "name": "world_snapshots_playthrough_week",
+          "columns": [
+            {
+              "expression": "playthrough_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "week",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.division": {
+      "name": "division",
+      "schema": "public",
+      "values": [
+        "fifth",
+        "fourth",
+        "third",
+        "second",
+        "first"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

@@ -108,6 +108,18 @@ const TABLE: Readonly<Record<string, EventDisplay>> = Object.freeze({
     description: 'No se pueden pagar las nóminas este mes. Decide cómo actuar.',
     icon: '🧊',
   },
+  tv_auction: {
+    label: 'Subasta derechos TV',
+    description:
+      'Las cadenas pujan por los derechos de televisión del club. Elige tier y duración en Derechos TV.',
+    icon: '📺',
+  },
+  tv_midseason_offer: {
+    label: 'Oferta TV a media temporada',
+    description:
+      'Una cadena mejora su oferta a mitad de temporada. Revísala en Derechos TV.',
+    icon: '📺',
+  },
 });
 
 export function eventDisplay(type: string): EventDisplay {

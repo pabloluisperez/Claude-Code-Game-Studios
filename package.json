@@ -1,7 +1,7 @@
 {
   "name": "smt",
   "private": true,
-  "packageManager": "pnpm@11.1.2",
+  "packageManager": "pnpm@11.2.2",
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
@@ -13,6 +13,7 @@
     "db:generate": "pnpm --filter @smt/db run db:generate",
     "db:migrate": "pnpm --filter @smt/db run db:migrate",
     "db:studio": "pnpm --filter @smt/db run db:studio",
+    "db:reset": "turbo run db:reset",
     "soak-test": "tsx tools/soak-test.ts"
   },
   "devDependencies": {

@@ -11,7 +11,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
-import { db, clubs } from '@smt/db';
+import { db, clubs, playthroughs } from '@smt/db';
 import { requireUser, type AuthEnv } from '../../auth/middleware.js';
 import { logger } from '../../lib/logger.js';
 import {
@@ -84,8 +84,13 @@ export function createScoutingMarketRoutes(): Hono<AuthEnv> {
     if (!(await clubBelongsToUser(user.id, clubId))) {
       return c.json({ error: 'NOT_FOUND' }, 404);
     }
+    const [pt] = await db
+      .select({ transferWindowOpen: playthroughs.transferWindowOpen })
+      .from(playthroughs)
+      .where(eq(playthroughs.clubId, clubId))
+      .limit(1);
     const pool = await getMarket(clubId, { limit: 50, currentWeek });
-    return c.json({ pool }, 200);
+    return c.json({ pool, transferWindowOpen: pt?.transferWindowOpen ?? false }, 200);
   });
 
   app.post('/scout', zValidator('json', scoutSchema), async (c) => {

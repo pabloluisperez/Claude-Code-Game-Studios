@@ -11,7 +11,6 @@
 import { integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { playthroughs } from './playthroughs.js';
-
 export const leagues = pgTable('leagues', {
   id: uuid('id').primaryKey().defaultRandom(),
   playthroughId: uuid('playthrough_id')

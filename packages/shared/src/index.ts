@@ -374,6 +374,7 @@ export type {
 export {
   resolveEvent,
   resolveDefault,
+  resolveTransferWindow,
   type EventResolveContext,
 } from './sim/event-system/resolver.js';
 export {
@@ -556,6 +557,11 @@ export {
   DEEP_SCOUT_COST_EUR_K,
   SCOUT_DIRECTOR_T3_COST_DISCOUNT,
 } from './sim/scouting/cost.js';
+export {
+  classifyContractStatus,
+  weeksUntilContractEnd,
+  type ContractStatus,
+} from './sim/scouting/contract-status.js';
 export {
   generateBargainFactor,
   shouldMarkForSale,

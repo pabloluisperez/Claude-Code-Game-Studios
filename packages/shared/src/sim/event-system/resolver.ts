@@ -31,6 +31,8 @@ import type {
   YouthPromotionPayload,
   ExternalManagerOfferPayload,
   AlcaldeMeetingPayload,
+  TransferWindowOpenPayload,
+  TransferWindowClosePayload,
 } from './types.js';
 
 export interface EventResolveContext {
@@ -259,6 +261,14 @@ function resolveStadiumUpgrade(
   return EMPTY;
 }
 
+export function resolveTransferWindow(
+  payload: TransferWindowOpenPayload | TransferWindowClosePayload,
+  _choice: string,
+): ResolutionResult {
+  const isOpen = payload.kind === 'transfer_window_open';
+  return { deltas: {}, sideEffects: [], transferWindowOpen: isOpen };
+}
+
 // ── Top-level dispatcher (exhaustive over the union) ─────────────────────────
 
 export function resolveEvent(
@@ -293,6 +303,10 @@ export function resolveEvent(
       return resolveExternalManagerOffer(payload, choice as EventChoiceId<ExternalManagerOfferPayload>);
     case 'stadium_upgrade_offer':
       return resolveStadiumUpgrade(payload, choice as EventChoiceId<StadiumUpgradeOfferPayload>);
+    case 'transfer_window_open':
+      return resolveTransferWindow(payload as TransferWindowOpenPayload, choice);
+    case 'transfer_window_close':
+      return resolveTransferWindow(payload as TransferWindowClosePayload, choice);
     default: {
       const _exhaustive: never = payload;
       void _exhaustive;

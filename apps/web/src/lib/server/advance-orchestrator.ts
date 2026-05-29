@@ -65,6 +65,10 @@ import {
   type WorldState,
   type TickResult,
   type DelayedEffectsBuffer,
+  resolveTransferWindow,
+  resolveDefault,
+  type EventResolveContext,
+  type EventDecisionPayload,
 } from '@smt/shared';
 import { popEffectsDueAt } from '@smt/shared/sim/delayed-effects';
 import { runTVPostPhase, runTVPrePhase, persistTVTickEffects } from './tv-rights-tick';
@@ -72,6 +76,7 @@ import { maybeDripSeasonTickets } from './season-tickets';
 import { runMatchDay } from './match-day-runner';
 import { applyEconomyTick } from './economy-tick';
 import { tickStadiumForClubInTx } from './stadium-tick';
+import { tickAIClubsStadiums } from './ai-clubs-stadium-tick';
 import { checkAndRolloverSeason } from './season-rollover';
 import { detectAndPersistMilestones } from './milestones';
 import { grantWeeklyManagerXp } from './manager-xp';
@@ -478,11 +483,88 @@ export async function runAdvanceTickFull(
     (eco.patchedState as Record<string, number>)['stadium_reform_cost_weekly'] = 0;
   }
 
+  // ── Phase 3c: AI-clubs stadium tick (Story 25-7) ─────────────────────────
+  // The player's club was already ticked in Phase 3b. Tick all other clubs
+  // that have an in_progress upgrade. No worldState mutation needed — AI clubs
+  // have no player-visible cashflow breakdown. Errors are swallowed inside
+  // tickAIClubsStadiums; this try/catch is a belt-and-suspenders guard.
+  try {
+    await tickAIClubsStadiums(active.clubId);
+  } catch {
+    // AI clubs stadium tick must never block the advance pipeline.
+  }
+
+  // ── Phase 3.5: resolve NOTIFY calendar events (transfer window + auto-resolve) ──
+  // Fetch pending NOTIFY events for this week before the transaction.
+  const pendingEvents = await db
+    .select({
+      id: calendarEvents.id,
+      metadata: calendarEvents.metadata,
+    })
+    .from(calendarEvents)
+    .where(
+      and(
+        eq(calendarEvents.playthroughId, active.id),
+        eq(calendarEvents.week, nextWeek),
+        eq(calendarEvents.status, 'pending'),
+        eq(calendarEvents.priority, 'NOTIFY'),
+      ),
+    );
+
+  // Build a minimal resolve context needed for auto-resolve of NOTIFY events.
+  const resolveCtx: EventResolveContext = {
+    rng: () => 0, // NOTIFY events auto-resolve via default — no randomness needed.
+    currentWeek: nextWeek,
+    playerClubId: active.clubId,
+  };
+
+  let transferWindowOpen: boolean | undefined = undefined;
+
   // ── Phase 4: atomic persistence ─────────────────────────────────────────
   // ADR-020 invariant: currentDayOfSeason = currentWeek * 7 (Option B —
   // weekly batches advance both columns in lockstep). Sprint 12+ will
   // break the lockstep when mid-week pause requires day-granular halts.
   await db.transaction(async (tx) => {
+    // ── Resolve pending NOTIFY events inside the transaction ──────────
+    for (const ev of pendingEvents) {
+      const metadata = (ev.metadata as Record<string, unknown>) ?? {};
+      const kind = metadata['kind'] as string | undefined;
+
+      if (kind === 'transfer_window_open' || kind === 'transfer_window_close') {
+        const isOpen = kind === 'transfer_window_open';
+        const result = resolveTransferWindow(
+          isOpen
+            ? { kind: 'transfer_window_open' as const, defaultOption: 'open' as const }
+            : { kind: 'transfer_window_close' as const, defaultOption: 'close' as const },
+          isOpen ? 'open' : 'close',
+        );
+        transferWindowOpen = result.transferWindowOpen;
+        await tx
+          .update(calendarEvents)
+          .set({
+            status: 'resolved',
+            consumed: true,
+            resolvedAt: new Date(),
+          })
+          .where(eq(calendarEvents.id, ev.id));
+      } else if (metadata['decisionPayload']) {
+        // Standard NOTIFY events with decisionPayload — auto-resolve via default.
+        const payload = metadata['decisionPayload'] as EventDecisionPayload | undefined;
+        if (payload) {
+          resolveDefault(payload, resolveCtx);
+          await tx
+            .update(calendarEvents)
+            .set({
+              status: 'resolved',
+              consumed: true,
+              resolvedAt: new Date(),
+            })
+            .where(eq(calendarEvents.id, ev.id));
+        }
+      }
+      // Otherwise: stale/unrecognizable event — leave as-is.
+    }
+
     await tx.insert(worldSnapshots).values({
       playthroughId: active.id,
       week: nextWeek,
@@ -510,6 +592,7 @@ export async function runAdvanceTickFull(
         currentWeek: nextWeek,
         currentDayOfSeason: nextWeek * 7,
         updatedAt: new Date(),
+        ...(transferWindowOpen !== undefined ? { transferWindowOpen } : {}),
       })
       .where(eq(playthroughs.id, active.id));
 

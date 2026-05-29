@@ -12,12 +12,13 @@
  * Control Manifest: 2026-05-19
  */
 
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { calendarEvents } from '@smt/db';
 import type { db as DBType } from '@smt/db';
 import {
   resolveDefault,
   resolveEvent,
+  resolveTransferWindow,
   type EventDecisionPayload,
   type EventResolveContext,
   type ResolutionResult,
@@ -89,6 +90,59 @@ export async function autoResolveDefault(
     | undefined;
   if (!payload) return { ok: false, reason: 'no_payload' };
   return resolveEventById(tx, eventId, payload.defaultOption, ctx);
+}
+
+/**
+ * Auto-resolve all pending NOTIFY events for a given week.
+ *
+ * Transfer window events (kind in metadata, no decisionPayload) are resolved
+ * directly via resolveTransferWindow. Other NOTIFY events use resolveDefault.
+ *
+ * Returns collected state changes (currently just transferWindowOpen).
+ */
+export async function resolveNotifyEventsForWeek(
+  tx: Tx,
+  playthroughId: string,
+  week: number,
+  ctx: Readonly<EventResolveContext>,
+): Promise<{ transferWindowOpen: boolean | undefined }> {
+  const pending = await Repo.findPendingForWeek(tx, playthroughId, week);
+  let transferWindowOpen: boolean | undefined = undefined;
+
+  for (const ev of pending) {
+    // Transfer window events store kind directly in metadata (no decisionPayload wrapper).
+    const metadata = (ev.metadata as Record<string, unknown>) ?? {};
+    const kind = metadata['kind'] as string | undefined;
+
+    if (kind === 'transfer_window_open' || kind === 'transfer_window_close') {
+      const isOpen = kind === 'transfer_window_open';
+      const result = resolveTransferWindow(
+        isOpen
+          ? { kind: 'transfer_window_open' as const, defaultOption: 'open' as const }
+          : { kind: 'transfer_window_close' as const, defaultOption: 'close' as const },
+        isOpen ? 'open' : 'close',
+      );
+      transferWindowOpen = result.transferWindowOpen;
+      // Mark transfer window events as resolved.
+      await tx
+        .update(calendarEvents)
+        .set({
+          status: 'resolved',
+          consumed: true,
+          resolvedAt: new Date(),
+        })
+        .where(eq(calendarEvents.id, ev.id));
+    } else if (metadata['decisionPayload']) {
+      // Standard NOTIFY events with decisionPayload — auto-resolve via default.
+      const payload = metadata['decisionPayload'] as EventDecisionPayload | undefined;
+      if (payload) {
+        await autoResolveDefault(tx, ev.id, ctx);
+      }
+    }
+    // Otherwise: stale/unrecognizable event — leave as-is (will be cleaned up elsewhere).
+  }
+
+  return { transferWindowOpen };
 }
 
 // ── Scheduler ────────────────────────────────────────────────────────────────
