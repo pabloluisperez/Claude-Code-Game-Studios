@@ -621,7 +621,7 @@
           {#if messages.length === 0}
             <p class="opacity-60 text-xs">
               Tu staff aún no ha enviado mensajes. Pasa una semana o contrata más
-              especialistas en <a href="/staff" class="link">Staff</a>.
+              especialistas en <a href="/staff" class="link">Empleados del club</a>.
             </p>
           {:else}
             <!-- Speech-bubble redesign (Pablo 2026-05-29): the same Avatar face
