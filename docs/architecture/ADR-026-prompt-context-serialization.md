@@ -2,7 +2,12 @@
 
 ## Status
 
-Proposed (v1.2 design draft — autopilot 2026-05-21)
+Superseded by ADR-032 (2026-05-29)
+
+> **Superseded.** Prompt-context serialization is moot without a runtime LLM.
+> Pillar D is now a deterministic template generator (ADR-032); narrative
+> "context" is plain `variables` passed to `render()`, not a serialized prompt.
+> Never built past Proposed. Retained for historical context.
 
 ## Date
 

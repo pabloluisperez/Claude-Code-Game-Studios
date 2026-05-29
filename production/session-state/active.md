@@ -70,13 +70,35 @@ Implemented in parallel by web-backend + web-frontend specialists, then orchestr
 - A5 ✅ sprint-status.yaml reconciled to Sprint 25 closed.
 - Verified: pnpm typecheck 3/3 clean; shared 1165, api 156, web 217 — all green.
 
-### Phase B — template generator PLAN (DRAFT, awaiting user approval before implementation)
-- `design/gdd/narrative-generator.md` — 8-section GDD for the deterministic narrative generator
-  that replaces Pillar D LLM (supersedes ADR-025..028).
-- `production/sprints/sprint-26.md` — Sprint 26 plan: 8 Must Have (26-1 ADR … 26-8 QA), ~7.5d.
-- Engine already scaffolded in `packages/shared/src/sim/narrative/` (render + slots + vocab +
-  5 template groups). Sprint 26 = coverage + vocab variety + hardening/safety + integration + ADR.
-- NEXT: user validates GDD + plan → then create story files + implement (the "grueso").
+### Phase B — Sprint 26 Must-Have COMPLETE (2026-05-29, piloto automático)
+All 8 Must Have done + verified. shared 1199 · api 156 · web 217 · typecheck 3/3 · 0 errors.
+48 narrative tests (engine 14 + qa 15 + golden 19).
+
+- **26-1**: ADR-032 (Accepted) — deterministic generator. ADR-004 + 025-028 → Superseded.
+  ⚠️ KEY: LLM integration DISCARDED for the project, NOT deferred (Pablo correction this
+  session). The "LLM-optional future" framing was removed from ADR-032. Reopening = new ADR.
+- **26-2**: GDD `narrative-generator.md` → Approved. systems-index reconciled (narrative-ai
+  row replaced; ADR-004 Superseded, ADR-032 Accepted).
+- **26-3**: `requiredVars` on every group (types.ts); slot helpers in engine.ts
+  (`extractSlots`, `coverageGaps`, `allReferencedVariables`, `referencedVocabCategories`);
+  `''` fallback documented. Exported from @smt/shared.
+- **26-4**: vocab.ts — all categories ≥8; new axes (rumor_source/verb, adj_rumor, noun_board,
+  adj_board_high/low, noun_finance). Singularized subjects for verb agreement.
+- **26-5**: library.ts +6 groups: rumor, transferWindow (open/close), sponsorRenewal,
+  contractRenewal, promotionRelegation, boardConfidence. `ALL_TEMPLATE_GROUPS` registry.
+  Spanish gender/number agreement fixed (Triunfo/revés/Correctivo/Un final; "confianza" for
+  feminine board adjectives).
+- **26-6**: advance-orchestrator Phase 6c derby press (same-city heuristic, NO schema change
+  per plan mitigation) + Phase 6d rumor mill (seeded gate ~40%, window-open, transfer-listed).
+- **26-7**: Phase 6e transfer-window open/close blurb. Audit doc
+  `production/qa/narrative-hardcoded-audit-2026-05-29.md` — 4 remaining inline strings are
+  operational data notifications (no covering group). sponsor/contract/promo/board groups
+  ready but emitted elsewhere (decision handlers / rollover) → future wiring.
+- **26-8**: golden snapshots (19) + qa suite (slot-coverage, determinism, denylist, variety
+  enumeration ≥200 high-freq / documented floors rare, tonal no-leak, fallback).
+
+NOT done: Should/Nice-to-Have (26-9/26-10/26-NH1) — Sprint 27.
+NEXT: commit (exclude .mcp.json + packages/db/*.cjs scratch). Push pending user OK.
 
 ### Previously completed (2026-05-27)
 - [x] Migration 0040 + schema columns

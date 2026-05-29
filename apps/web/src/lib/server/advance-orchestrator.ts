@@ -724,34 +724,43 @@ export async function runAdvanceTickFull(
       const goalDiff = myScore - theirScore;
       const isNotable = Math.abs(goalDiff) >= 3 || (myScore === 0 && theirScore === 0);
 
-      if (isNotable) {
-        const [club] = await db
-          .select({ name: clubs.name, city: clubs.city })
-          .from(clubs)
-          .where(eq(clubs.id, active.clubId))
-          .limit(1);
-        const opponentId = isHome ? thisFixture.awayClubId : thisFixture.homeClubId;
-        const [opponentClub] = await db
-          .select({ name: clubs.name })
-          .from(clubs)
-          .where(eq(clubs.id, opponentId))
-          .limit(1);
+      // Fetch both clubs (incl. city) up-front: needed for derby detection
+      // (Sprint 26-6: no rivalry table yet → same-city heuristic, see ADR-032
+      // risk mitigation in design/gdd/narrative-generator.md).
+      const [club] = await db
+        .select({ name: clubs.name, city: clubs.city })
+        .from(clubs)
+        .where(eq(clubs.id, active.clubId))
+        .limit(1);
+      const opponentId = isHome ? thisFixture.awayClubId : thisFixture.homeClubId;
+      const [opponentClub] = await db
+        .select({ name: clubs.name, city: clubs.city })
+        .from(clubs)
+        .where(eq(clubs.id, opponentId))
+        .limit(1);
 
-        const { renderNarrative, matchOutcomeTemplates } = await import('@smt/shared');
+      const isDerby = Boolean(club?.city) && club?.city === opponentClub?.city;
+      // A derby is always newsworthy, even on a tame scoreline.
+      const shouldEmitPress = isNotable || isDerby;
+
+      if (shouldEmitPress) {
+        const { renderNarrative, matchOutcomeTemplates, pressDerbyTemplates } = await import('@smt/shared');
         const seed = nextWeek * 1000 + (thisFixture.matchday ?? 0);
-        const pressBody = renderNarrative(matchOutcomeTemplates, {
-          seed,
-          variables: {
-            homeScore: myScore,
-            awayScore: theirScore,
-            goalDiff,
-            clubName: club?.name ?? 'el club',
-            opponent: opponentClub?.name ?? 'el rival',
-          },
-        });
+        const sharedVars = {
+          homeScore: myScore,
+          awayScore: theirScore,
+          goalDiff,
+          clubName: club?.name ?? 'el club',
+          opponent: opponentClub?.name ?? 'el rival',
+        };
+        const pressBody = renderNarrative(matchOutcomeTemplates, { seed, variables: sharedVars });
+        // Derby press uses a distinct seed salt so it never mirrors the
+        // match-outcome variant pick in the same week.
+        const derbyBody = isDerby
+          ? renderNarrative(pressDerbyTemplates, { seed: seed + 31, variables: sharedVars })
+          : '';
 
-        // Persist as a staff message under a virtual "press" role.
-        // We attach to the head_coach to keep schema clean (staffId is required).
+        // Persist as staff messages under the head_coach (staffId is required).
         const [headCoach] = await db
           .select({ id: staff.id })
           .from(staff)
@@ -776,10 +785,116 @@ export async function runAdvanceTickFull(
             isRead: false,
           });
         }
+        if (headCoach && derbyBody) {
+          await db.insert(staffMessages).values({
+            playthroughId: active.id,
+            staffId: headCoach.id,
+            week: nextWeek,
+            season: tvCurrentSeason,
+            priority: 'ROUTINE',
+            templateKey: 'press:derby',
+            content: `🔥 Derbi — ${derbyBody}`,
+            isRead: false,
+          });
+        }
       }
     }
   } catch {
     // Press article is decorative — never block the advance pipeline.
+  }
+
+  // ── Phase 6e: transfer-window open/close blurb (v1.2 Sprint 26-7) ──────
+  // When a window event resolved THIS week, emit a narrative open/close
+  // blurb. `transferWindowOpen` is undefined on weeks with no window change.
+  if (transferWindowOpen !== undefined) {
+    try {
+      const { renderNarrative, transferWindowTemplates } = await import('@smt/shared');
+      const blurb = renderNarrative(transferWindowTemplates, {
+        seed: nextWeek * 6271 + 5,
+        variables: { windowOpen: transferWindowOpen ? 1 : 0 },
+      });
+      const [commercial] = await db
+        .select({ id: staff.id })
+        .from(staff)
+        .where(
+          and(
+            eq(staff.playthroughId, active.id),
+            or(eq(staff.role, 'scouting_director'), eq(staff.role, 'head_coach')),
+            eq(staff.status, 'active'),
+          ),
+        )
+        .limit(1);
+      if (commercial && blurb) {
+        await db.insert(staffMessages).values({
+          playthroughId: active.id,
+          staffId: commercial.id,
+          week: nextWeek,
+          season: tvCurrentSeason,
+          priority: 'ROUTINE',
+          templateKey: transferWindowOpen ? 'market:window_open' : 'market:window_close',
+          content: `📅 Mercado — ${blurb}`,
+          isRead: false,
+        });
+      }
+    } catch {
+      // Decorative — never block the pipeline.
+    }
+  }
+
+  // ── Phase 6d: rumor mill (v1.2 Sprint 26-6) ────────────────────────────
+  // While the transfer window is open, a seeded gate (~40%/wk) emits a
+  // transfer rumour about one of the club's transfer-listed players. Pure
+  // decoration via the narrative engine; never blocks the pipeline.
+  // Effective state spans the whole window: this week's change if any,
+  // else the persisted playthrough flag.
+  const windowIsOpen = transferWindowOpen ?? active.transferWindowOpen;
+  if (windowIsOpen) {
+    try {
+      const rumorRng = createSeededRng(`${active.id}:${nextWeek}:rumor`);
+      if (rumorRng() < 0.4) {
+        const listed = await db
+          .select({ firstName: players.firstName, lastName: players.lastName })
+          .from(players)
+          .where(and(eq(players.clubId, active.clubId), eq(players.transferListed, true)));
+
+        if (listed.length > 0) {
+          const pick = listed[Math.floor(rumorRng() * listed.length)]!;
+          const playerName = `${pick.firstName} ${pick.lastName}`.trim();
+          const { renderNarrative, rumorTemplates } = await import('@smt/shared');
+          const rumorBody = renderNarrative(rumorTemplates, {
+            seed: nextWeek * 7919 + 17,
+            variables: { playerName },
+          });
+
+          const [notifier] = await db
+            .select({ id: staff.id })
+            .from(staff)
+            .where(
+              and(
+                eq(staff.playthroughId, active.id),
+                or(eq(staff.role, 'scouting_director'), eq(staff.role, 'head_coach')),
+                eq(staff.status, 'active'),
+              ),
+            )
+            .limit(1);
+
+          if (notifier && rumorBody) {
+            await db.insert(staffMessages).values({
+              playthroughId: active.id,
+              staffId: notifier.id,
+              week: nextWeek,
+              season: tvCurrentSeason,
+              priority: 'ROUTINE',
+              templateKey: 'rumor:transfer',
+              content: `🗞️ Rumor de mercado — ${rumorBody}`,
+              isRead: false,
+            });
+          }
+        }
+      }
+    } catch {
+      // Rumours are decorative — never block the advance pipeline.
+    }
   }
 
   // ── Phase 6b: pretemporada abono reminder (2 weeks before kickoff) ──────

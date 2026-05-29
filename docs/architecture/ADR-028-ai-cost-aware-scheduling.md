@@ -2,7 +2,13 @@
 
 ## Status
 
-Proposed (v1.2 design draft — autopilot 2026-05-21)
+Superseded by ADR-032 (2026-05-29)
+
+> **Superseded.** Cost-aware scheduling is moot without a runtime LLM. Pillar D
+> is now a deterministic template generator (ADR-032) with zero per-generation
+> cost and sub-ms latency, so there is nothing to schedule or budget. The LLM
+> approach is discarded for this project. Never built past Proposed. Retained for
+> historical context.
 
 ## Date
 

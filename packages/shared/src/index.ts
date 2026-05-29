@@ -580,13 +580,22 @@ export {
   type RngFn,
 } from './sim/scouting/ai-rotation-logic.js';
 
-// Narrative template generator v1.2 (Sprint 26) — replaces deferred LLM Pillar D
+// Narrative template generator v1.2 (Sprint 26) — deterministic Pillar D
+// (local-LLM approach discarded for this project; see ADR-032).
 export type {
   NarrativeContext,
   NarrativeTemplate,
   VocabTable,
 } from './sim/narrative/types.js';
-export { render as renderNarrative, pickFromVocab } from './sim/narrative/engine.js';
+export type { TemplateSlots } from './sim/narrative/engine.js';
+export {
+  render as renderNarrative,
+  pickFromVocab,
+  extractSlots,
+  coverageGaps,
+  allReferencedVariables,
+  referencedVocabCategories,
+} from './sim/narrative/engine.js';
 export { DEFAULT_VOCAB } from './sim/narrative/vocab.js';
 export {
   matchOutcomeTemplates,
@@ -594,4 +603,11 @@ export {
   financialWarningTemplates,
   pressDerbyTemplates,
   mayorCallTemplates,
+  rumorTemplates,
+  transferWindowTemplates,
+  sponsorRenewalTemplates,
+  contractRenewalTemplates,
+  promotionRelegationTemplates,
+  boardConfidenceTemplates,
+  ALL_TEMPLATE_GROUPS,
 } from './sim/narrative/library.js';

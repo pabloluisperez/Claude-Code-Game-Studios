@@ -1,7 +1,15 @@
 # ADR-004: Arquitectura de Integración de IA Narrativa (llama.cpp)
 
 ## Status
-Accepted
+Superseded by ADR-032 (2026-05-29)
+
+> **Superseded.** This ADR's entire subject — narrative generation via a local
+> llama.cpp LLM — was discarded for this project per Pablo's 2026-05-25 decision.
+> Pillar D is now a deterministic template generator (ADR-032): pure, seeded,
+> zero-cost, safe-by-construction, and 100%-testable. None of the llama.cpp
+> infrastructure described here was built. The player-facing goal ("la voz del
+> mundo — texto vivo, no scripts") is preserved by the template engine; the
+> LLM *means* is discarded, not postponed. Retained for historical context.
 
 ## Date
 2026-05-16 (accepted 2026-05-16 after /architecture-review · spike OQ1 todavía pendiente, no bloquea acceptance de la arquitectura)

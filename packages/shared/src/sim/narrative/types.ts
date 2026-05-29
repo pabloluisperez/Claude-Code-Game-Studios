@@ -25,6 +25,18 @@ export type NarrativeTemplate = {
   variants: readonly string[];
   /** Optional gate: only consider this template-group when predicate is true. */
   when?: (ctx: NarrativeContext) => boolean;
+  /**
+   * Slot-coverage contract (Sprint 26-3). The variable names a caller is
+   * contractually required to provide for this group to render with no residual
+   * top-level `{var}`. Every top-level `{name}` referenced by any variant MUST
+   * appear here. Conditional gate vars (`{?cond?...?}`) are optional and need
+   * NOT be listed — the segment is simply omitted when the var is absent.
+   *
+   * Enforced by the slot-coverage guard test (`coverageGaps()`), not at runtime:
+   * in-contract callers never see a broken `{...}`; out-of-contract misuse
+   * renders the literal slot (a dev-only failure mode caught by the test).
+   */
+  requiredVars?: readonly string[];
 };
 
 /** Vocab table: maps category names to ordered lists of words. */

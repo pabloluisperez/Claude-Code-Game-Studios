@@ -72,6 +72,99 @@ function resolveSlots(
   return out;
 }
 
+// --- Slot inspection (Sprint 26-3) -----------------------------------------
+// These helpers parse the same slot grammar that `resolveSlots` resolves. They
+// power the slot-coverage guard + QA tests (they are pure, never used at render
+// time). Keep the regexes in lock-step with `resolveSlots`.
+
+const CONDITIONAL_RE = /\{\?([a-zA-Z0-9_]+)\?([\s\S]*?)\?\}/g;
+const VOCAB_RE = /\{vocab:([a-zA-Z0-9_]+)\}/g;
+const VAR_RE = /\{([a-zA-Z0-9_]+)\}/g;
+
+export type TemplateSlots = {
+  /** `{name}` slots NOT inside a conditional — these MUST always resolve. */
+  topLevelVars: readonly string[];
+  /** `{?cond?...?}` gate variable names — optional by nature. */
+  condVars: readonly string[];
+  /** `{name}` slots that live inside a conditional segment. */
+  condInnerVars: readonly string[];
+  /** `{vocab:cat}` categories referenced anywhere in the variant. */
+  vocabCats: readonly string[];
+};
+
+const uniq = (xs: readonly string[]): string[] => [...new Set(xs)];
+
+/** Parse every slot reference out of a single template variant string. */
+export function extractSlots(variant: string): TemplateSlots {
+  const condVars: string[] = [];
+  const condInnerVars: string[] = [];
+  const vocabCats: string[] = [];
+  const topLevelVars: string[] = [];
+
+  for (const m of variant.matchAll(VOCAB_RE)) vocabCats.push(m[1]!);
+
+  // Strip conditional segments, capturing their gate var + inner plain vars.
+  const stripped = variant.replace(CONDITIONAL_RE, (_, name: string, seg: string) => {
+    condVars.push(name);
+    const inner = seg.replace(VOCAB_RE, '');
+    for (const im of inner.matchAll(VAR_RE)) condInnerVars.push(im[1]!);
+    return '';
+  });
+
+  // Remaining top-level plain vars (after removing vocab slots).
+  const noVocab = stripped.replace(VOCAB_RE, '');
+  for (const m of noVocab.matchAll(VAR_RE)) topLevelVars.push(m[1]!);
+
+  return {
+    topLevelVars: uniq(topLevelVars),
+    condVars: uniq(condVars),
+    condInnerVars: uniq(condInnerVars),
+    vocabCats: uniq(vocabCats),
+  };
+}
+
+/**
+ * Slot-coverage contract check. Returns the top-level `{var}` names referenced
+ * by any of the group's variants that are NOT declared in `requiredVars`.
+ * An empty array means the group's manifest fully covers its mandatory slots.
+ * The guard test asserts this is empty for every library group.
+ */
+export function coverageGaps(group: NarrativeTemplate): string[] {
+  const required = new Set(group.requiredVars ?? []);
+  const gaps = new Set<string>();
+  for (const variant of group.variants) {
+    for (const name of extractSlots(variant).topLevelVars) {
+      if (!required.has(name)) gaps.add(name);
+    }
+  }
+  return [...gaps];
+}
+
+/**
+ * Every variable name referenced across a group's variants (top-level + gate +
+ * conditional-inner). Used by the QA test to build a full synthetic var-set and
+ * assert zero residual `{...}` after rendering.
+ */
+export function allReferencedVariables(group: NarrativeTemplate): string[] {
+  const all = new Set<string>();
+  for (const variant of group.variants) {
+    const s = extractSlots(variant);
+    s.topLevelVars.forEach((x) => all.add(x));
+    s.condVars.forEach((x) => all.add(x));
+    s.condInnerVars.forEach((x) => all.add(x));
+  }
+  return [...all];
+}
+
+/** Every `{vocab:cat}` category referenced across a group's variants. */
+export function referencedVocabCategories(group: NarrativeTemplate): string[] {
+  const all = new Set<string>();
+  for (const variant of group.variants) {
+    for (const cat of extractSlots(variant).vocabCats) all.add(cat);
+  }
+  return [...all];
+}
+
 /**
  * Render: pick one variant deterministically + resolve all slots.
  *

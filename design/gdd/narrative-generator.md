@@ -1,9 +1,10 @@
 # GDD — Deterministic Narrative Generator (Pillar D)
 
-**Status**: DRAFT (Sprint 26 planning, 2026-05-29) — awaiting approval
+**Status**: Approved (2026-05-29, Sprint 26 sign-off)
 **Owner**: Pablo (solo dev)
-**Supersedes**: the deferred Pillar D LLM design (ADRs 025-028, llama.cpp). See the
-new ADR proposed in story 26-1.
+**Supersedes**: the discarded Pillar D LLM design (ADR-004 + ADR-025..028,
+llama.cpp). The local-LLM approach is discarded for this project, not postponed —
+see ADR-032 (Accepted).
 **Module**: `packages/shared/src/sim/narrative/`
 
 ---
@@ -106,8 +107,9 @@ not stamped. The player must never see a broken `{slot}` or a tonal mismatch
   finance), event-system STOP/NOTIFY copy, staff-message generation.
 - `fixtures` schema — needs a `derby`/rivalry flag for derby press (story 26-6).
 - No external services. No DB schema changes except the optional fixture flag.
-- Supersedes ADR-025 (llama.cpp deploy), ADR-026 (prompt context), ADR-027 (AI
-  output safety), ADR-028 (AI cost scheduling) → all become "Superseded" by 26-1.
+- Supersedes ADR-004 (narrative AI arch), ADR-025 (llama.cpp deploy), ADR-026
+  (prompt context), ADR-027 (AI output safety), ADR-028 (AI cost scheduling) →
+  all marked "Superseded by ADR-032" (done in 26-1).
 
 ## 7. Tuning Knobs
 

@@ -1,8 +1,8 @@
 ---
 Sprint: 26
 Name: "Template Generator System — Pillar D sin LLM (narrativa determinista)"
-Status: DRAFT (awaiting approval)
-Window: 2026-06-10 → 2026-06-23 (tentative)
+Status: Must-Have COMPLETE (2026-05-29, piloto automático)
+Window: 2026-06-10 → 2026-06-23 (ejecutado anticipadamente 2026-05-29)
 Capacity: ~9 productive days (solo dev + piloto-automático)
 Review Mode: lean
 Phase: v1.2 / Production
@@ -79,15 +79,35 @@ integración y formalización del ADR. Diseño: `design/gdd/narrative-generator.
 
 ## Definition of Done
 
-- [ ] ADR 025-028 Superseded + ADR nuevo aprobado
-- [ ] GDD `narrative-generator.md` aprobado
-- [ ] Engine con slot-coverage garantizado + fallback
-- [ ] Vocab ≥8/categoría; ≥200 renders/bucket/surface
-- [ ] 6 grupos de plantillas nuevos cubriendo las superficies objetivo
-- [ ] Derby press + rumores integrados en advance pipeline
-- [ ] 0 strings narrativos hardcoded donde haya grupo
-- [ ] Tests narrativos verdes (determinismo + cobertura + seguridad)
-- [ ] `pnpm typecheck` limpio; sin regresiones (shared/api/web)
+- [x] ADR-004 + 025-028 Superseded + ADR-032 nuevo Accepted (26-1)
+- [x] GDD `narrative-generator.md` aprobado (26-2)
+- [x] Engine con slot-coverage garantizado (`requiredVars` + `coverageGaps`) + fallback `''` (26-3)
+- [x] Vocab ≥8/categoría; ≥200 renders/bucket/surface en superficies frecuentes (26-4/26-8)
+- [x] 6 grupos de plantillas nuevos cubriendo las superficies objetivo (26-5)
+- [x] Derby press (heurística misma ciudad) + rumores + blurb de ventana integrados (26-6/26-7)
+- [x] 0 strings narrativos hardcoded donde haya grupo (26-7, ver auditoría)
+- [x] Tests narrativos verdes: 48 (determinismo + cobertura + denylist + variedad + golden) (26-8)
+- [x] `pnpm typecheck` limpio (3/3); sin regresiones — shared 1199 · api 156 · web 217
+
+## Cierre 2026-05-29 (piloto automático)
+
+Las 8 Must Have completadas y verificadas. Decisión clave reconfirmada por Pablo:
+**la integración LLM queda DESCARTADA para el proyecto, no aplazada** (ADR-032).
+El generador determinista es el diseño final de Pillar D. Reabrir el LLM exigiría
+un ADR nuevo que supersediera al 032.
+
+**Variedad — nota honesta**: el listón ≥200 renders/bucket se aplica a superficies
+que el jugador ve a menudo (match outcome por bucket, finanzas, rumores). Superficies
+raras (derbi, alcalde, ventana, patrocinio, ascenso/descenso, junta) usan floors
+documentados (no caps silenciosos) — ver `tests/narrative/qa.test.ts`.
+
+**Pendiente de wiring futuro** (grupos listos, sin string hardcoded que migrar):
+sponsorRenewal/contractRenewal (handlers de decisión), promotionRelegation
+(`checkAndRolloverSeason`), boardConfidence (sin emisor aún). Ver
+`production/qa/narrative-hardcoded-audit-2026-05-29.md`.
+
+Should/Nice-to-Have (26-9 staff unificado, 26-10 locale scaffolding, 26-NH1 rumor
+feed UI) NO ejecutadas — reconsiderar en Sprint 27.
 
 ## QA Plan
 

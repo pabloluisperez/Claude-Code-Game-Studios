@@ -2,7 +2,14 @@
 
 ## Status
 
-Proposed (v1.2 design draft — autopilot 2026-05-21)
+Superseded by ADR-032 (2026-05-29)
+
+> **Superseded.** Pablo decided 2026-05-25 to drop the local-LLM approach for
+> Pillar D in favour of a deterministic template generator. The llama.cpp sidecar
+> deployment described below was never built (never advanced past Proposed). See
+> ADR-032 (Deterministic Narrative Generator) for the chosen approach, the
+> trade-offs accepted (variety vs. determinism/cost/safety), and the rejected
+> alternatives — this ADR is Alternative 1 there. Retained for historical context.
 
 ## Date
 

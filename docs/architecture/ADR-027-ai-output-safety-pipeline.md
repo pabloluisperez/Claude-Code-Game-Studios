@@ -2,7 +2,13 @@
 
 ## Status
 
-Proposed (v1.2 design draft — autopilot 2026-05-21)
+Superseded by ADR-032 (2026-05-29)
+
+> **Superseded.** An output-safety pipeline is unnecessary without a runtime LLM.
+> Pillar D is now a deterministic template generator (ADR-032) whose safety is
+> guaranteed by construction (curated vocab) and enforced by a denylist guard
+> test, not a probabilistic filter. The LLM approach is discarded for this
+> project. Never built past Proposed. Retained for historical context.
 
 ## Date
 
