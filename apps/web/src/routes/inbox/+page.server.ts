@@ -55,6 +55,7 @@ export const load: PageServerLoad = async ({ parent }) => {
       name: staff.name,
       tier: staff.qualityTier,
       priority: staffMessages.priority,
+      templateKey: staffMessages.templateKey,
       content: staffMessages.content,
       week: staffMessages.week,
       isRead: staffMessages.isRead,

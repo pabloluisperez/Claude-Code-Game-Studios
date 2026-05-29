@@ -673,6 +673,7 @@ export async function runAdvanceTickFull(
           name: s.name,
         })),
       worldState: eco.patchedState,
+      week: nextWeek,
     });
     const ambientRows = ambientMsgs.map((m) => ({
       playthroughId: active.id,

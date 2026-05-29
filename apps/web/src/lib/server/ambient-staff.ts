@@ -38,6 +38,16 @@ interface AmbientMessage {
   priority: 'ROUTINE';
 }
 
+/** How often a "good news" (high bucket) ambient note is allowed to surface. */
+const GOOD_NEWS_EVERY_N_WEEKS = 4;
+
+/** Stable small salt per role so good-news weeks are staggered, not all at once. */
+function roleSalt(role: string): number {
+  let h = 0;
+  for (let i = 0; i < role.length; i++) h = (h + role.charCodeAt(i)) % GOOD_NEWS_EVERY_N_WEEKS;
+  return h;
+}
+
 const ROLE_LABEL: Readonly<Record<string, string>> = {
   groundskeeper: 'jardinero',
   fitness_coach: 'preparador físico',
@@ -106,11 +116,24 @@ function bucket(value: number, role: StaffRole): 0 | 1 | 2 {
   return 2;
 }
 
+/**
+ * Emit ambient check-in messages, filtered to keep the inbox signal high.
+ *
+ * Pablo 2026-05-29: "no recibir todas las semanas noticias de que el césped
+ * está bien, marea un poco y hace no ver las importantes". So:
+ *   - LOW bucket (a problem) → always emit (the player needs to see it).
+ *   - MID bucket ("nada destacable") → suppressed entirely (pure noise).
+ *   - HIGH bucket (good news) → only ~1 week in `GOOD_NEWS_EVERY_N_WEEKS`,
+ *     staggered per role, so positives are an occasional treat, not weekly spam.
+ *
+ * `week` drives the deterministic good-news gate (no Math.random).
+ */
 export function generateAmbientStaffMessages(args: {
   activeStaff: readonly ActiveStaff[];
   worldState: Readonly<WorldState>;
+  week: number;
 }): readonly AmbientMessage[] {
-  const { activeStaff, worldState } = args;
+  const { activeStaff, worldState, week } = args;
   const out: AmbientMessage[] = [];
 
   for (const s of activeStaff) {
@@ -121,6 +144,11 @@ export function generateAmbientStaffMessages(args: {
     const node = ROLE_NODE[role];
     const value = (worldState as unknown as Record<string, number>)[node as string] ?? 50;
     const b = bucket(value, role);
+
+    // Noise filter: skip "nothing to report" (mid), ration good news (high).
+    if (b === 1) continue;
+    if (b === 2 && (week + roleSalt(role)) % GOOD_NEWS_EVERY_N_WEEKS !== 0) continue;
+
     const template = templates[b];
     const firstName = s.name.split(' ')[0] ?? 'Staff';
     const label = ROLE_LABEL[role] ?? role;
