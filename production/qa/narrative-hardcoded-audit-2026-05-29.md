@@ -35,11 +35,21 @@ payloads / delegated helpers). No 26-7 violation; wiring is future work:
 - **sponsorRenewal** — emitted on player *acceptance* of a `sponsor_renewal`
   STOP event (event-decision handler), not the orchestrator. Group ready.
 - **contractRenewal** — same: player-accepted `contract_renewal` STOP event.
-- **promotionRelegation** — season rollover is delegated to
-  `checkAndRolloverSeason()`; the orchestrator early-returns. Group ready for
-  wiring inside the rollover helper / season-end page.
+- ~~**promotionRelegation**~~ — ✅ **WIRED (2026-05-29)**. Correction to the
+  original audit: `season-rollover.ts` *did* emit hardcoded promotion/relegation
+  prose (`¡ASCENDIMOS…` / `Descendimos a…`). Now migrated to
+  `promotionRelegationTemplates` (varied across seasons), keeping the coach
+  attribution + emoji + tier label.
 - **boardConfidence** — no emission site yet; maps naturally to job-security /
   board-confidence state in a future phase. Group ready.
+
+### Aún mudos (pendiente, net-new — sin prosa hardcoded que migrar)
+- **sponsorRenewal** — `decideSponsorRenewal` (finance/+page.server.ts) no emite
+  mensaje; wirearlo es añadir una emisión nueva (requiere nº de temporada +
+  notificador). Diferido.
+- **contractRenewal** — mismo patrón en el handler de decisión de contrato.
+- **boardConfidence** — sin estado/disparador (no hay "job security"); wirearlo
+  bien es una mecánica nueva, fuera de "enchufar grupos existentes". Diferido.
 
 ## Verdict
 
