@@ -1,7 +1,7 @@
-# Release Checklist — Cascada FC MVP v1.0
+# Release Checklist — Total Soccer Manager (v1.2)
 
-**Status**: DRAFT (Sprint 13 task 13-7)
-**Target release date**: TBD (post Polish→Release gate PASS)
+**Status**: DRAFT (Sprint 13 task 13-7; revisado para v1.2 el 2026-05-29)
+**Target release date**: TBD (condiciones en `production/milestones/v1.2-review.md`: verificación visual + Playwright + Lighthouse)
 **Owner**: Pablo (solo dev)
 
 Cada sección debe estar verde antes del go-live. Marca con `[x]` cuando
