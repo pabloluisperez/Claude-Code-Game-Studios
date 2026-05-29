@@ -44,9 +44,10 @@ describe('Sprint 13 task 13-5 — Match live polish (BUG-PT-4)', () => {
       expect(source).not.toMatch(/Math\.random\(\)/);
     });
 
-    it('test_var_trigger_probability_around_eight_percent', () => {
-      // ~8% via threshold >= 0.08
-      expect(source).toMatch(/triggerRoll\s*>=\s*0\.08/);
+    it('test_var_trigger_probability_around_eighteen_percent', () => {
+      // Pablo 2026-05-26 bumped the VAR rate 8% → 18% (triggerRoll >= 0.18) so a
+      // VAR check shows up in most matches. ~18% per goal via threshold >= 0.18.
+      expect(source).toMatch(/triggerRoll\s*>=\s*0\.18/);
     });
 
     it('test_var_overlay_has_three_phases', () => {

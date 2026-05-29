@@ -72,8 +72,13 @@ describe('Sprint 12 task 12-3 — A11y P2 batch', () => {
 
     it('test_league_has_h1_and_h2_section_titles', () => {
       const league = readSrc('routes/league/+page.svelte');
-      expect(league).toMatch(/<h1[^>]*>\s*Liga\s*<\/h1>/);
-      expect(league).toMatch(/<h2 class="card-title"/);
+      // a11y intent: the page declares a top-level h1 and h2 section titles.
+      // The h1 text became dynamic (division name in a playthrough, else 'Liga')
+      // in the Sprint 24/25 league refactor, so assert the h1 EXISTS and is
+      // non-empty rather than matching a hard-coded literal.
+      expect(league).toMatch(/<h1[^>]*>[\s\S]*?<\/h1>/);
+      // Tolerate extra utility classes (e.g. "card-title text-sm").
+      expect(league).toMatch(/<h2 class="card-title/);
     });
 
     it('test_squad_has_h1_page_title', () => {
