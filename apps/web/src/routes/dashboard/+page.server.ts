@@ -64,12 +64,17 @@ export const load: PageServerLoad = async ({ parent, url }) => {
     return Math.round(top.reduce((s, p) => s + p.fitness, 0) / top.length);
   })();
 
-  const recentMessages = await db
+  // Latest message PER staff member (Pablo 2026-05-29 redesign): the dashboard
+  // shows one speech bubble per employee with their most recent check-in, not a
+  // chronological week-by-week list. Fetch a window, then keep the newest row
+  // per staffId; sort attention-worthy (bad/urgent) first.
+  const messageWindow = await db
     .select({
-      id: staffMessages.id,
+      staffId: staffMessages.staffId,
+      name: staff.name,
       role: staff.role,
-      tier: staff.qualityTier,
       priority: staffMessages.priority,
+      templateKey: staffMessages.templateKey,
       content: staffMessages.content,
       week: staffMessages.week,
       isRead: staffMessages.isRead,
@@ -78,7 +83,14 @@ export const load: PageServerLoad = async ({ parent, url }) => {
     .innerJoin(staff, eq(staff.id, staffMessages.staffId))
     .where(eq(staffMessages.playthroughId, activePlaythrough.id))
     .orderBy(desc(staffMessages.createdAt))
-    .limit(10);
+    .limit(60);
+
+  const BAD_RE = /(:0$|low_stock|stock_low|warning|crisis|frozen|expired|relegat|descenso|scandal)/i;
+  const byStaff = new Map<string, (typeof messageWindow)[number]>();
+  for (const m of messageWindow) if (!byStaff.has(m.staffId)) byStaff.set(m.staffId, m);
+  const score = (m: (typeof messageWindow)[number]) =>
+    BAD_RE.test(m.templateKey ?? '') ? 2 : m.priority === 'URGENT' ? 1 : 0;
+  const recentMessages = [...byStaff.values()].sort((a, b) => score(b) - score(a) || b.week - a.week);
 
   // Upcoming events panel: next user fixture + next pending calendar event.
   const homeClubs = alias(clubs, 'home_c');

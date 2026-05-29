@@ -178,6 +178,48 @@
   const nextFixtures = $derived(data.hasPlaythrough ? data.nextFixtures : []);
   const pendingEvents = $derived(data.hasPlaythrough ? data.pendingEvents : []);
 
+  // Staff speech-bubble redesign (Pablo 2026-05-29): avatar + chat bubble per
+  // employee with their latest check-in. No portraits in the schema yet, so the
+  // "avatar" is a role icon + initials on a role-tinted square.
+  const ROLE_ICON: Record<string, string> = {
+    groundskeeper: '🌱',
+    fitness_coach: '💪',
+    commercial_director: '📣',
+    scouting_director: '🔍',
+    finance_director: '💰',
+    head_coach: '📋',
+  };
+  const ROLE_LABEL: Record<string, string> = {
+    groundskeeper: 'jardinero',
+    fitness_coach: 'preparador físico',
+    commercial_director: 'director comercial',
+    scouting_director: 'director de scouting',
+    finance_director: 'director financiero',
+    head_coach: 'segundo entrenador',
+  };
+  const ROLE_BG: Record<string, string> = {
+    groundskeeper: 'bg-success/20',
+    fitness_coach: 'bg-info/20',
+    commercial_director: 'bg-secondary/20',
+    scouting_director: 'bg-accent/20',
+    finance_director: 'bg-warning/20',
+    head_coach: 'bg-primary/20',
+  };
+  function staffInitials(name: string): string {
+    return name
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((p) => p[0]?.toUpperCase() ?? '')
+      .join('');
+  }
+  const ATTENTION_RE = /(:0$|low_stock|stock_low|warning|crisis|frozen|expired|relegat|descenso|scandal)/i;
+  /** 'bad' → red bubble + bold; 'action' → urgent tint; 'normal' → plain. */
+  function bubbleTone(priority: string, templateKey?: string | null): 'bad' | 'action' | 'normal' {
+    if (ATTENTION_RE.test(templateKey ?? '')) return 'bad';
+    if (priority === 'URGENT') return 'action';
+    return 'normal';
+  }
+
   function colorFor(value: number): string {
     if (value < 30) return 'progress-error';
     if (value < 70) return 'progress-warning';
@@ -595,26 +637,36 @@
               especialistas en <a href="/staff" class="link">Staff</a>.
             </p>
           {:else}
-            <!-- Sprint 13 walkthrough fix (Pablo Part C): inbox-style rows
-                 — más compactos, mejor jerarquía visual (tone color + week
-                 chip + content). Match el patrón de /inbox para mantener
-                 consistencia en la app. -->
-            <div class="space-y-1 max-h-96 overflow-y-auto">
+            <!-- Speech-bubble redesign (Pablo 2026-05-29): one avatar + chat
+                 bubble per employee with their latest check-in. Attention-worthy
+                 messages get a red bubble + bold text. -->
+            <div class="space-y-2 max-h-96 overflow-y-auto pr-1">
               {#each messages as m}
-                {@const tone = m.priority === 'URGENT' ? 'action' : 'neutral'}
-                {@const toneCls = tone === 'action'
-                  ? 'bg-warning/10 border-l-4 border-l-warning'
-                  : 'bg-base-200 border-l-4 border-l-transparent'}
-                <div class="flex items-stretch gap-2 px-2 py-1.5 rounded text-xs {toneCls}">
-                  <span class="opacity-50 text-[10px] uppercase w-10 flex-shrink-0 self-center font-mono">
-                    S{m.week}
-                  </span>
-                  <span class="flex-1 leading-snug self-center">{m.content}</span>
-                  <span class="w-16 flex-shrink-0 self-center text-right">
-                    {#if m.priority === 'URGENT'}
-                      <span class="badge badge-warning badge-xs">urgente</span>
-                    {/if}
-                  </span>
+                {@const tone = bubbleTone(m.priority, m.templateKey)}
+                <div class="chat chat-start">
+                  <div class="chat-image avatar">
+                    <div class="w-10 h-10 rounded flex items-center justify-center text-lg
+                                {ROLE_BG[m.role] ?? 'bg-base-300'}
+                                {tone === 'bad' ? 'ring-2 ring-error' : ''}">
+                      <span aria-hidden="true">{ROLE_ICON[m.role] ?? '👤'}</span>
+                    </div>
+                  </div>
+                  <div class="chat-header text-[11px] opacity-70 mb-0.5">
+                    {m.name}
+                    <span class="opacity-50">· {ROLE_LABEL[m.role] ?? m.role} · S{m.week}</span>
+                  </div>
+                  <div
+                    class="chat-bubble text-xs leading-snug
+                           {tone === 'bad' ? 'chat-bubble-error font-bold' : ''}
+                           {tone === 'action' ? 'chat-bubble-warning' : ''}"
+                  >
+                    {m.content}
+                  </div>
+                  {#if tone === 'bad'}
+                    <div class="chat-footer text-[10px] text-error font-semibold mt-0.5">
+                      ⚠️ Requiere atención
+                    </div>
+                  {/if}
                 </div>
               {/each}
             </div>
