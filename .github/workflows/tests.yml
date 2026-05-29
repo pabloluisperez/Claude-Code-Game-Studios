@@ -65,7 +65,10 @@ jobs:
       - name: Apply DB migrations
         run: pnpm --filter @smt/db db:migrate
 
-      - name: Type-check all workspaces
+      - name: Type-check all workspaces (tsc + svelte-check)
+        run: pnpm typecheck
+
+      - name: Build all workspaces
         run: pnpm build
 
       - name: Lint

@@ -12,6 +12,20 @@
         "COMFYUI_URL": "http://bosgame.localdomain:8188",
         "COMFYUI_OUTPUT_DIR": "assets/sprites/_raw"
       }
+    },
+    "ssh-bosgame": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "ssh-mcp",
+        "--",
+        "--host=bosgame.localdomain",
+        "--port=22",
+        "--user=pablo",
+        "--password=${SSH_BOSGAME_PASSWORD}"
+      ],
+      "env": {}
     }
   }
 }

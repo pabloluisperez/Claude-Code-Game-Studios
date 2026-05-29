@@ -70,11 +70,6 @@
     [...upcomingByMatchday.keys()].sort((a, b) => a - b).slice(0, 3),
   );
 
-  // P6 view tabs: Próximas 3 / Todas / Pasadas. 'Todas' lista TODAS las jornadas
-  // de la temporada (pasadas y futuras) con numeración correcta de jornada,
-  // no de partidos.
-  let view = $state<'upcoming3' | 'all' | 'past'>('upcoming3');
-
   // Pablo 2026-05-26: build tier→{groupCount, tierName} index for nav buttons.
   const tierMap = $derived.by(() => {
     const m = new Map<number, { groupCount: number; tierName: string }>();

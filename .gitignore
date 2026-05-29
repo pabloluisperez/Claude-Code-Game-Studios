@@ -154,3 +154,6 @@ $RECYCLE.BIN/
 *.msp
 *.lnk
 apps/web/test-results/
+
+# === Secrets / local MCP config (use .mcp.json.example as template) ===
+.mcp.json

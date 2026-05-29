@@ -8,6 +8,7 @@
     "test": "turbo run test",
     "test:unit": "turbo run test",
     "test:e2e": "playwright test",
+    "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
     "format": "prettier --write .",
     "db:generate": "pnpm --filter @smt/db run db:generate",
