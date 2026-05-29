@@ -207,8 +207,8 @@ export const promotionRelegationTemplates: readonly NarrativeTemplate[] = [
     when: (ctx) => Boolean(ctx.variables?.promoted),
     requiredVars: [],
     variants: [
-      '¡Ascenso! El {?clubName?{clubName} ?}logra subir de categoría{?divisionName? a {divisionName}?}. {vocab:reaction_positive}.',
-      'Misión cumplida: el club asciende. Una temporada {vocab:adj_positive} que quedará en la memoria.',
+      '¡Ascenso! Subimos de categoría{?divisionName? a {divisionName}?}. {vocab:reaction_positive}.',
+      'Misión cumplida: el equipo asciende. Una temporada {vocab:adj_positive} que quedará en la memoria.',
       'Objetivo cumplido. El ascenso es una realidad y {vocab:reaction_positive}.',
     ],
   },

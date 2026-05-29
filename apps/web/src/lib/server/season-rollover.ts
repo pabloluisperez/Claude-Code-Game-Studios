@@ -47,7 +47,15 @@ import {
   lte,
   type Db,
 } from '@smt/db';
-import { generateDoubleRoundRobin, generateRoster, createSeededRng, defaultWorldState, pickTraits } from '@smt/shared';
+import {
+  generateDoubleRoundRobin,
+  generateRoster,
+  createSeededRng,
+  defaultWorldState,
+  pickTraits,
+  renderNarrative,
+  promotionRelegationTemplates,
+} from '@smt/shared';
 
 const PRESEASON_WEEKS = 5;
 
@@ -468,11 +476,22 @@ export async function checkAndRolloverSeason(args: {
         5: 'Tercera RFEF',
       };
       const coachName = headCoach.name.split(' ')[0];
+      // Promotion/relegation prose comes from the narrative engine (varied
+      // across seasons) — Sprint 26 wiring of `promotionRelegationTemplates`.
+      // The welcome line has no template group and stays inline.
       let content = `🏁 ${coachName}: Comienza la temporada ${newSeasonNumber}. Plantilla descansada y lista.`;
       if (userPromoted) {
-        content = `🎉 ${coachName}: ¡ASCENDIMOS a ${TIER_LABELS[userNewTier]}! Una temporada inolvidable. La próxima temporada arrancamos en una división más alta.`;
+        const body = renderNarrative(promotionRelegationTemplates, {
+          seed: newSeasonNumber * 101 + userNewTier,
+          variables: { promoted: 1, divisionName: TIER_LABELS[userNewTier] ?? '' },
+        });
+        content = `🎉 ${coachName}: ${body}`;
       } else if (userRelegated) {
-        content = `😞 ${coachName}: Descendimos a ${TIER_LABELS[userNewTier]}. Toca recomponerse — el objetivo será volver a subir cuanto antes.`;
+        const body = renderNarrative(promotionRelegationTemplates, {
+          seed: newSeasonNumber * 103 + userNewTier,
+          variables: { relegated: 1, divisionName: TIER_LABELS[userNewTier] ?? '' },
+        });
+        content = `😞 ${coachName}: ${body}`;
       }
       await tx.insert(staffMessages).values({
         playthroughId,
