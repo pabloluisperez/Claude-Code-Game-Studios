@@ -14,6 +14,7 @@
   import Avatar from '$lib/components/avatar.svelte';
   import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
   import { formatEurK } from '$lib/format';
+  import { isFemaleName } from '$lib/name-gender';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -101,7 +102,7 @@
 
 <div class="space-y-6">
   <header>
-    <h1 class="text-2xl font-bold">Staff</h1>
+    <h1 class="text-2xl font-bold">Empleados del club</h1>
     <p class="opacity-60">
       Contrata especialistas para percibir más señales en cada nodo cascada.
     </p>
@@ -168,7 +169,7 @@
             <!-- Current staff: avatar + name + tier + dismiss inline -->
             {#if current}
               <div class="flex gap-2 items-center mt-2 p-2 bg-base-200 rounded">
-                <Avatar seed={`staff:${current.id}:${current.name}`} size={40} />
+                <Avatar seed={`staff:${current.id}:${current.name}`} size={40} female={isFemaleName(current.name)} />
                 <div class="flex-1 min-w-0">
                   <div class="font-semibold text-sm truncate">{current.name}</div>
                   <div class="text-[10px] opacity-70 leading-tight">

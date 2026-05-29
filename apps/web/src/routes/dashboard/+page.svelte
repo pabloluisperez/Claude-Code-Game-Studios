@@ -13,6 +13,8 @@
   import AdvanceTransition from '$lib/components/advance-transition.svelte';
   import { formatEurK } from '$lib/format';
   import { eventDisplay } from '$lib/event-labels';
+  import Avatar from '$lib/components/avatar.svelte';
+  import { isFemaleName } from '$lib/name-gender';
 
   let { data }: { data: PageData } = $props();
 
@@ -197,21 +199,6 @@
     finance_director: 'director financiero',
     head_coach: 'segundo entrenador',
   };
-  const ROLE_BG: Record<string, string> = {
-    groundskeeper: 'bg-success/20',
-    fitness_coach: 'bg-info/20',
-    commercial_director: 'bg-secondary/20',
-    scouting_director: 'bg-accent/20',
-    finance_director: 'bg-warning/20',
-    head_coach: 'bg-primary/20',
-  };
-  function staffInitials(name: string): string {
-    return name
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((p) => p[0]?.toUpperCase() ?? '')
-      .join('');
-  }
   const ATTENTION_RE = /(:0$|low_stock|stock_low|warning|crisis|frozen|expired|relegat|descenso|scandal)/i;
   /** 'bad' → red bubble + bold; 'action' → urgent tint; 'normal' → plain. */
   function bubbleTone(priority: string, templateKey?: string | null): 'bad' | 'action' | 'normal' {
@@ -311,7 +298,7 @@
   onCancel={onTransitionCancel}
 />
 
-<div class="space-y-6">
+<div class="space-y-3">
   {#if !data.hasPlaythrough}
     <div class="hero bg-base-200 rounded-lg">
       <div class="hero-content text-center">
@@ -326,13 +313,13 @@
       </div>
     </div>
   {:else}
-    <!-- Hero -->
+    <!-- Hero — compact bar (Pablo 2026-05-29: cabecera más baja de altura) -->
     <section class="card bg-base-200 shadow">
-      <div class="card-body">
-        <div class="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <h1 class="card-title text-2xl">{data.activePlaythrough?.clubName ?? 'Mi club'}</h1>
-            <p class="opacity-70 text-sm">
+      <div class="card-body p-3">
+        <div class="flex items-center justify-between flex-wrap gap-3">
+          <div class="flex items-baseline gap-2 flex-wrap">
+            <h1 class="text-lg font-bold leading-none">{data.activePlaythrough?.clubName ?? 'Mi club'}</h1>
+            <p class="opacity-70 text-xs">
               <span>{data.todayPrecise.displayLong}</span>
               ·
               <span
@@ -375,7 +362,7 @@
           </form>
           <button
             type="button"
-            class="btn btn-primary btn-lg"
+            class="btn btn-primary btn-md"
             onclick={handleAdvanceClick}
           >
             ▶ Avanzar semana
@@ -570,14 +557,14 @@
       </div>
     {/if}
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
       <!-- Upcoming -->
       <section class="card bg-base-100 shadow">
-        <div class="card-body">
-          <h2 class="card-title">Próximos eventos</h2>
+        <div class="card-body p-3 gap-2">
+          <h2 class="font-bold text-sm">Próximos eventos</h2>
 
           {#if nextFixtures.length === 0 && pendingEvents.length === 0}
-            <p class="opacity-60 text-sm">No hay nada agendado. Pretemporada en marcha.</p>
+            <p class="opacity-60 text-xs">No hay nada agendado. Pretemporada en marcha.</p>
           {/if}
 
           {#each nextFixtures as f}
@@ -629,43 +616,43 @@
 
       <!-- Staff messages -->
       <section class="card bg-base-100 shadow">
-        <div class="card-body">
-          <h2 class="card-title">Mensajes del staff</h2>
+        <div class="card-body p-3 gap-2">
+          <h2 class="font-bold text-sm">Mensajes del staff</h2>
           {#if messages.length === 0}
-            <p class="opacity-60 text-sm">
+            <p class="opacity-60 text-xs">
               Tu staff aún no ha enviado mensajes. Pasa una semana o contrata más
               especialistas en <a href="/staff" class="link">Staff</a>.
             </p>
           {:else}
-            <!-- Speech-bubble redesign (Pablo 2026-05-29): one avatar + chat
-                 bubble per employee with their latest check-in. Attention-worthy
-                 messages get a red bubble + bold text. -->
-            <div class="space-y-2 max-h-96 overflow-y-auto pr-1">
+            <!-- Speech-bubble redesign (Pablo 2026-05-29): the same Avatar face
+                 as /staff (seed staff:id:name), role icon next to the name, and
+                 a bubble whose tail points straight at the face (no jump).
+                 Attention-worthy messages → red bubble + bold + ⚠️. -->
+            <div class="space-y-2 max-h-[28rem] overflow-y-auto pr-1">
               {#each messages as m}
                 {@const tone = bubbleTone(m.priority, m.templateKey)}
-                <div class="chat chat-start">
-                  <div class="chat-image avatar">
-                    <div class="w-10 h-10 rounded flex items-center justify-center text-lg
-                                {ROLE_BG[m.role] ?? 'bg-base-300'}
-                                {tone === 'bad' ? 'ring-2 ring-error' : ''}">
-                      <span aria-hidden="true">{ROLE_ICON[m.role] ?? '👤'}</span>
-                    </div>
-                  </div>
-                  <div class="chat-header text-[11px] opacity-70 mb-0.5">
-                    {m.name}
+                {@const bg = tone === 'bad' ? 'bg-error' : tone === 'action' ? 'bg-warning' : 'bg-base-300'}
+                {@const txt = tone === 'bad' ? 'text-error-content font-bold' : tone === 'action' ? 'text-warning-content' : ''}
+                <div>
+                  <!-- name + role icon, aligned over the bubble -->
+                  <div class="flex items-center gap-1 text-[11px] mb-0.5 pl-[2.625rem]">
+                    <span aria-hidden="true">{ROLE_ICON[m.role] ?? '👤'}</span>
+                    <span class="font-semibold">{m.name}</span>
                     <span class="opacity-50">· {ROLE_LABEL[m.role] ?? m.role} · S{m.week}</span>
                   </div>
-                  <div
-                    class="chat-bubble text-xs leading-snug
-                           {tone === 'bad' ? 'chat-bubble-error font-bold' : ''}
-                           {tone === 'action' ? 'chat-bubble-warning' : ''}"
-                  >
-                    {m.content}
+                  <!-- avatar + bubble, vertically centered so the tail meets the face -->
+                  <div class="flex items-center gap-1.5">
+                    <div class="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 bg-base-200
+                                {tone === 'bad' ? 'ring-2 ring-error' : ''}">
+                      <Avatar seed={`staff:${m.staffId}:${m.name}`} size={36} female={isFemaleName(m.name)} />
+                    </div>
+                    <div class="relative {bg} {txt} rounded-2xl px-3 py-1.5 text-xs leading-snug">
+                      <span class="absolute -left-1 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rotate-45 {bg}"></span>
+                      <span class="relative">{m.content}</span>
+                    </div>
                   </div>
                   {#if tone === 'bad'}
-                    <div class="chat-footer text-[10px] text-error font-semibold mt-0.5">
-                      ⚠️ Requiere atención
-                    </div>
+                    <div class="text-[10px] text-error font-semibold mt-0.5 pl-[2.625rem]">⚠️ Requiere atención</div>
                   {/if}
                 </div>
               {/each}

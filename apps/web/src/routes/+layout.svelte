@@ -75,7 +75,9 @@
             : null}
         />
       {/if}
-      <main id="main-content" class="flex-1 container mx-auto px-4 py-8 max-w-7xl">
+      <!-- Pablo 2026-05-29: la columna principal coge todo el hueco (sin
+           max-w-7xl/centrado) y menos padding vertical (menos scroll). -->
+      <main id="main-content" class="flex-1 min-w-0 px-4 py-4">
         {@render children()}
       </main>
     </div>

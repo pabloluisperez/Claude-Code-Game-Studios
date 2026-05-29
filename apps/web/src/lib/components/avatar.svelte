@@ -17,9 +17,11 @@
     /** Show the frame + name caption (carnet/portrait style). */
     framed?: boolean;
     caption?: string;
+    /** Force a feminine look (long hair, no facial hair). Pablo 2026-05-29. */
+    female?: boolean;
   }
 
-  let { seed, size = 64, framed = false, caption }: Props = $props();
+  let { seed, size = 64, framed = false, caption, female = false }: Props = $props();
 
   // ── Hash + pick helpers ─────────────────────────────────────────────────
   function hash32(s: string): number {
@@ -61,12 +63,18 @@
   const shirt = $derived(pick(SHIRT, h, 'shirt'));
   const eyeC  = $derived(pick(EYES,  h, 'eye'));
   const face  = $derived(pick(['oval', 'round', 'square'] as FaceShape[], h, 'face'));
+  // Women get long hair and no facial hair for a more realistic look; men keep
+  // the full deterministic variety. (Pablo 2026-05-29.)
   const style = $derived(
-    pick(['bald', 'short', 'side-part', 'curly', 'mohawk', 'cap', 'long'] as HairStyle[], h, 'style'),
+    female
+      ? 'long'
+      : pick(['bald', 'short', 'side-part', 'curly', 'mohawk', 'cap', 'long'] as HairStyle[], h, 'style'),
   );
   const glasses = $derived(pick(['none', 'none', 'none', 'normal', 'shades'] as Glasses[], h, 'glasses'));
   const mouth = $derived(pick(['neutral', 'smile', 'smile', 'serious'] as Mouth[], h, 'mouth'));
-  const facial = $derived(pick(['none', 'none', 'none', 'goatee', 'beard', 'moustache'] as Facial[], h, 'facial'));
+  const facial = $derived(
+    female ? 'none' : pick(['none', 'none', 'none', 'goatee', 'beard', 'moustache'] as Facial[], h, 'facial'),
+  );
 
   // Face shape paths (viewBox 0 0 100 100)
   const faceShape = $derived.by(() => {
