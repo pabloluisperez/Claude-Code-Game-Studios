@@ -49,18 +49,23 @@ integración y formalización del ADR. Diseño: `design/gdd/narrative-generator.
 
 **Total Must Have: ~7.5 días → cabe en 9.**
 
-### Should Have
+### Should Have — ✅ COMPLETE (2026-05-29)
 
-| ID    | Task | Est. d | AC |
-|-------|------|--------|-----|
-| 26-9  | Staff-message generator unificado bajo narrative engine | 1.0 | `generateStaffMessages`/ambient migran al engine o comparten vocab |
-| 26-10 | Locale scaffolding (estructura para futuro multi-idioma) | 0.5 | library+vocab parametrizables por locale sin tocar engine |
+| ID    | Task | Est. d | AC | Estado |
+|-------|------|--------|-----|--------|
+| 26-9  | Staff-message generator unificado bajo narrative engine | 1.0 | `generateStaffMessages`/ambient migran al engine o comparten vocab | ✅ ambient renderiza via `renderNarrative` (3 variantes/bucket, seeded semana+staff) |
+| 26-10 | Locale scaffolding (estructura para futuro multi-idioma) | 0.5 | library+vocab parametrizables por locale sin tocar engine | ✅ `Locale`/`DEFAULT_LOCALE`, `VOCAB_BY_LOCALE`+`getVocab`, `LIBRARY_BY_LOCALE`+`getLibrary` |
 
-### Nice to Have
+### Nice to Have — ✅ COMPLETE (2026-05-29)
 
-| ID      | Task | Est. d | AC |
-|---------|------|--------|-----|
-| 26-NH1  | Rumor feed UI en /inbox (sección "Rumores") | 0.5 | Rumores agrupados, marcables como leídos |
+| ID      | Task | Est. d | AC | Estado |
+|---------|------|--------|-----|--------|
+| 26-NH1  | Rumor feed UI en /inbox (sección "Rumores") | 0.5 | Rumores agrupados, marcables como leídos | ✅ tab "🗞️ Rumores" filtra `rumor:*` |
+
+### Playtest UX (Pablo 2026-05-29, fuera de plan original)
+- ✅ Inbox: ruido ambiental reducido (bucket medio suprimido, buenas noticias 1/4 semanas).
+- ✅ Inbox: noticias malas en rojo + negrita (tono por templateKey).
+- ✅ Inbox: cuadro "📌 Eventos actuales" (pending) resaltado arriba.
 
 ## Carryover from Sprint 25
 

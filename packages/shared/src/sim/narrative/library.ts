@@ -13,7 +13,8 @@
  *     raw locale-sensitive numbers.
  */
 
-import type { NarrativeTemplate } from './types.js';
+import type { Locale, NarrativeTemplate } from './types.js';
+import { DEFAULT_LOCALE } from './types.js';
 
 /** Match outcome — variant by win/loss/draw + magnitude (`goalDiff` gate var). */
 export const matchOutcomeTemplates: readonly NarrativeTemplate[] = [
@@ -263,10 +264,12 @@ export const boardConfidenceTemplates: readonly NarrativeTemplate[] = [
  * Every template group in the library, for whole-library QA sweeps
  * (slot-coverage, determinism, variety). Keep this in sync when adding groups.
  */
-export const ALL_TEMPLATE_GROUPS: readonly {
+export type TemplateGroupRegistry = readonly {
   name: string;
   groups: readonly NarrativeTemplate[];
-}[] = [
+}[];
+
+export const ALL_TEMPLATE_GROUPS: TemplateGroupRegistry = [
   { name: 'matchOutcome', groups: matchOutcomeTemplates },
   { name: 'financialPositive', groups: financialPositiveTemplates },
   { name: 'financialWarning', groups: financialWarningTemplates },
@@ -279,3 +282,17 @@ export const ALL_TEMPLATE_GROUPS: readonly {
   { name: 'promotionRelegation', groups: promotionRelegationTemplates },
   { name: 'boardConfidence', groups: boardConfidenceTemplates },
 ];
+
+/**
+ * Locale → template-group registry (Sprint 26-10 scaffolding). Only `es-ES` is
+ * populated; a new locale supplies its own translated registry here, leaving
+ * the engine and call sites untouched.
+ */
+export const LIBRARY_BY_LOCALE: Readonly<Record<Locale, TemplateGroupRegistry>> = Object.freeze({
+  'es-ES': ALL_TEMPLATE_GROUPS,
+});
+
+/** Resolve the template-group registry for a locale (falls back to default). */
+export function getLibrary(locale: Locale = DEFAULT_LOCALE): TemplateGroupRegistry {
+  return LIBRARY_BY_LOCALE[locale] ?? ALL_TEMPLATE_GROUPS;
+}

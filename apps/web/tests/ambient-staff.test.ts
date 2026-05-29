@@ -72,6 +72,20 @@ describe('generateAmbientStaffMessages — noise filter', () => {
     expect(a).toEqual(b);
   });
 
+  it('test_low_bucket_varies_wording_across_weeks', () => {
+    const lines = new Set<string>();
+    for (let week = 0; week < 12; week++) {
+      const msgs = generateAmbientStaffMessages({
+        activeStaff: STAFF,
+        worldState: world({ field_quality: 20 }),
+        week,
+      });
+      if (msgs[0]) lines.add(msgs[0].content);
+    }
+    // Engine-driven variant pick (26-9) → more than one distinct phrasing.
+    expect(lines.size).toBeGreaterThan(1);
+  });
+
   it('test_finance_director_inverted_bucket_bad_balance_emits', () => {
     // financial_status 2 (Crisis) → bad → low bucket → emitted every week.
     const msgs = generateAmbientStaffMessages({

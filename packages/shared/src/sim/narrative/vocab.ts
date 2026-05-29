@@ -11,7 +11,8 @@
  * Adding entries is always safe (more variety). Removing below 8 will fail QA.
  */
 
-import type { VocabTable } from './types.js';
+import type { Locale, VocabTable } from './types.js';
+import { DEFAULT_LOCALE } from './types.js';
 
 export const DEFAULT_VOCAB: VocabTable = Object.freeze({
   // --- Emotional valence adjectives --------------------------------------
@@ -114,3 +115,16 @@ export const DEFAULT_VOCAB: VocabTable = Object.freeze({
     'la oficina económica', 'el responsable de finanzas',
   ],
 });
+
+/**
+ * Locale → vocab table (Sprint 26-10 scaffolding). Only `es-ES` is populated;
+ * adding a locale means adding its `VocabTable` here — the engine is untouched.
+ */
+export const VOCAB_BY_LOCALE: Readonly<Record<Locale, VocabTable>> = Object.freeze({
+  'es-ES': DEFAULT_VOCAB,
+});
+
+/** Resolve the vocab table for a locale (falls back to the project default). */
+export function getVocab(locale: Locale = DEFAULT_LOCALE): VocabTable {
+  return VOCAB_BY_LOCALE[locale] ?? DEFAULT_VOCAB;
+}

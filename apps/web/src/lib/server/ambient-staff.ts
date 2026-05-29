@@ -14,7 +14,7 @@
  * Control Manifest: 2026-05-20
  */
 
-import type { WorldState } from '@smt/shared';
+import { renderNarrative, type WorldState } from '@smt/shared';
 
 type StaffRole =
   | 'groundskeeper'
@@ -58,41 +58,99 @@ const ROLE_LABEL: Readonly<Record<string, string>> = {
 };
 
 /**
- * Per-role templates by bucket (low / mid / high) of the primary domain
- * node. Each tuple = [low, mid, high] for the bucket.
+ * Per-role templates by bucket (low / mid / high) of the primary domain node.
+ * Each tuple = [lowVariants, midVariants, highVariants]. The narrative engine
+ * (Sprint 26-9) picks one variant per role/week seeded — so the same situation
+ * reads differently across weeks instead of a single stamped line. The MID
+ * bucket is suppressed (see filter below) so its variants rarely surface.
  */
-const TEMPLATES_BY_ROLE: Readonly<Record<StaffRole, readonly [string, string, string]>> = {
+const TEMPLATES_BY_ROLE: Readonly<Record<StaffRole, readonly [readonly string[], readonly string[], readonly string[]]>> = {
   groundskeeper: [
-    'El césped está sufriendo. Voy a darle un repaso esta semana.',
-    'El terreno aguanta. Trabajo de mantenimiento habitual.',
-    'El campo está perfecto. Los chicos lo notan al pase.',
+    [
+      'El césped está sufriendo. Le doy un repaso esta semana.',
+      'El terreno se resiente; toca trabajo extra de mantenimiento.',
+      'El campo no está fino. Esta semana lo cuido a fondo.',
+    ],
+    ['El terreno aguanta. Trabajo de mantenimiento habitual.'],
+    [
+      'El campo está perfecto. Los chicos lo notan al pase.',
+      'El césped luce inmejorable esta semana.',
+      'Terreno de juego impecable; da gusto verlo.',
+    ],
   ],
   fitness_coach: [
-    'El equipo llega cansado a los entrenamientos. Toca aflojar.',
-    'Condición física aceptable. Mantenemos el plan.',
-    'Plantilla muy enchufada físicamente. Buen momento para apretar.',
+    [
+      'El equipo llega cansado a los entrenamientos. Toca aflojar.',
+      'Acumulamos fatiga; bajo la carga esta semana.',
+      'La plantilla está justa de piernas. Conviene rotar.',
+    ],
+    ['Condición física aceptable. Mantenemos el plan.'],
+    [
+      'Plantilla muy enchufada físicamente. Buen momento para apretar.',
+      'El grupo está fino de forma; podemos exigir más.',
+      'Excelente condición física esta semana.',
+    ],
   ],
   commercial_director: [
-    'La conversión de patrocinios es floja esta semana.',
-    'Movimiento comercial normal — algunos contactos en marcha.',
-    'Buen ambiente comercial. Las marcas preguntan por nosotros.',
+    [
+      'La conversión de patrocinios es floja esta semana.',
+      'Cuesta cerrar acuerdos comerciales ahora mismo.',
+      'El interés de las marcas está flojo estos días.',
+    ],
+    ['Movimiento comercial normal — algunos contactos en marcha.'],
+    [
+      'Buen ambiente comercial. Las marcas preguntan por nosotros.',
+      'Los patrocinadores están receptivos esta semana.',
+      'Llegan oportunidades comerciales interesantes.',
+    ],
   ],
   scouting_director: [
-    'Apenas hay nombres nuevos en el radar. Ampliaré la red.',
-    'Estamos siguiendo a un par de futbolistas interesantes.',
-    'La red de ojeadores trae informes muy buenos esta semana.',
+    [
+      'Apenas hay nombres nuevos en el radar. Amplío la red.',
+      'Pocos informes esta semana; toca rastrear más.',
+      'El radar está tranquilo; busco nuevas pistas.',
+    ],
+    ['Estamos siguiendo a un par de futbolistas interesantes.'],
+    [
+      'La red de ojeadores trae informes muy buenos esta semana.',
+      'Varios nombres interesantes han aparecido en el radar.',
+      'Buena cosecha de informes de scouting.',
+    ],
   ],
   finance_director: [
-    'El balance preocupa. Hay que vigilar gastos.',
-    'Las cuentas van como deben. Nada destacable.',
-    'Cuentas saneadas. Margen para alguna operación.',
+    [
+      'El balance preocupa. Hay que vigilar gastos.',
+      'Las cuentas aprietan; conviene recortar.',
+      'Atención al gasto: la caja no acompaña.',
+    ],
+    ['Las cuentas van como deben. Nada destacable.'],
+    [
+      'Cuentas saneadas. Margen para alguna operación.',
+      'Las finanzas respiran; hay colchón disponible.',
+      'Balance sólido esta semana.',
+    ],
   ],
   head_coach: [
-    'El vestuario está revuelto. Hablaré con los capitanes.',
-    'Ambiente normal entre los jugadores. Trabajo táctico habitual.',
-    'Vestuario unido y motivado. Buenas sensaciones.',
+    [
+      'El vestuario está revuelto. Hablaré con los capitanes.',
+      'Hay ruido en el grupo; toca gestionar.',
+      'El ambiente está tenso; medio con los líderes.',
+    ],
+    ['Ambiente normal entre los jugadores. Trabajo táctico habitual.'],
+    [
+      'Vestuario unido y motivado. Buenas sensaciones.',
+      'El grupo está enchufado; gran ambiente.',
+      'Plantilla con la moral alta esta semana.',
+    ],
   ],
 };
+
+/** Small stable hash of a staff id → seed component (keeps render deterministic). */
+function idHash(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 100000;
+  return h;
+}
 
 /** Node the role checks in on (drives the bucket selection). */
 const ROLE_NODE: Readonly<Record<StaffRole, keyof WorldState>> = {
@@ -149,7 +207,11 @@ export function generateAmbientStaffMessages(args: {
     if (b === 1) continue;
     if (b === 2 && (week + roleSalt(role)) % GOOD_NEWS_EVERY_N_WEEKS !== 0) continue;
 
-    const template = templates[b];
+    // Seeded variant pick via the narrative engine (Sprint 26-9): same role +
+    // week + bucket → same line, but varies across weeks. Deterministic.
+    const variants = templates[b];
+    const seed = week * 100 + (idHash(s.id) % 97) + b;
+    const template = renderNarrative({ variants }, { seed }) || variants[0]!;
     const firstName = s.name.split(' ')[0] ?? 'Staff';
     const label = ROLE_LABEL[role] ?? role;
 

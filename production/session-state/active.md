@@ -97,8 +97,20 @@ All 8 Must Have done + verified. shared 1199 · api 156 · web 217 · typecheck 
 - **26-8**: golden snapshots (19) + qa suite (slot-coverage, determinism, denylist, variety
   enumeration ≥200 high-freq / documented floors rare, tonal no-leak, fallback).
 
-NOT done: Should/Nice-to-Have (26-9/26-10/26-NH1) — Sprint 27.
-NEXT: commit (exclude .mcp.json + packages/db/*.cjs scratch). Push pending user OK.
+### Sprint 26 Should/Nice + playtest UX COMPLETE (2026-05-29) — commits afa6dc5 + (next)
+- Inbox UX (playtest Pablo): ambient noise filter (mid suprimido, good news 1/4 semanas,
+  `week` param), bad news rojo+negrita (tono por templateKey en inbox), cuadro "Eventos
+  actuales" boxed. +6 tests ambient.
+- 26-NH1: tab "🗞️ Rumores" en /inbox (filtra rumor:*). rumorCount $derived.
+- 26-9: ambient-staff renderiza via renderNarrative (3 variantes/bucket low+high, seeded
+  week+idHash(staffId)). Mata repetición exacta. Variedad test.
+- 26-10: locale scaffolding — Locale/DEFAULT_LOCALE (types), VOCAB_BY_LOCALE+getVocab,
+  LIBRARY_BY_LOCALE+getLibrary+TemplateGroupRegistry. Engine intacto. +5 locale tests.
+- Verificado: typecheck 3/3 · shared 1204 · api 156 · web 223 (+5 todo).
+- "Open bugs: 2" del session-start = falso positivo (ambos CLOSED Sprint 13).
+
+NEXT: commit Should-Haves batch + push. Sprint 26 100% (Must+Should+Nice). Pendiente:
+retro/milestone v1.2 cuando Pablo quiera. Verificación VISUAL del inbox no hecha en vivo.
 
 ### Previously completed (2026-05-27)
 - [x] Migration 0040 + schema columns

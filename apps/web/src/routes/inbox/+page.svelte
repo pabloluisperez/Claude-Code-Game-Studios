@@ -18,7 +18,15 @@
   import { eventDisplay, eventNeedsAction } from '$lib/event-labels';
   let { data }: { data: PageData } = $props();
 
-  let tab = $state<'all' | 'messages' | 'events'>('all');
+  let tab = $state<'all' | 'messages' | 'events' | 'rumores'>('all');
+
+  /** Rumour-mill messages (Sprint 26-NH1) — grouped into their own feed. */
+  function isRumor(templateKey: string | null | undefined): boolean {
+    return Boolean(templateKey && templateKey.startsWith('rumor:'));
+  }
+  const rumorCount = $derived(
+    data.hasPlaythrough ? data.messages.filter((m) => isRumor(m.templateKey)).length : 0,
+  );
 
   /** Action target page for a given event type. */
   function actionUrl(type: string): string | null {
@@ -132,6 +140,18 @@
         >
           Eventos ({data.events.length})
         </button>
+        {#if rumorCount > 0}
+          <button
+            role="tab"
+            id="tab-inbox-rumores"
+            aria-selected={tab === 'rumores'}
+            aria-controls="tabpanel-inbox"
+            class="tab {tab === 'rumores' ? 'tab-active' : ''}"
+            onclick={() => (tab = 'rumores')}
+          >
+            🗞️ Rumores ({rumorCount})
+          </button>
+        {/if}
       </div>
       {#if unreadCount > 0}
         <form method="POST" action="?/markAllRead" use:enhance>
@@ -145,7 +165,7 @@
     <div
       role="tabpanel"
       id="tabpanel-inbox"
-      aria-labelledby={tab === 'all' ? 'tab-inbox-all' : tab === 'messages' ? 'tab-inbox-messages' : 'tab-inbox-events'}
+      aria-labelledby={tab === 'all' ? 'tab-inbox-all' : tab === 'messages' ? 'tab-inbox-messages' : tab === 'rumores' ? 'tab-inbox-rumores' : 'tab-inbox-events'}
       class="space-y-1"
     >
       <!-- Eventos actuales: pending events boxed at the top so they stand out
@@ -187,8 +207,9 @@
       {/if}
 
       <!-- P14 calendar-sheet date display + P15 stable layout (badge space reserved). -->
-      {#if (tab === 'all' || tab === 'messages')}
-        {#each data.messages as m}
+      {#if tab === 'all' || tab === 'messages' || tab === 'rumores'}
+        {@const visibleMessages = tab === 'rumores' ? data.messages.filter((m) => isRumor(m.templateKey)) : data.messages}
+        {#each visibleMessages as m}
           {@const tone = messageTone(m.priority, m.templateKey)}
           {@const sheet = dateSheet(m.date.display)}
           <form method="POST" action="?/markRead" use:enhance class="contents">

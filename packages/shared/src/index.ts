@@ -586,7 +586,9 @@ export type {
   NarrativeContext,
   NarrativeTemplate,
   VocabTable,
+  Locale,
 } from './sim/narrative/types.js';
+export { DEFAULT_LOCALE } from './sim/narrative/types.js';
 export type { TemplateSlots } from './sim/narrative/engine.js';
 export {
   render as renderNarrative,
@@ -596,7 +598,7 @@ export {
   allReferencedVariables,
   referencedVocabCategories,
 } from './sim/narrative/engine.js';
-export { DEFAULT_VOCAB } from './sim/narrative/vocab.js';
+export { DEFAULT_VOCAB, VOCAB_BY_LOCALE, getVocab } from './sim/narrative/vocab.js';
 export {
   matchOutcomeTemplates,
   financialPositiveTemplates,
@@ -610,4 +612,7 @@ export {
   promotionRelegationTemplates,
   boardConfidenceTemplates,
   ALL_TEMPLATE_GROUPS,
+  LIBRARY_BY_LOCALE,
+  getLibrary,
 } from './sim/narrative/library.js';
+export type { TemplateGroupRegistry } from './sim/narrative/library.js';

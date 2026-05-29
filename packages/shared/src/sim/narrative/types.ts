@@ -41,3 +41,13 @@ export type NarrativeTemplate = {
 
 /** Vocab table: maps category names to ordered lists of words. */
 export type VocabTable = Readonly<Record<string, readonly string[]>>;
+
+/**
+ * Supported locales (Sprint 26-10 scaffolding). Project default is `es-ES`.
+ * Adding a locale = add a `VocabTable` + a library registry for it; the engine
+ * (`render`) is locale-agnostic and never changes. This union is the single
+ * place new locales are declared.
+ */
+export type Locale = 'es-ES';
+
+export const DEFAULT_LOCALE: Locale = 'es-ES';
