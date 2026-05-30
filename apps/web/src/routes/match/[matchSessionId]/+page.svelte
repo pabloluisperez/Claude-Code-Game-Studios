@@ -494,6 +494,71 @@
     <span class="opacity-60 text-sm">· Semana {data.fixture.week}</span>
   </header>
 
+  {#if data.interactive}
+    <!-- ADR-033 Phase 4: interactive pause — make decisions before resuming. -->
+    {@const iv = data.interactive}
+    <section class="card bg-base-200 shadow-lg border-2 border-warning">
+      <div class="card-body">
+        <div class="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <div class="text-xs uppercase tracking-wider text-warning font-bold">
+              ⏸ {iv.tick === 45 ? 'Descanso' : `Pausa · minuto ${iv.tick}`}
+            </div>
+            <h2 class="text-2xl font-bold mt-1">
+              {data.fixture.homeName} <span class="font-mono">{iv.homeScore}–{iv.awayScore}</span> {data.fixture.awayName}
+            </h2>
+            <div class="text-xs opacity-60 mt-0.5">Cambios usados: {iv.subsUsed}/5 · instrucción: {iv.instruction ?? 'normal'}</div>
+          </div>
+        </div>
+
+        <!-- Events so far -->
+        {#if iv.events.length > 0}
+          <div class="mt-2 max-h-40 overflow-y-auto text-xs space-y-0.5">
+            {#each iv.events as e}
+              <div class="flex gap-2">
+                <span class="font-mono opacity-60 w-8">{e.minute}'</span>
+                <span class="badge badge-xs {e.type === 'goal' ? 'badge-success' : e.type === 'red_card' ? 'badge-error' : e.type === 'yellow_card' ? 'badge-warning' : 'badge-ghost'}">{e.type}</span>
+                <span class="opacity-70">{e.team === iv.userSide ? 'nosotros' : e.team === null ? '' : 'rival'}</span>
+              </div>
+            {/each}
+          </div>
+        {/if}
+
+        <!-- Decision form -->
+        <form method="POST" action="?/decide" class="mt-3 space-y-3 border-t border-base-300 pt-3">
+          <input type="hidden" name="sessionId" value={iv.sessionId} />
+          <input type="hidden" name="side" value={iv.userSide} />
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label class="form-control">
+              <span class="label-text text-xs">Sale</span>
+              <select name="subOut" class="select select-bordered select-sm">
+                <option value="">— sin cambio —</option>
+                {#each iv.onPitch as p}<option value={p.id}>{p.position} · {p.name}</option>{/each}
+              </select>
+            </label>
+            <label class="form-control">
+              <span class="label-text text-xs">Entra (banquillo)</span>
+              <select name="subIn" class="select select-bordered select-sm">
+                <option value="">—</option>
+                {#each iv.bench as p}<option value={p.id}>{p.position} · {p.name}</option>{/each}
+              </select>
+            </label>
+          </div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="label-text text-xs">Táctica:</span>
+            {#each [['', 'Normal'], ['PRESS_HIGH', 'Presión alta'], ['HOLD_SHAPE', 'Aguantar'], ['COUNTER', 'Contraataque']] as [val, lbl]}
+              <label class="cursor-pointer flex items-center gap-1 text-xs">
+                <input type="radio" name="instruction" value={val} class="radio radio-xs" checked={(iv.instruction ?? '') === val} />
+                {lbl}
+              </label>
+            {/each}
+          </div>
+          <button type="submit" class="btn btn-warning btn-block">▶ Continuar el partido</button>
+        </form>
+      </div>
+    </section>
+  {:else}
+
   <!-- Scoreboard -->
   <section class="card bg-base-200 shadow">
     <div class="card-body">
@@ -748,6 +813,7 @@
       {/if}
     </div>
   </section>
+  {/if}
 </div>
 
 <!-- Right sidebar: other matchday + live standings -->

@@ -11,23 +11,66 @@
  * Control Manifest: 2026-05-20
  */
 
-import type { PageServerLoad } from './$types';
-import { error, redirect } from '@sveltejs/kit';
+import type { PageServerLoad, Actions } from './$types';
+import { error, redirect, fail } from '@sveltejs/kit';
 import {
   db,
   fixtures,
   clubs,
   standings,
   worldSnapshots,
+  playthroughs,
   eq,
   and,
   ne,
   desc,
   alias,
+  inArray,
 } from '@smt/db';
 import { computeEffectiveTicketPrice } from '@smt/shared/sim/economy/revenue';
 import { playSingleFixture } from '$lib/server/match-day-runner';
 import { emitUserMatchResultEffects } from '$lib/server/user-match-result';
+import {
+  startInteractiveMatch,
+  advanceInteractiveSession,
+  type InteractiveState,
+} from '$lib/server/interactive-match';
+import { players as playersTable } from '@smt/db';
+import type { MatchDecision } from '@smt/shared';
+
+/** Build the client view for an in-progress interactive session (pause panel). */
+async function buildInteractiveView(st: InteractiveState, userSide: 'home' | 'away') {
+  const lineup = userSide === 'home' ? st.snapshot.currentLineupHome : st.snapshot.currentLineupAway;
+  const onPitch = lineup.slice(0, 11);
+  const bench = lineup.slice(11);
+  const ids = [...onPitch, ...bench].map((s) => s.player.id);
+  const names = ids.length
+    ? await db
+        .select({ id: playersTable.id, firstName: playersTable.firstName, lastName: playersTable.lastName })
+        .from(playersTable)
+        .where(inArray(playersTable.id, ids))
+    : [];
+  const nameById = new Map(names.map((n) => [n.id, `${n.firstName} ${n.lastName}`.trim()]));
+  const label = (id: string) => nameById.get(id) ?? id.slice(0, 6);
+  // Live score from accumulated events (goals minus disallowed).
+  let h = 0, a = 0;
+  for (const e of st.snapshot.eventsAccumulated) {
+    if (e.type === 'goal') { if (e.team === 'home') h++; else if (e.team === 'away') a++; }
+  }
+  return {
+    sessionId: st.sessionId,
+    tick: st.snapshot.currentTick,
+    pauseType: st.pauseType,
+    userSide,
+    homeScore: h,
+    awayScore: a,
+    instruction: userSide === 'home' ? st.snapshot.activeInstructionHome : st.snapshot.activeInstructionAway,
+    subsUsed: userSide === 'home' ? st.snapshot.substitutionsUsed : st.snapshot.awaySubstitutionsUsed,
+    onPitch: onPitch.map((s) => ({ id: s.player.id, name: label(s.player.id), position: s.player.position })),
+    bench: bench.map((s) => ({ id: s.player.id, name: label(s.player.id), position: s.player.position })),
+    events: st.snapshot.eventsAccumulated.map((e) => ({ type: e.type, minute: e.minute, team: e.team ?? null })),
+  };
+}
 
 export const load: PageServerLoad = async ({ params, parent }) => {
   const { user, activePlaythrough } = await parent();
@@ -65,22 +108,38 @@ export const load: PageServerLoad = async ({ params, parent }) => {
   let fx = await selectFixture();
   if (!fx) throw error(404, 'Match not found');
 
-  // Phase 2C (ADR-033): the user's own fixture is left scheduled by runMatchDay
-  // so it's played on demand HERE. For now this is a one-shot simulation (the
-  // interactive tick-by-tick session lands here in Phase 3) + the result hooks,
-  // after which the page shows the result/replay exactly as before.
-  if (
+  // ADR-033 Phase 3: the user's own fixture is left scheduled by runMatchDay and
+  // played INTERACTIVELY here (tick-by-tick with halftime + sub-window pauses).
+  // Falls back to a one-shot simulation if the session can't start (so matches
+  // never break). `interactive` (when set) drives the live pause/decision UI.
+  let interactive: Awaited<ReturnType<typeof buildInteractiveView>> | null = null;
+  const isUserScheduled =
     fx.status === 'scheduled' &&
     activePlaythrough &&
-    (fx.homeClubId === activePlaythrough.clubId || fx.awayClubId === activePlaythrough.clubId)
-  ) {
-    await playSingleFixture({ playthroughId: activePlaythrough.id, fixtureId: fx.id });
-    await emitUserMatchResultEffects({
-      playthroughId: activePlaythrough.id,
-      clubId: activePlaythrough.clubId,
-      week: fx.week,
-    });
-    fx = (await selectFixture()) ?? fx;
+    (fx.homeClubId === activePlaythrough.clubId || fx.awayClubId === activePlaythrough.clubId);
+  if (isUserScheduled && activePlaythrough) {
+    const userSide: 'home' | 'away' = fx.homeClubId === activePlaythrough.clubId ? 'home' : 'away';
+    async function oneShotFallback() {
+      await playSingleFixture({ playthroughId: activePlaythrough!.id, fixtureId: fx.id });
+      await emitUserMatchResultEffects({ playthroughId: activePlaythrough!.id, clubId: activePlaythrough!.clubId, week: fx.week });
+      fx = (await selectFixture()) ?? fx;
+    }
+    try {
+      const st = await startInteractiveMatch({
+        playthroughId: activePlaythrough.id,
+        clubId: activePlaythrough.clubId,
+        fixtureId: fx.id,
+      });
+      if (st && !st.completed) {
+        interactive = await buildInteractiveView(st, userSide);
+      } else if (st && st.completed) {
+        fx = (await selectFixture()) ?? fx; // finished instantly (e.g. forfeit)
+      } else {
+        await oneShotFallback(); // null → engine couldn't build input
+      }
+    } catch {
+      await oneShotFallback();
+    }
   }
 
   // Other fixtures from the same matchday (everyone else playing today).
@@ -228,5 +287,48 @@ export const load: PageServerLoad = async ({ params, parent }) => {
     currentWeek: activePlaythrough?.currentWeek ?? 0,
     homeMatchEconomics,
     myClubSide,
+    interactive,
   };
+};
+
+export const actions: Actions = {
+  // Resume the interactive session with the player's halftime / sub-window
+  // decisions (substitution + instruction), advancing to the next pause or the
+  // final whistle. ADR-033 Phase 4.
+  decide: async ({ request, params, locals }) => {
+    if (!locals.user) throw redirect(303, '/login');
+    const [activePlaythrough] = await db
+      .select({ id: playthroughs.id, clubId: playthroughs.clubId })
+      .from(playthroughs)
+      .where(eq(playthroughs.userId, locals.user.id))
+      .orderBy(desc(playthroughs.updatedAt))
+      .limit(1);
+    if (!activePlaythrough) return fail(400, { error: 'No hay carrera activa.' });
+    const form = await request.formData();
+    const sessionId = String(form.get('sessionId') ?? '');
+    if (!sessionId) return fail(400, { error: 'Falta sessionId.' });
+
+    const side = String(form.get('side') ?? 'home') as 'home' | 'away';
+    const outId = String(form.get('subOut') ?? '');
+    const inId = String(form.get('subIn') ?? '');
+    const instruction = String(form.get('instruction') ?? '');
+
+    const decisions: MatchDecision[] = [];
+    if (outId && inId) {
+      decisions.push({ kind: 'substitution', team: side, from_player_id: outId, to_player_id: inId });
+    }
+    if (instruction === 'PRESS_HIGH' || instruction === 'HOLD_SHAPE' || instruction === 'COUNTER') {
+      decisions.push({ kind: 'instruction_change', instruction });
+    }
+
+    const st = await advanceInteractiveSession({
+      sessionId,
+      playthroughId: activePlaythrough.id,
+      clubId: activePlaythrough.clubId,
+      decisions,
+    });
+    // Reload /match: if completed, the fixture is now played → replay/result;
+    // otherwise the next pause panel renders.
+    throw redirect(303, `/match/${params.matchSessionId}?return=dashboard${st?.completed ? '&done=1' : ''}`);
+  },
 };
