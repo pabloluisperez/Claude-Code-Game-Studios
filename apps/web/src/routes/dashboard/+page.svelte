@@ -383,8 +383,9 @@
           <span class="font-semibold">⚠ Evento detectado · {data.todayPrecise.displayLong}</span>
           {#if stopEvent}
             {@const meta = stopEvent.metadata as { label?: string } | null}
+            {@const display = eventDisplay(stopEvent.type)}
             <span class="text-sm opacity-90">
-              {meta?.label ?? stopEvent.type} — Resuélvelo antes de seguir avanzando.
+              {display.icon} {meta?.label ?? display.label} — Resuélvelo antes de seguir avanzando.
             </span>
             <div class="mt-1 flex gap-2">
               <a href={eventDestination(stopEvent.type)} class="btn btn-sm btn-primary">
