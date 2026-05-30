@@ -744,6 +744,39 @@ export async function runAdvanceTickFull(
       // A derby is always newsworthy, even on a tame scoreline.
       const shouldEmitPress = isNotable || isDerby;
 
+      // Afición reacts to the result (Pablo 2026-05-30: fan_momentum was frozen
+      // at 60 forever). The cascade edges C6/C7 read match_performance_index +
+      // consecutive_wins, but those are never written now that match-day runs in
+      // a separate phase — so the loop was dead. Apply a bounded, direct
+      // fan_momentum delta from the user's result and persist it on THIS week's
+      // snapshot, so it drives next week's attendance/gate (C8) + the dashboard.
+      try {
+        const ws = eco.patchedState as Record<string, number>;
+        const prevFan = ws['fan_momentum'] ?? 60;
+        let fanDelta =
+          goalDiff > 0
+            ? Math.min(10, 3 + goalDiff * 1.5)
+            : goalDiff === 0
+              ? -1
+              : -Math.min(10, 3 + Math.abs(goalDiff) * 1.5);
+        if (isDerby) fanDelta *= 1.5;
+        const newFan = Math.max(0, Math.min(100, Math.round(prevFan + fanDelta)));
+        if (newFan !== prevFan) {
+          ws['fan_momentum'] = newFan;
+          await db
+            .update(worldSnapshots)
+            .set({ worldState: eco.patchedState })
+            .where(
+              and(
+                eq(worldSnapshots.playthroughId, active.id),
+                eq(worldSnapshots.week, nextWeek),
+              ),
+            );
+        }
+      } catch {
+        // best-effort — never block the advance pipeline.
+      }
+
       if (shouldEmitPress) {
         const { renderNarrative, matchOutcomeTemplates, pressDerbyTemplates } = await import('@smt/shared');
         const seed = nextWeek * 1000 + (thisFixture.matchday ?? 0);
