@@ -50,6 +50,12 @@
     /** True when the destination week has a user-club fixture. */
     matchPendingThisAdvance?: boolean;
     /**
+     * True once a choice was made and the advance request is in flight. The
+     * modal shows a blocking "Cargando…" state instead of the (now frozen)
+     * choice buttons, so the wait doesn't look like a freeze. Pablo 2026-05-30.
+     */
+    submitting?: boolean;
+    /**
      * Called when day 7 closes WITHOUT a match — auto-commit. Should
      * submit the form.
      */
@@ -71,6 +77,7 @@
     headlines,
     msPerDay = 5000,
     matchPendingThisAdvance = false,
+    submitting = false,
     onComplete,
     onMatchChoice,
     onCancel,
@@ -455,6 +462,18 @@
     </div>
 
     <div class="advance-content">
+      <!-- Blocking loading state while the advance request is in flight, so the
+           wait between "Vivir el partido" and the match screen doesn't look
+           frozen (Pablo 2026-05-30). Covers + disables the choice buttons. -->
+      {#if submitting}
+        <div class="loading-overlay">
+          <span class="loading loading-spinner loading-lg text-white"></span>
+          <div class="text-white text-xl font-bold mt-4">
+            {matchPendingThisAdvance ? 'Cargando partido…' : 'Procesando la jornada…'}
+          </div>
+          <div class="text-white/70 text-sm mt-1">Un momento, preparando todo.</div>
+        </div>
+      {/if}
       <!-- Walkthrough fix (Pablo): contrast backdrop so the centred text is
            readable over BOTH bright daytime sky AND dark night sky. White
            text + dark semi-transparent panel works across all theme/hue
@@ -636,6 +655,13 @@
     animation: twinkle 1.6s ease-in-out infinite;
   }
   @keyframes twinkle { 0%, 100% { opacity: 0; } 50% { opacity: 0.9; } }
+  .loading-overlay {
+    position: absolute; inset: 0; z-index: 10;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    animation: fade-in 0.15s ease-out;
+  }
   .advance-content {
     position: relative; z-index: 2; height: 100%;
     display: flex; flex-direction: column; justify-content: center;

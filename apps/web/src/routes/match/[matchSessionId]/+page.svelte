@@ -642,7 +642,7 @@
             {/if}
             {#if returnTo === 'dashboard'}
               {#if finalWhistle}
-                <a href="/dashboard?advanced=1" class="btn btn-ghost">
+                <a href="/dashboard?advanced=1" class="btn btn-primary btn-lg">
                   → Volver al dashboard
                 </a>
               {:else if resultHidden}
@@ -674,8 +674,9 @@
   </section>
 
   {#if finalWhistle && returnTo === 'dashboard'}
-    <div class="alert alert-success shadow">
-      <span>⏱ Final del partido. Vuelve al dashboard cuando quieras.</span>
+    <div class="alert alert-success shadow flex-wrap gap-2">
+      <span class="flex-1">⏱ Final del partido.</span>
+      <a href="/dashboard?advanced=1" class="btn btn-primary">→ Volver al dashboard</a>
     </div>
   {/if}
 

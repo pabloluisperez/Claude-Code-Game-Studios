@@ -314,6 +314,7 @@
   headlines={transitionHeadlines}
   msPerDay={5000}
   matchPendingThisAdvance={userMatchNextAdvance !== null}
+  submitting={advanceSubmitting}
   onComplete={onTransitionComplete}
   onMatchChoice={onTransitionMatchChoice}
   onCancel={onTransitionCancel}
