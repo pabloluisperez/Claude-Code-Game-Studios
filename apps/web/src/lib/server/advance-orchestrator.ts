@@ -74,6 +74,7 @@ import { popEffectsDueAt } from '@smt/shared/sim/delayed-effects';
 import { runTVPostPhase, runTVPrePhase, persistTVTickEffects } from './tv-rights-tick';
 import { maybeDripSeasonTickets } from './season-tickets';
 import { runMatchDay } from './match-day-runner';
+import { emitUserMatchResultEffects } from './user-match-result';
 import { applyEconomyTick } from './economy-tick';
 import { tickStadiumForClubInTx } from './stadium-tick';
 import { tickAIClubsStadiums } from './ai-clubs-stadium-tick';
@@ -692,149 +693,19 @@ export async function runAdvanceTickFull(
     }
   }
 
-  // ── Phase 6c: press article on notable match (v1.2 Sprint 26-3) ────────
-  // Generates a deterministic-but-varied press article when the user's
-  // club played a notable fixture this week. Uses the narrative engine
-  // (no LLM — pure template generator, see packages/shared/src/sim/narrative).
-  // Notable = goal diff >= 3 OR home_score = 0 AND away_score = 0 (cero-cero notable)
-  // OR any league fixture for v1.2 (we don't yet have derby/cup flags).
+  // ── Phase 6c: user-match result effects (press crónica + derby + afición) ──
+  // Extracted to a shared module (Phase 2B, ADR-033) so the SAME logic runs from
+  // the on-demand /match path once the user's fixture stops being simulated at
+  // advance time. Behaviour preserved while the user fixture is still played here.
   try {
-    const [thisFixture] = await db
-      .select({
-        id: fixtures.id,
-        homeClubId: fixtures.homeClubId,
-        awayClubId: fixtures.awayClubId,
-        homeScore: fixtures.homeScore,
-        awayScore: fixtures.awayScore,
-        matchday: fixtures.matchday,
-      })
-      .from(fixtures)
-      .where(
-        and(
-          eq(fixtures.week, nextWeek),
-          or(eq(fixtures.homeClubId, active.clubId), eq(fixtures.awayClubId, active.clubId)),
-          eq(fixtures.status, 'played'),
-        ),
-      )
-      .limit(1);
-
-    if (thisFixture && thisFixture.homeScore !== null && thisFixture.awayScore !== null) {
-      const isHome = thisFixture.homeClubId === active.clubId;
-      const myScore = isHome ? thisFixture.homeScore : thisFixture.awayScore;
-      const theirScore = isHome ? thisFixture.awayScore : thisFixture.homeScore;
-      const goalDiff = myScore - theirScore;
-      const isNotable = Math.abs(goalDiff) >= 3 || (myScore === 0 && theirScore === 0);
-
-      // Fetch both clubs (incl. city) up-front: needed for derby detection
-      // (Sprint 26-6: no rivalry table yet → same-city heuristic, see ADR-032
-      // risk mitigation in design/gdd/narrative-generator.md).
-      const [club] = await db
-        .select({ name: clubs.name, city: clubs.city })
-        .from(clubs)
-        .where(eq(clubs.id, active.clubId))
-        .limit(1);
-      const opponentId = isHome ? thisFixture.awayClubId : thisFixture.homeClubId;
-      const [opponentClub] = await db
-        .select({ name: clubs.name, city: clubs.city })
-        .from(clubs)
-        .where(eq(clubs.id, opponentId))
-        .limit(1);
-
-      const isDerby = Boolean(club?.city) && club?.city === opponentClub?.city;
-      // A derby is always newsworthy, even on a tame scoreline.
-      const shouldEmitPress = isNotable || isDerby;
-
-      // Afición reacts to the result (Pablo 2026-05-30: fan_momentum was frozen
-      // at 60 forever). The cascade edges C6/C7 read match_performance_index +
-      // consecutive_wins, but those are never written now that match-day runs in
-      // a separate phase — so the loop was dead. Apply a bounded, direct
-      // fan_momentum delta from the user's result and persist it on THIS week's
-      // snapshot, so it drives next week's attendance/gate (C8) + the dashboard.
-      try {
-        const ws = eco.patchedState as Record<string, number>;
-        const prevFan = ws['fan_momentum'] ?? 60;
-        let fanDelta =
-          goalDiff > 0
-            ? Math.min(10, 3 + goalDiff * 1.5)
-            : goalDiff === 0
-              ? -1
-              : -Math.min(10, 3 + Math.abs(goalDiff) * 1.5);
-        if (isDerby) fanDelta *= 1.5;
-        const newFan = Math.max(0, Math.min(100, Math.round(prevFan + fanDelta)));
-        if (newFan !== prevFan) {
-          ws['fan_momentum'] = newFan;
-          await db
-            .update(worldSnapshots)
-            .set({ worldState: eco.patchedState })
-            .where(
-              and(
-                eq(worldSnapshots.playthroughId, active.id),
-                eq(worldSnapshots.week, nextWeek),
-              ),
-            );
-        }
-      } catch {
-        // best-effort — never block the advance pipeline.
-      }
-
-      if (shouldEmitPress) {
-        const { renderNarrative, matchOutcomeTemplates, pressDerbyTemplates } = await import('@smt/shared');
-        const seed = nextWeek * 1000 + (thisFixture.matchday ?? 0);
-        const sharedVars = {
-          homeScore: myScore,
-          awayScore: theirScore,
-          goalDiff,
-          clubName: club?.name ?? 'el club',
-          opponent: opponentClub?.name ?? 'el rival',
-        };
-        const pressBody = renderNarrative(matchOutcomeTemplates, { seed, variables: sharedVars });
-        // Derby press uses a distinct seed salt so it never mirrors the
-        // match-outcome variant pick in the same week.
-        const derbyBody = isDerby
-          ? renderNarrative(pressDerbyTemplates, { seed: seed + 31, variables: sharedVars })
-          : '';
-
-        // Persist as staff messages under the head_coach (staffId is required).
-        const [headCoach] = await db
-          .select({ id: staff.id })
-          .from(staff)
-          .where(
-            and(
-              eq(staff.playthroughId, active.id),
-              eq(staff.role, 'head_coach'),
-              eq(staff.status, 'active'),
-            ),
-          )
-          .limit(1);
-
-        if (headCoach && pressBody) {
-          await db.insert(staffMessages).values({
-            playthroughId: active.id,
-            staffId: headCoach.id,
-            week: nextWeek,
-            season: tvCurrentSeason,
-            priority: 'ROUTINE',
-            templateKey: 'press:match_outcome',
-            content: `📰 Crónica de prensa — ${pressBody}`,
-            isRead: false,
-          });
-        }
-        if (headCoach && derbyBody) {
-          await db.insert(staffMessages).values({
-            playthroughId: active.id,
-            staffId: headCoach.id,
-            week: nextWeek,
-            season: tvCurrentSeason,
-            priority: 'ROUTINE',
-            templateKey: 'press:derby',
-            content: `🔥 Derbi — ${derbyBody}`,
-            isRead: false,
-          });
-        }
-      }
-    }
+    await emitUserMatchResultEffects({
+      playthroughId: active.id,
+      clubId: active.clubId,
+      week: nextWeek,
+      season: tvCurrentSeason,
+    });
   } catch {
-    // Press article is decorative — never block the advance pipeline.
+    // Press/afición are decorative — never block the advance pipeline.
   }
 
   // ── Phase 6e: transfer-window open/close blurb (v1.2 Sprint 26-7) ──────
