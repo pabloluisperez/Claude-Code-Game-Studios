@@ -381,55 +381,18 @@ export async function runMatchDay(args: {
           })
         : simulateStrengthBased(fx.homeStrength ?? 50, fx.awayStrength ?? 50, seed);
 
-      await tx
-        .update(fixtures)
-        .set({
-          status: 'played',
-          homeScore: result.homeScore,
-          awayScore: result.awayScore,
-          matchOutcomeData: {
-            winner: result.winner,
-            homeStrength: result.homeStrength,
-            awayStrength: result.awayStrength,
-            events: result.events,
-          },
-          playedAt,
-        })
-        .where(eq(fixtures.id, fx.id));
-
-      await applyToStandings(tx, {
+      await persistFixtureResult(tx, {
+        fixtureId: fx.id,
         seasonId: fx.seasonId,
         homeClubId: fx.homeClubId,
         awayClubId: fx.awayClubId,
-        homeScore: result.homeScore,
-        awayScore: result.awayScore,
-        winner: result.winner,
+        seed,
+        playthroughId,
+        week,
+        isUserDivision,
+        result,
+        playedAt,
       });
-
-      // Per-player side effects (suspensions, fatigue/morale, injuries) ONLY
-      // for the user's division — distant divisions have no per-player rosters.
-      if (isUserDivision) {
-        await applySuspensions(tx, {
-          playthroughId,
-          week,
-          homeClubId: fx.homeClubId,
-          awayClubId: fx.awayClubId,
-          events: result.events,
-        });
-        await applyMatchEffects(tx, {
-          seed: `${seed}:fx-effects`,
-          homeClubId: fx.homeClubId,
-          awayClubId: fx.awayClubId,
-          homeStarterIds: result.homeStarterIds,
-          awayStarterIds: result.awayStarterIds,
-          winner: result.winner,
-        });
-        await applyInjuries(tx, {
-          seed: `${seed}:fx-injuries`,
-          week,
-          events: result.events,
-        });
-      }
 
       results.push({
         fixtureId: fx.id,
@@ -441,6 +404,137 @@ export async function runMatchDay(args: {
     }
 
     return { week, played: results.length, results };
+  });
+}
+
+/**
+ * Persist one fixture's result: write scores + matchOutcomeData, update
+ * standings, and (user-division only) apply per-player side effects
+ * (suspensions, fatigue/morale, injuries). Shared by the weekly one-shot loop
+ * AND the user's on-demand path (Phase 2A — behaviour preserved). Pablo
+ * 2026-05-30.
+ */
+async function persistFixtureResult(
+  tx: Tx,
+  args: {
+    fixtureId: string;
+    seasonId: string;
+    homeClubId: string;
+    awayClubId: string;
+    seed: string;
+    playthroughId: string;
+    week: number;
+    isUserDivision: boolean;
+    result: QuickMatchResult;
+    playedAt: Date;
+  },
+): Promise<void> {
+  const { fixtureId, seasonId, homeClubId, awayClubId, seed, playthroughId, week, isUserDivision, result, playedAt } = args;
+
+  await tx
+    .update(fixtures)
+    .set({
+      status: 'played',
+      homeScore: result.homeScore,
+      awayScore: result.awayScore,
+      matchOutcomeData: {
+        winner: result.winner,
+        homeStrength: result.homeStrength,
+        awayStrength: result.awayStrength,
+        events: result.events,
+      },
+      playedAt,
+    })
+    .where(eq(fixtures.id, fixtureId));
+
+  await applyToStandings(tx, {
+    seasonId,
+    homeClubId,
+    awayClubId,
+    homeScore: result.homeScore,
+    awayScore: result.awayScore,
+    winner: result.winner,
+  });
+
+  // Per-player side effects (suspensions, fatigue/morale, injuries) ONLY for the
+  // user's division — distant divisions have no per-player rosters.
+  if (isUserDivision) {
+    await applySuspensions(tx, { playthroughId, week, homeClubId, awayClubId, events: result.events });
+    await applyMatchEffects(tx, {
+      seed: `${seed}:fx-effects`,
+      homeClubId,
+      awayClubId,
+      homeStarterIds: result.homeStarterIds,
+      awayStarterIds: result.awayStarterIds,
+      winner: result.winner,
+    });
+    await applyInjuries(tx, { seed: `${seed}:fx-injuries`, week, events: result.events });
+  }
+}
+
+/**
+ * Play ONE scheduled fixture on demand (the user's match, lazy one-shot) and
+ * persist it exactly like the weekly loop. Used by the /match "Saltar al
+ * resultado" path and as the abandon/timeout fallback (Phase 2). Returns the
+ * result, or null if the fixture isn't scheduled / not found.
+ */
+export async function playSingleFixture(args: {
+  playthroughId: string;
+  fixtureId: string;
+}): Promise<{ homeScore: number; awayScore: number; winner: QuickMatchResult['winner'] } | null> {
+  const { playthroughId, fixtureId } = args;
+  return db.transaction(async (tx) => {
+    const [fx] = await tx
+      .select({
+        id: fixtures.id,
+        week: fixtures.week,
+        status: fixtures.status,
+        seasonId: fixtures.seasonId,
+        homeClubId: fixtures.homeClubId,
+        awayClubId: fixtures.awayClubId,
+        homeTier: sql<number>`(SELECT tier FROM clubs WHERE id = ${fixtures.homeClubId})`,
+        homeGroup: sql<number>`(SELECT group_index FROM clubs WHERE id = ${fixtures.homeClubId})`,
+        homeStrength: sql<number>`(SELECT strength_rating FROM clubs WHERE id = ${fixtures.homeClubId})`,
+        awayStrength: sql<number>`(SELECT strength_rating FROM clubs WHERE id = ${fixtures.awayClubId})`,
+      })
+      .from(fixtures)
+      .where(eq(fixtures.id, fixtureId))
+      .limit(1);
+    if (!fx || fx.status !== 'scheduled') return null;
+
+    const [userPt] = await tx
+      .select({ tier: clubs.tier, groupIndex: clubs.groupIndex })
+      .from(playthroughs)
+      .innerJoin(clubs, eq(clubs.id, playthroughs.clubId))
+      .where(eq(playthroughs.id, playthroughId))
+      .limit(1);
+    const isUserDivision = fx.homeTier === (userPt?.tier ?? 5) && fx.homeGroup === (userPt?.groupIndex ?? 0);
+    const seed = `${playthroughId}:${fx.id}`;
+    const result = isUserDivision
+      ? await simulateFixture(tx, {
+          fixtureId: fx.id,
+          homeClubId: fx.homeClubId,
+          awayClubId: fx.awayClubId,
+          seed,
+          playthroughId,
+          currentWeek: fx.week,
+        })
+      : simulateStrengthBased(fx.homeStrength ?? 50, fx.awayStrength ?? 50, seed);
+
+    await persistFixtureResult(tx, {
+      fixtureId: fx.id,
+      seasonId: fx.seasonId,
+      homeClubId: fx.homeClubId,
+      awayClubId: fx.awayClubId,
+      seed,
+      playthroughId,
+      week: fx.week,
+      isUserDivision,
+      result,
+      playedAt: new Date(),
+    });
+
+    return { homeScore: result.homeScore, awayScore: result.awayScore, winner: result.winner };
   });
 }
 
