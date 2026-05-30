@@ -7,7 +7,7 @@
 -->
 <script lang="ts">
   import type { PageData } from './$types';
-  import { enhance } from '$app/forms';
+  import { enhance, applyAction } from '$app/forms';
   import { page } from '$app/stores';
   import { generateHeadlines, weekToDate } from '@smt/shared';
   import AdvanceTransition from '$lib/components/advance-transition.svelte';
@@ -52,17 +52,38 @@
     if (advanceSubmitting) return;
     advanceSubmitting = true;
     advanceFormEl?.requestSubmit();
-    showTransition = false;
+    // NOTE: do NOT close the modal here. It stays up as a cover until the
+    // navigation lands (see handleAdvanceEnhance), so the user never sees the
+    // stale pre-advance dashboard flash (Pablo 2026-05-30 "día anterior").
   }
   function onTransitionMatchChoice(mode: 'autoplay' | 'skip' | 'dashboard') {
     if (advanceSubmitting) return;
     advanceSubmitting = true;
     if (redirectModeInput) redirectModeInput.value = mode;
     advanceFormEl?.requestSubmit();
-    showTransition = false;
+    // Modal stays open as a cover until navigation lands.
   }
   function onTransitionCancel() {
     showTransition = false;
+  }
+
+  /**
+   * Keep the transition modal covering the screen during the advance request
+   * AND through the redirect navigation, so the stale (pre-advance) dashboard
+   * never flashes underneath. Only close it on failure so the user isn't stuck.
+   * On success the redirect navigates: to /match (modal unmounts) or to
+   * /dashboard?advanced=1 (the justAdvanced effect closes the modal).
+   */
+  function handleAdvanceEnhance() {
+    return async ({ result }: { result: { type: string } }) => {
+      if (result.type === 'redirect') {
+        await applyAction(result as Parameters<typeof applyAction>[0]);
+      } else {
+        showTransition = false;
+        advanceSubmitting = false;
+        await applyAction(result as Parameters<typeof applyAction>[0]);
+      }
+    };
   }
 
   // Reset submitting flag once new data lands (post-advance refresh).
@@ -351,7 +372,7 @@
             method="POST"
             action="/dashboard?/advance"
             class="contents"
-            use:enhance
+            use:enhance={handleAdvanceEnhance}
           >
             <input
               type="hidden"

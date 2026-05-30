@@ -515,14 +515,11 @@
               ⏸ Pausar
             </button>
             {#if matchPendingThisAdvance && onMatchChoice}
-              <!-- Pablo 2026-05-30: this lands on the dashboard (no auto-jump to
-                   the live match). The dashboard then shows an "Ir a partido"
-                   card so the user enters the match when THEY choose. -->
-              <button
-                class="btn btn-primary btn-sm"
-                type="button"
-                onclick={() => onMatchChoice('dashboard')}
-              >
+              <!-- Pablo 2026-05-30: fast-forward to the END-OF-WEEK panel (no
+                   immediate commit / no auto-jump). That panel asks "¿Cómo
+                   quieres vivirlo?" — Vivir / Saltar / Volver al dashboard — so
+                   the user explicitly chooses how to handle the match. -->
+              <button class="btn btn-primary btn-sm" type="button" onclick={handleFastForward}>
                 ⚽ Avanzar a día de partido
               </button>
             {:else}
@@ -535,14 +532,11 @@
               ▶ Reanudar
             </button>
             {#if matchPendingThisAdvance && onMatchChoice}
-              <!-- Pablo 2026-05-30: this lands on the dashboard (no auto-jump to
-                   the live match). The dashboard then shows an "Ir a partido"
-                   card so the user enters the match when THEY choose. -->
-              <button
-                class="btn btn-primary btn-sm"
-                type="button"
-                onclick={() => onMatchChoice('dashboard')}
-              >
+              <!-- Pablo 2026-05-30: fast-forward to the END-OF-WEEK panel (no
+                   immediate commit / no auto-jump). That panel asks "¿Cómo
+                   quieres vivirlo?" — Vivir / Saltar / Volver al dashboard — so
+                   the user explicitly chooses how to handle the match. -->
+              <button class="btn btn-primary btn-sm" type="button" onclick={handleFastForward}>
                 ⚽ Avanzar a día de partido
               </button>
             {:else}
