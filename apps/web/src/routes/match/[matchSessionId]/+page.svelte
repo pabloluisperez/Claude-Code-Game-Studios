@@ -15,6 +15,7 @@
   import { flip } from 'svelte/animate';
   import { page } from '$app/stores';
   import { joinMatchRoom, disconnectMatchSocket } from '$lib/sockets';
+  import { matchLock } from '$lib/stores/match-lock';
   import { generateMatchRecap } from '@smt/shared';
 
   let { data }: { data: PageData } = $props();
@@ -40,6 +41,8 @@
     team: 'home' | 'away';
     playerName?: string;
     playerId?: string;
+    /** Set when a goal was overturned by VAR (Pablo 2026-05-30). */
+    disallowed?: boolean;
   }
 
   const persistedEvents = $derived.by<FeedEvent[]>(() => {
@@ -325,27 +328,33 @@
         const ev = queue[idx]!;
         liveEvents = [...liveEvents, ev];
         if (ev.type === 'goal') {
-          // BUG-PT-4 task 13-5: VAR check on ~8% of goals.
+          // BUG-PT-4 task 13-5: VAR check on ~18% of goals.
           const varOutcome = rollVar(ev.minute);
           if (varOutcome !== 'none') {
-            // Show "VAR checking..." overlay, then confirm/disallow.
+            // Show "VAR checking..." overlay, then confirm/disallow. The popup
+            // lingers longer (Pablo 2026-05-30) so the review is readable.
             varOverlay = { phase: 'checking', team: ev.team, minute: ev.minute };
             // Provisionally add the goal to the score so the user sees it
             // before VAR reviews. If overturned, we revert later.
             if (ev.team === 'home') homeLive += 1;
             else awayLive += 1;
             const goalTeam = ev.team;
+            const goalIdx = liveEvents.length - 1; // this goal's feed index
             setTimeout(() => {
               varOverlay = { phase: varOutcome, team: goalTeam, minute: ev.minute };
               if (varOutcome === 'overturned') {
                 if (goalTeam === 'home') homeLive -= 1;
                 else awayLive -= 1;
+                // Annotate the feed event so the goal shows as disallowed (#4).
+                liveEvents = liveEvents.map((le, i) =>
+                  i === goalIdx ? { ...le, disallowed: true } : le,
+                );
               } else {
                 triggerConfetti(goalTeam);
               }
-              // Clear overlay after the outcome card is shown briefly.
-              setTimeout(() => { varOverlay = null; }, 1500);
-            }, 2000);
+              // Clear overlay after the outcome card is shown (longer dwell).
+              setTimeout(() => { varOverlay = null; }, 2500);
+            }, 3500);
           } else {
             if (ev.team === 'home') homeLive += 1;
             else awayLive += 1;
@@ -430,7 +439,15 @@
     }
   });
 
+  // Lock the sidebar + topbar nav while a live replay is running (Pablo
+  // 2026-05-30): the user must finish it or use the in-content "Saltar al final"
+  // / "Volver al dashboard" controls. Released on whistle / skip / unmount.
+  $effect(() => {
+    matchLock.set(isReplaying && !finalWhistle);
+  });
+
   onDestroy(() => {
+    matchLock.set(false);
     stopReplay();
     disconnectMatchSocket();
   });
@@ -711,9 +728,16 @@
                           {isHome ? '' : 'text-right'}">
                 {e.minute}'
               </div>
-              <span class="badge {eventBadge(e.type)} flex-shrink-0">{eventLabel(e.type)}</span>
+              <span class="badge {e.disallowed ? 'badge-error' : eventBadge(e.type)} flex-shrink-0">
+                {e.disallowed ? '🚩 VAR' : eventLabel(e.type)}
+              </span>
               <div class="flex-1 text-sm min-w-0">
-                <span class="opacity-90">{commentary(e.type, e.minute, e.playerName)}</span>
+                <span class="opacity-90 {e.disallowed ? 'line-through opacity-50' : ''}">
+                  {commentary(e.type, e.minute, e.playerName)}
+                </span>
+                {#if e.disallowed}
+                  <span class="text-error font-semibold"> · ❌ Gol anulado por el VAR</span>
+                {/if}
               </div>
               <!-- Spacer column on opposite side so events visually stick to their half -->
               <div class="flex-1"></div>

@@ -515,10 +515,13 @@
               ⏸ Pausar
             </button>
             {#if matchPendingThisAdvance && onMatchChoice}
+              <!-- Pablo 2026-05-30: this lands on the dashboard (no auto-jump to
+                   the live match). The dashboard then shows an "Ir a partido"
+                   card so the user enters the match when THEY choose. -->
               <button
                 class="btn btn-primary btn-sm"
                 type="button"
-                onclick={() => onMatchChoice('autoplay')}
+                onclick={() => onMatchChoice('dashboard')}
               >
                 ⚽ Avanzar a día de partido
               </button>
@@ -532,10 +535,13 @@
               ▶ Reanudar
             </button>
             {#if matchPendingThisAdvance && onMatchChoice}
+              <!-- Pablo 2026-05-30: this lands on the dashboard (no auto-jump to
+                   the live match). The dashboard then shows an "Ir a partido"
+                   card so the user enters the match when THEY choose. -->
               <button
                 class="btn btn-primary btn-sm"
                 type="button"
-                onclick={() => onMatchChoice('autoplay')}
+                onclick={() => onMatchChoice('dashboard')}
               >
                 ⚽ Avanzar a día de partido
               </button>

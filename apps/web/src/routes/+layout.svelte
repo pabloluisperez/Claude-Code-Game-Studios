@@ -11,10 +11,13 @@
   import type { LayoutData } from './$types';
   import Sidebar from '$lib/components/sidebar.svelte';
   import Topbar from '$lib/components/topbar.svelte';
+  import { matchLock } from '$lib/stores/match-lock';
 
   let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props();
 
   let sidebarOpen = $state(false);
+  // Nav is locked while a live match replay is running (Pablo 2026-05-30).
+  const navLocked = $derived($matchLock);
 
   // Hide chrome on login/signup/landing
   const showChrome = $derived(
@@ -42,6 +45,11 @@
          Visualmente oculto hasta recibir focus; con Tab desde el inicio
          de la página se ve y permite saltar la navegación. -->
     <a href="#main-content" class="skip-link">Saltar al contenido</a>
+    <!-- Pablo 2026-05-30: while a live match runs, lock the topbar nav so the
+         user can't wander off mid-match (the match page's own "Saltar al final"
+         / "Volver al dashboard" controls stay usable). `inert` disables all
+         interaction + removes it from the a11y tree. -->
+    <div inert={navLocked} class={navLocked ? 'opacity-40 transition-opacity' : 'transition-opacity'}>
     <Topbar
       user={data.user}
       week={data.activePlaythrough?.weekInSeason ?? 0}
@@ -55,8 +63,10 @@
       matchday={data.activePlaythrough?.matchday ?? null}
       seasonNumber={data.activePlaythrough?.seasonNumber ?? 1}
     />
+    </div>
     <div class="flex flex-1">
       {#if showSidebar}
+        <div inert={navLocked} class={navLocked ? 'opacity-40 transition-opacity' : 'transition-opacity'}>
         <Sidebar
           bind:open={sidebarOpen}
           badges={data.badges}
@@ -74,6 +84,7 @@
               }
             : null}
         />
+        </div>
       {/if}
       <!-- Pablo 2026-05-29: la columna principal coge todo el hueco (sin
            max-w-7xl/centrado) y menos padding vertical (menos scroll). -->
