@@ -423,7 +423,7 @@ export async function runMatchDay(args: {
  * AND the user's on-demand path (Phase 2A — behaviour preserved). Pablo
  * 2026-05-30.
  */
-async function persistFixtureResult(
+export async function persistFixtureResult(
   tx: Tx,
   args: {
     fixtureId: string;

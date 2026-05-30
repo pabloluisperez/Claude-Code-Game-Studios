@@ -8,7 +8,7 @@
  * the mapper that bridges the `players` table to it. Pablo 2026-05-30.
  */
 
-import { db, players, clubs, worldSnapshots, fixtures, eq, and, or, desc } from '@smt/db';
+import { db, players, clubs, worldSnapshots, fixtures, eq, desc } from '@smt/db';
 import {
   initMatchSession,
   advanceTick,
@@ -20,7 +20,10 @@ import {
   type PlayerStats,
   type FormationPreset,
   type TeamInstruction,
+  type QuickMatchResult,
 } from '@smt/shared';
+import { persistFixtureResult } from './match-day-runner';
+import { emitUserMatchResultEffects } from './user-match-result';
 
 type DbPlayer = {
   id: string;
@@ -233,4 +236,243 @@ export function driveInteractive(
         : [{ kind: 'no_op' }];
   }
   return { outcome: null, finalSnapshot: snap };
+}
+
+/**
+ * Persist a completed interactive MatchOutcome exactly like a one-shot result:
+ * fixtures + standings + per-player side effects (reusing persistFixtureResult)
+ * + the user-result hooks (press/afición). Idempotent: no-ops if the fixture is
+ * already played. Pablo 2026-05-30 (ADR-033 Phase 5).
+ */
+export async function applyInteractiveOutcome(args: {
+  playthroughId: string;
+  clubId: string;
+  fixtureId: string;
+  outcome: MatchOutcome;
+}): Promise<void> {
+  const { playthroughId, clubId, fixtureId, outcome } = args;
+  const [fx] = await db
+    .select({
+      seasonId: fixtures.seasonId,
+      homeClubId: fixtures.homeClubId,
+      awayClubId: fixtures.awayClubId,
+      week: fixtures.week,
+      status: fixtures.status,
+    })
+    .from(fixtures)
+    .where(eq(fixtures.id, fixtureId))
+    .limit(1);
+  if (!fx || fx.status === 'played') return;
+
+  const result: QuickMatchResult = {
+    homeScore: outcome.homeScore,
+    awayScore: outcome.awayScore,
+    winner: outcome.winner,
+    homeStrength: 50,
+    awayStrength: 50,
+    // Engine MatchEvent[] is structurally compatible (extractSuspensions reads
+    // player_id; the replay UI reads type/minute/team). Cast across the shapes.
+    events: outcome.events as unknown as QuickMatchResult['events'],
+    homeStarterIds: outcome.finalLineupHome.slice(0, 11).map((s) => s.player.id),
+    awayStarterIds: outcome.finalLineupAway.slice(0, 11).map((s) => s.player.id),
+  };
+
+  await db.transaction(async (tx) => {
+    await persistFixtureResult(tx, {
+      fixtureId,
+      seasonId: fx.seasonId,
+      homeClubId: fx.homeClubId,
+      awayClubId: fx.awayClubId,
+      seed: `${playthroughId}:${fixtureId}:interactive`,
+      playthroughId,
+      week: fx.week,
+      isUserDivision: true,
+      result,
+      playedAt: new Date(),
+    });
+  });
+
+  await emitUserMatchResultEffects({ playthroughId, clubId, week: fx.week });
+}
+
+// ── Session persistence (match_sessions) ───────────────────────────────────
+// Web-driven: we store the snapshot between requests so /match can pause at
+// halftime / sub windows and resume with the player's decisions.
+
+import { matchSessions, ne, and } from '@smt/db';
+
+function snapshotColumns(snap: MatchSessionSnapshot) {
+  return {
+    currentTick: snap.currentTick,
+    eventsAccumulated: snap.eventsAccumulated as unknown as object[],
+    currentLineupHome: snap.currentLineupHome as unknown as object[],
+    currentLineupAway: snap.currentLineupAway as unknown as object[],
+    homeMomentum: snap.homeMomentum,
+    substitutionsUsed: snap.substitutionsUsed,
+    awaySubstitutionsUsed: snap.awaySubstitutionsUsed,
+    yellowCardsByPlayerId: snap.yellowCardsByPlayerId as unknown as object,
+    currentFormationHome: snap.currentFormationHome,
+    currentFormationAway: snap.currentFormationAway,
+    activeInstructionHome: snap.activeInstructionHome,
+    activeInstructionAway: snap.activeInstructionAway,
+    prngState: snap.prngState,
+    state: snap.state,
+    timeoutJobId: snap.timeoutJobId,
+    updatedAt: new Date(),
+  };
+}
+
+type SessionRow = typeof matchSessions.$inferSelect;
+
+function rowToSnapshot(row: SessionRow): MatchSessionSnapshot {
+  return {
+    currentTick: row.currentTick,
+    eventsAccumulated: row.eventsAccumulated as MatchSessionSnapshot['eventsAccumulated'],
+    currentLineupHome: row.currentLineupHome as Lineup,
+    currentLineupAway: row.currentLineupAway as Lineup,
+    homeMomentum: row.homeMomentum,
+    substitutionsUsed: row.substitutionsUsed,
+    awaySubstitutionsUsed: row.awaySubstitutionsUsed,
+    yellowCardsByPlayerId: row.yellowCardsByPlayerId as Record<string, number>,
+    currentFormationHome: row.currentFormationHome as FormationPreset,
+    currentFormationAway: row.currentFormationAway as FormationPreset,
+    activeInstructionHome: row.activeInstructionHome as TeamInstruction | null,
+    activeInstructionAway: row.activeInstructionAway as TeamInstruction | null,
+    prngState: row.prngState,
+    state: row.state as MatchSessionSnapshot['state'],
+    timeoutJobId: row.timeoutJobId,
+  };
+}
+
+function rowToInput(row: SessionRow): MatchInput {
+  return {
+    seed: row.seed,
+    homeLineup: row.currentLineupHome as Lineup,
+    awayLineup: row.currentLineupAway as Lineup,
+    homeFormation: row.currentFormationHome as FormationPreset,
+    awayFormation: row.currentFormationAway as FormationPreset,
+    homeInstruction: row.activeInstructionHome as TeamInstruction | null,
+    awayInstruction: row.activeInstructionAway as TeamInstruction | null,
+    preMatchSnapshot: row.preMatchSnapshot as MatchInput['preMatchSnapshot'],
+    playerClubSide: row.playerClubSide as 'home' | 'away',
+    playerClubId: row.playerClubId,
+  };
+}
+
+export interface InteractiveState {
+  sessionId: string;
+  snapshot: MatchSessionSnapshot;
+  pauseType: 'substitution_window' | 'injury_pause' | null;
+  completed: boolean;
+}
+
+/**
+ * Start (or resume) the interactive session for the user's scheduled fixture,
+ * advancing to the first pause/completion. Returns null → caller one-shots.
+ */
+export async function startInteractiveMatch(args: {
+  playthroughId: string;
+  clubId: string;
+  fixtureId: string;
+}): Promise<InteractiveState | null> {
+  const { playthroughId, clubId, fixtureId } = args;
+
+  // Resume an existing non-terminal session for THIS fixture.
+  const [existing] = await db
+    .select()
+    .from(matchSessions)
+    .where(and(eq(matchSessions.fixtureId, fixtureId)))
+    .orderBy(desc(matchSessions.createdAt))
+    .limit(1);
+  if (existing && existing.state !== 'completed' && existing.state !== 'failed' && existing.state !== 'archived') {
+    const snap = rowToSnapshot(existing);
+    return {
+      sessionId: existing.id,
+      snapshot: snap,
+      pauseType: snap.state === 'paused_for_decision' ? 'substitution_window' : null,
+      completed: snap.state === 'completed',
+    };
+  }
+
+  const input = await buildMatchInput({ playthroughId, clubId, fixtureId });
+  if (!input) return null;
+
+  // Drive to the first pause OR completion.
+  let snap = initMatchSession(input);
+  let pauseType: 'substitution_window' | 'injury_pause' | null = null;
+  let outcome: MatchOutcome | null = null;
+  let guard = 0;
+  while (snap.state !== 'completed' && snap.state !== 'failed' && guard++ < 200) {
+    const res = advanceTick(snap, [{ kind: 'no_op' }], input);
+    snap = res.nextSnapshot;
+    if (res.matchOutcome) { outcome = res.matchOutcome; break; }
+    if (res.pauseType) { pauseType = res.pauseType; break; }
+  }
+
+  // Free the unique-index slot: fail any OTHER active session for this player.
+  await db
+    .update(matchSessions)
+    .set({ state: 'failed', updatedAt: new Date() })
+    .where(and(eq(matchSessions.playthroughId, playthroughId), ne(matchSessions.fixtureId, fixtureId), ne(matchSessions.state, 'completed')));
+
+  const [row] = await db
+    .insert(matchSessions)
+    .values({
+      playthroughId,
+      fixtureId,
+      seed: input.seed,
+      playerClubSide: input.playerClubSide,
+      playerClubId: input.playerClubId,
+      preMatchSnapshot: input.preMatchSnapshot as unknown as object,
+      ...snapshotColumns(snap),
+    })
+    .returning({ id: matchSessions.id });
+
+  if (outcome) {
+    await applyInteractiveOutcome({ playthroughId, clubId, fixtureId, outcome });
+    await db.update(matchSessions).set({ state: 'completed', updatedAt: new Date() }).where(eq(matchSessions.id, row!.id));
+  }
+
+  return { sessionId: row!.id, snapshot: snap, pauseType, completed: Boolean(outcome) };
+}
+
+/**
+ * Resume a paused session with the player's decisions, advancing to the next
+ * pause OR completion (then persisting the outcome).
+ */
+export async function advanceInteractiveSession(args: {
+  sessionId: string;
+  playthroughId: string;
+  clubId: string;
+  decisions: readonly MatchDecision[];
+}): Promise<InteractiveState | null> {
+  const { sessionId, playthroughId, clubId, decisions } = args;
+  const [row] = await db.select().from(matchSessions).where(eq(matchSessions.id, sessionId)).limit(1);
+  if (!row) return null;
+  if (row.state === 'completed' || row.state === 'failed') {
+    return { sessionId, snapshot: rowToSnapshot(row), pauseType: null, completed: row.state === 'completed' };
+  }
+
+  const input = rowToInput(row);
+  let snap = rowToSnapshot(row);
+  let pending = decisions.length ? decisions : [{ kind: 'no_op' as const }];
+  let pauseType: 'substitution_window' | 'injury_pause' | null = null;
+  let outcome: MatchOutcome | null = null;
+  let guard = 0;
+  while (snap.state !== 'completed' && snap.state !== 'failed' && guard++ < 200) {
+    const res = advanceTick(snap, pending, input);
+    snap = res.nextSnapshot;
+    pending = [{ kind: 'no_op' }];
+    if (res.matchOutcome) { outcome = res.matchOutcome; break; }
+    if (res.pauseType) { pauseType = res.pauseType; break; }
+  }
+
+  await db.update(matchSessions).set(snapshotColumns(snap)).where(eq(matchSessions.id, sessionId));
+
+  if (outcome) {
+    await applyInteractiveOutcome({ playthroughId, clubId, fixtureId: row.fixtureId, outcome });
+    await db.update(matchSessions).set({ state: 'completed', updatedAt: new Date() }).where(eq(matchSessions.id, sessionId));
+  }
+
+  return { sessionId, snapshot: snap, pauseType, completed: Boolean(outcome) };
 }
