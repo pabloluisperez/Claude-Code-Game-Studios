@@ -25,19 +25,27 @@
   type Club = NonNullable<Extract<PageData, { hasPlaythrough: true }>['club']>;
   function field<K extends keyof Club>(c: Club, k: K): Club[K] { return c[k]; }
 
-  // Local slider state per kind.
+  // Local slider state. Initialized from the club's SAVED prices on load (the
+  // old `||=` effect never overrode the non-zero defaults, so sliders ignored
+  // saved values; concessions weren't initialized at all). Pablo 2026-05-30.
+  const club0 = data.hasPlaythrough ? data.club : null;
   let mfgQty: Record<string, number> = $state({ scarf: 500, cap: 500, shirt: 200 });
-  let salePrice: Record<string, number> = $state({ scarf: 15, cap: 12, shirt: 40 });
-  let concPrice: Record<string, number> = $state({ food: 4, soda: 3, beer: 5, water: 2 });
-
-  // Initialize sale + concession prices from club data once.
-  $effect(() => {
-    if (data.hasPlaythrough && data.club) {
-      salePrice.scarf ||= data.club.merchScarfPrice;
-      salePrice.cap ||= data.club.merchCapPrice;
-      salePrice.shirt ||= data.club.merchShirtPrice;
-    }
+  let salePrice: Record<string, number> = $state({
+    scarf: club0?.merchScarfPrice ?? 15,
+    cap: club0?.merchCapPrice ?? 12,
+    shirt: club0?.merchShirtPrice ?? 40,
   });
+  let concPrice: Record<string, number> = $state({
+    food: club0?.concessionFoodPrice ?? 4,
+    soda: club0?.concessionSodaPrice ?? 3,
+    beer: club0?.concessionBeerPrice ?? 5,
+    water: club0?.concessionWaterPrice ?? 2,
+  });
+
+  /** Auto-save a price slider on release (Pablo 2026-05-30: no "Fijar" button). */
+  function autoSave(e: Event) {
+    (e.currentTarget as HTMLInputElement).form?.requestSubmit();
+  }
 
   function merchData(kind: string) {
     if (!data.hasPlaythrough || !data.club) return null;
@@ -124,19 +132,17 @@
                 <div class="text-xs uppercase opacity-60 mb-1 font-semibold">🏷 Precio de venta</div>
                 <form method="POST" action="?/setSalePrice" use:enhance>
                   <input type="hidden" name="kind" value={m.kind} />
-                  <input type="hidden" name="price" value={salePrice[m.kind]} />
                   <div class="flex items-baseline justify-between text-sm mb-1">
                     <span class="font-mono font-bold text-lg">{salePrice[m.kind]} €</span>
                     <span class="text-xs {(salePrice[m.kind] ?? 0) - md.unitCost > 0 ? 'text-success' : 'text-error'}">
                       margen {(salePrice[m.kind] ?? 0) - md.unitCost > 0 ? '+' : ''}{(salePrice[m.kind] ?? 0) - md.unitCost} €/ud
                     </span>
                   </div>
-                  <input type="range" class="range range-success range-sm" min="1" max="120" step="1" bind:value={salePrice[m.kind]} aria-label="Precio de venta" />
+                  <input type="range" name="price" class="range range-success range-sm" min="1" max="120" step="1" bind:value={salePrice[m.kind]} onchange={autoSave} aria-label="Precio de venta" />
                   <div class="flex justify-between text-xs opacity-50 mt-0.5">
                     <span>1€</span><span>coste fab {md.unitCost}€</span><span>120€</span>
                   </div>
-                  <p class="text-xs opacity-60 mt-2">Precio alto = más margen pero menos ventas.</p>
-                  <button type="submit" class="btn btn-sm btn-success w-full mt-2">Fijar precio</button>
+                  <p class="text-xs opacity-60 mt-2">Se guarda solo al soltar el slider. Precio alto = más margen pero menos ventas.</p>
                 </form>
               </div>
             </div>
@@ -157,13 +163,11 @@
           {#each CONCESSIONS as c (c.item)}
             <form method="POST" action="?/setConcessionPrice" use:enhance class="bg-base-200 rounded p-3">
               <input type="hidden" name="item" value={c.item} />
-              <input type="hidden" name="price" value={concPrice[c.item]} />
               <div class="flex items-baseline justify-between mb-1">
                 <span class="text-sm font-semibold">{c.icon} {c.label}</span>
                 <span class="font-mono font-bold">{concPrice[c.item]} €</span>
               </div>
-              <input type="range" class="range range-warning range-sm" min="1" max="15" step="1" bind:value={concPrice[c.item]} aria-label="Precio {c.label}" />
-              <button type="submit" class="btn btn-xs btn-warning w-full mt-2">Fijar</button>
+              <input type="range" name="price" class="range range-warning range-sm" min="1" max="15" step="1" bind:value={concPrice[c.item]} onchange={autoSave} aria-label="Precio {c.label}" />
             </form>
           {/each}
         </div>
