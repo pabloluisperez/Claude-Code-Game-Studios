@@ -88,8 +88,8 @@ export const financialWarningTemplates: readonly NarrativeTemplate[] = [
   {
     requiredVars: ['balanceEurK'],
     variants: [
-      '{vocab:noun_finance} avisa: el balance no acompaña ({balanceEurK} k€). Situación {vocab:adj_negative}.',
-      'Atención: las arcas se resienten ({balanceEurK} k€ esta semana). {vocab:noun_finance} pide revisar plantilla y gastos.',
+      '{vocab:noun_finance} avisa: el balance no acompaña ({balanceEurK} k€ en caja). Situación {vocab:adj_negative}.',
+      'Atención: las arcas se resienten (balance de {balanceEurK} k€). {vocab:noun_finance} pide revisar plantilla y gastos.',
       '{vocab:noun_finance} alerta: la inercia nos lleva al rojo. Panorama {vocab:adj_negative} si no recortamos.',
     ],
   },

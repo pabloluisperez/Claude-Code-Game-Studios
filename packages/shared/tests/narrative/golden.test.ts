@@ -84,7 +84,7 @@ const CASES: Case[] = [
     name: 'financialWarning',
     groups: financialWarningTemplates,
     ctx: { seed: 13, variables: { balanceEurK: -40 } },
-    expected: 'Atención: las arcas se resienten (-40 k€ esta semana). la gerencia pide revisar plantilla y gastos.',
+    expected: 'Atención: las arcas se resienten (balance de -40 k€). la gerencia pide revisar plantilla y gastos.',
   },
   {
     name: 'rumor',
