@@ -92,6 +92,26 @@ Because the user's fixture is disjoint from the AI fixtures (runMatchDay skipped
 ### D5. `matchOutcomeData` shape is the **superset** (back-compatible).
 `{ winner, events, homeStrength?, awayStrength?, playerRatings?, worldStateDeltas? }`. The replay UI only needs `winner` + `events` (unchanged). One-shot keeps writing the subset; the session writes the superset. No migration (jsonb).
 
+### D6. The rest of the matchday must still feel **simultaneous and live** (Pablo 2026-05-30).
+The whole division plays "at the same time": the AI fixtures are decided one-shot
+at advance (results final in the DB), but `/match` must keep **revealing their
+results minute-by-minute, synced to the user's live match clock** — the existing
+"Resto de la jornada" + "Clasificación EN VIVO" panels (`otherFixturesLive`,
+advanced off `liveMinute` today). This behaviour is **preserved and re-pointed**
+at the interactive session:
+- The other fixtures' per-minute reveal is driven by the **session's current
+  tick/minute** (streamed via `match:event` / socket), instead of the replay
+  clock. So as your match ticks 1'→90', the other scorelines pop in at their
+  real minutes and the live table re-sorts.
+- When the match **pauses** (halftime 45 / sub windows 60/75), the rest of the
+  jornada **pauses with you** (frozen at that minute) — the world waits while you
+  decide. On resume, everyone continues. At `match:complete`, all show final.
+- "Saltar al resultado" jumps every fixture (yours + the division) straight to
+  final, exactly as today.
+
+This keeps the headline "vivo toda la jornada a la vez" feel intact while only
+the user's match becomes interactive.
+
 ### Architecture
 
 ```
@@ -152,7 +172,7 @@ Because the user's fixture is disjoint from the AI fixtures (runMatchDay skipped
 
 1. **Phase 1 (this ADR)** — gap map + decisions. ✅
 2. **Phase 2** — `runMatchDay` skips the user's club fixture; dashboard shows "▶ Jugar partido / ⏭ Saltar"; `/match` creates a session on a scheduled fixture (or one-shot on "Saltar"). Verify: advancing leaves the user fixture scheduled; AI results + standings unchanged; "Saltar" reproduces today's behaviour via `applyOutcome`.
-3. **Phase 3** — `/match` drives the session via socket: live ticks + **pause at 45** with a "Continuar" button (no decisions yet). Verify live: the match pauses at halftime and resumes.
+3. **Phase 3** — `/match` drives the session via socket: live ticks + **pause at 45** with a "Continuar" button (no decisions yet). Re-point the "Resto de la jornada" + "Clasificación EN VIVO" reveal off the session minute so the whole division still updates live in sync (D6); pause them with the user's match. Verify live: your match + the other scorelines advance together, pause at halftime, resume.
 4. **Phase 4** — decision panel at pauses (subs + formation + instruction) → `/decision` → affects the 2nd half. Verify: a sub/instruction changes events/result deterministically.
 5. **Phase 5** — move the user-result hooks (fan_momentum, press crónica, mayor) into `applyOutcome`; full persistence parity + regression pass (shared/api/web/e2e). Verify: no double/È missing messages; standings + worldState correct.
 
