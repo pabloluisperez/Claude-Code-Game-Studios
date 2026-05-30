@@ -26,6 +26,8 @@ import {
   alias,
 } from '@smt/db';
 import { computeEffectiveTicketPrice } from '@smt/shared/sim/economy/revenue';
+import { playSingleFixture } from '$lib/server/match-day-runner';
+import { emitUserMatchResultEffects } from '$lib/server/user-match-result';
 
 export const load: PageServerLoad = async ({ params, parent }) => {
   const { user, activePlaythrough } = await parent();
@@ -34,30 +36,52 @@ export const load: PageServerLoad = async ({ params, parent }) => {
   const homeClubs = alias(clubs, 'home_clubs');
   const awayClubs = alias(clubs, 'away_clubs');
 
-  const [fx] = await db
-    .select({
-      id: fixtures.id,
-      week: fixtures.week,
-      matchday: fixtures.matchday,
-      seasonId: fixtures.seasonId,
-      divisionId: fixtures.divisionId,
-      status: fixtures.status,
-      homeClubId: fixtures.homeClubId,
-      awayClubId: fixtures.awayClubId,
-      homeName: homeClubs.name,
-      awayName: awayClubs.name,
-      homeScore: fixtures.homeScore,
-      awayScore: fixtures.awayScore,
-      matchOutcomeData: fixtures.matchOutcomeData,
-      playedAt: fixtures.playedAt,
-    })
-    .from(fixtures)
-    .innerJoin(homeClubs, eq(homeClubs.id, fixtures.homeClubId))
-    .innerJoin(awayClubs, eq(awayClubs.id, fixtures.awayClubId))
-    .where(eq(fixtures.id, params.matchSessionId))
-    .limit(1);
+  const selectFixture = async () =>
+    (
+      await db
+        .select({
+          id: fixtures.id,
+          week: fixtures.week,
+          matchday: fixtures.matchday,
+          seasonId: fixtures.seasonId,
+          divisionId: fixtures.divisionId,
+          status: fixtures.status,
+          homeClubId: fixtures.homeClubId,
+          awayClubId: fixtures.awayClubId,
+          homeName: homeClubs.name,
+          awayName: awayClubs.name,
+          homeScore: fixtures.homeScore,
+          awayScore: fixtures.awayScore,
+          matchOutcomeData: fixtures.matchOutcomeData,
+          playedAt: fixtures.playedAt,
+        })
+        .from(fixtures)
+        .innerJoin(homeClubs, eq(homeClubs.id, fixtures.homeClubId))
+        .innerJoin(awayClubs, eq(awayClubs.id, fixtures.awayClubId))
+        .where(eq(fixtures.id, params.matchSessionId))
+        .limit(1)
+    )[0];
 
+  let fx = await selectFixture();
   if (!fx) throw error(404, 'Match not found');
+
+  // Phase 2C (ADR-033): the user's own fixture is left scheduled by runMatchDay
+  // so it's played on demand HERE. For now this is a one-shot simulation (the
+  // interactive tick-by-tick session lands here in Phase 3) + the result hooks,
+  // after which the page shows the result/replay exactly as before.
+  if (
+    fx.status === 'scheduled' &&
+    activePlaythrough &&
+    (fx.homeClubId === activePlaythrough.clubId || fx.awayClubId === activePlaythrough.clubId)
+  ) {
+    await playSingleFixture({ playthroughId: activePlaythrough.id, fixtureId: fx.id });
+    await emitUserMatchResultEffects({
+      playthroughId: activePlaythrough.id,
+      clubId: activePlaythrough.clubId,
+      week: fx.week,
+    });
+    fx = (await selectFixture()) ?? fx;
+  }
 
   // Other fixtures from the same matchday (everyone else playing today).
   const otherFixtures = await db

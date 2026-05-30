@@ -43,6 +43,15 @@
     return f ?? null;
   });
 
+  // The user's fixture for the CURRENT week, left scheduled by runMatchDay so it
+  // can be played on demand (Phase 2C, ADR-033). Drives the "▶ Ir al partido"
+  // CTA. Hidden once it's been played (then the result card below takes over).
+  const userMatchThisWeek = $derived.by(() => {
+    if (!data.hasPlaythrough) return null;
+    if (data.lastResult && data.lastResult.week === data.week) return null; // already played
+    return data.nextFixtures.find((nf) => nf.week === data.week) ?? null;
+  });
+
   function handleAdvanceClick(e: Event) {
     e.preventDefault();
     if (advanceSubmitting) return;
@@ -392,6 +401,25 @@
         </div>
       </div>
     </section>
+
+    <!-- Phase 2C (ADR-033): your fixture this matchday is waiting to be played
+         (left scheduled by runMatchDay). Prominent CTA into /match. -->
+    {#if userMatchThisWeek}
+      <section class="card bg-primary/10 border-2 border-primary shadow-lg">
+        <div class="card-body p-4 flex-row items-center justify-between flex-wrap gap-3">
+          <div>
+            <div class="text-xs uppercase opacity-70 tracking-wider">⚽ Tu partido de la jornada</div>
+            <h3 class="font-bold text-xl mt-1">
+              {userMatchThisWeek.isHome ? '🏠' : '✈️'} vs {userMatchThisWeek.opponentName}
+              <span class="opacity-50 text-sm font-normal ml-2">Jor {userMatchThisWeek.matchday}</span>
+            </h3>
+          </div>
+          <a href="/match/{userMatchThisWeek.id}?return=dashboard" class="btn btn-primary btn-lg">
+            ▶ Ir al partido
+          </a>
+        </div>
+      </section>
+    {/if}
 
     <!-- Sprint 12 walkthrough fix (Pablo Part B): STOP-event halt banner.
          When the orchestrator halts mid-week, the form action redirects to

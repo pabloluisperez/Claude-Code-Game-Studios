@@ -20,6 +20,8 @@ import {
   staff,
   staffMessages,
   worldSnapshots,
+  seasons,
+  leagues,
   eq,
   and,
   or,
@@ -30,9 +32,18 @@ export async function emitUserMatchResultEffects(args: {
   playthroughId: string;
   clubId: string;
   week: number;
-  season: number;
 }): Promise<void> {
-  const { playthroughId, clubId, week, season } = args;
+  const { playthroughId, clubId, week } = args;
+
+  // Active season number (for staffMessages.season). Loosely used downstream.
+  const [seasonRow] = await db
+    .select({ n: seasons.seasonNumber })
+    .from(seasons)
+    .innerJoin(leagues, eq(leagues.id, seasons.leagueId))
+    .where(and(eq(leagues.playthroughId, playthroughId), eq(seasons.status, 'active')))
+    .orderBy(desc(seasons.seasonNumber))
+    .limit(1);
+  const season = seasonRow?.n ?? 1;
 
   const [thisFixture] = await db
     .select({

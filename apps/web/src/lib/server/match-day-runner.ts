@@ -340,17 +340,21 @@ export async function runMatchDay(args: {
   const { playthroughId, week } = args;
 
   return db.transaction(async (tx) => {
-    // Find the user's club to identify which fixtures need full-player sim.
+    // Find the user's club to identify which fixtures need full-player sim,
+    // and to SKIP the user's own fixture (Phase 2C, ADR-033): the user plays it
+    // on demand at /match. It's resolved one-shot by the advance action's
+    // "resolve pending" guard if they advance without playing.
     const [userPt] = await tx
-      .select({ tier: clubs.tier, groupIndex: clubs.groupIndex })
+      .select({ tier: clubs.tier, groupIndex: clubs.groupIndex, clubId: playthroughs.clubId })
       .from(playthroughs)
       .innerJoin(clubs, eq(clubs.id, playthroughs.clubId))
       .where(eq(playthroughs.id, playthroughId))
       .limit(1);
     const userTier = userPt?.tier ?? 5;
     const userGroup = userPt?.groupIndex ?? 0;
+    const userClubId = userPt?.clubId ?? null;
 
-    const scheduledRows = await tx
+    const scheduledRowsAll = await tx
       .select({
         id: fixtures.id,
         seasonId: fixtures.seasonId,
@@ -363,6 +367,11 @@ export async function runMatchDay(args: {
       })
       .from(fixtures)
       .where(and(eq(fixtures.week, week), eq(fixtures.status, 'scheduled')));
+
+    // Skip the user's own fixture — played interactively on demand at /match.
+    const scheduledRows = scheduledRowsAll.filter(
+      (fx) => !userClubId || (fx.homeClubId !== userClubId && fx.awayClubId !== userClubId),
+    );
 
     const results: MatchDayResult['results'] = [];
     const playedAt = new Date();

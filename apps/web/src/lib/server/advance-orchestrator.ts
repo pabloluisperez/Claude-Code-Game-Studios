@@ -702,7 +702,6 @@ export async function runAdvanceTickFull(
       playthroughId: active.id,
       clubId: active.clubId,
       week: nextWeek,
-      season: tvCurrentSeason,
     });
   } catch {
     // Press/afición are decorative — never block the advance pipeline.

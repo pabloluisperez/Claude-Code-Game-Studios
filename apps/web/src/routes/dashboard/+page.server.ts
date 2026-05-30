@@ -25,6 +25,8 @@ import {
   advanceDays,
   daysUntilNextBoundary,
 } from '$lib/server/advance-orchestrator';
+import { playSingleFixture } from '$lib/server/match-day-runner';
+import { emitUserMatchResultEffects } from '$lib/server/user-match-result';
 import { checkLimit, RATE_LIMITS } from '$lib/server/rate-limit';
 
 export const load: PageServerLoad = async ({ parent, url }) => {
@@ -366,6 +368,33 @@ export const actions: Actions = {
 
     const ctx = await loadAdvanceContext(db, locals.user.id);
     if (!ctx) return fail(400, { error: 'No hay carrera activa.' });
+
+    // Phase 2C (ADR-033): the user's own fixture is left scheduled by
+    // runMatchDay so it can be played interactively at /match. If the player
+    // advances WITHOUT playing it, resolve it one-shot now (skip) so it doesn't
+    // linger, then run the result hooks (press/afición) for it.
+    const [pendingUserFx] = await db
+      .select({ id: fixtures.id })
+      .from(fixtures)
+      .where(
+        and(
+          eq(fixtures.week, ctx.playthrough.currentWeek),
+          eq(fixtures.status, 'scheduled'),
+          or(
+            eq(fixtures.homeClubId, ctx.playthrough.clubId),
+            eq(fixtures.awayClubId, ctx.playthrough.clubId),
+          ),
+        ),
+      )
+      .limit(1);
+    if (pendingUserFx) {
+      await playSingleFixture({ playthroughId: ctx.playthrough.id, fixtureId: pendingUserFx.id });
+      await emitUserMatchResultEffects({
+        playthroughId: ctx.playthrough.id,
+        clubId: ctx.playthrough.clubId,
+        week: ctx.playthrough.currentWeek,
+      });
+    }
 
     // Compute days remaining until the next week boundary. If the player
     // is mid-week (resumed after a STOP event), this is < 7. If they're

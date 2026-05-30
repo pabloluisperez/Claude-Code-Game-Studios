@@ -110,10 +110,12 @@ describe('Sprint 11 task 11-2 — orchestrator extraction', () => {
       // Sprint 12 added the STOP-event banner + mid-week badge + day-precise
       // date wiring. Sprint 26 (2026-05-29) added latest-message-per-staff
       // grouping for the dashboard speech-bubble redesign — legitimate load-side
-      // growth, threshold bumped 400→410. The action-stays-thin guarantee is
+      // growth, threshold bumped 400→410. The 2026-05-30 interactive-match work
+      // (ADR-033 Phase 2C) added the "resolve pending user fixture before
+      // advancing" guard → bumped 410→440. The action-stays-thin guarantee is
       // covered by the runAdvanceTickFull/advanceDays assertion above.
       const lines = dashboardSource.split('\n').length;
-      expect(lines).toBeLessThan(410);
+      expect(lines).toBeLessThan(440);
     });
   });
 });
