@@ -119,8 +119,12 @@
       </div>
     {/if}
     {#if form?.ok && form.hired}
+      {@const hiredRoleLabel =
+        data.hasPlaythrough
+          ? (data.roles.find((r) => r.role === form.hired!.role)?.label ?? form.hired.role)
+          : form.hired.role}
       <div class="alert alert-success">
-        <span>Contratado {experienceLabel(form.hired.tier).toLowerCase()} para {form.hired.role}.</span>
+        <span>Contratado {experienceLabel(form.hired.tier).toLowerCase()} para {hiredRoleLabel}.</span>
       </div>
     {/if}
 

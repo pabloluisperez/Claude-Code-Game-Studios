@@ -562,6 +562,16 @@ async function applySuspensions(
   //    to a player we have in roster + the head_coach staff for the
   //    playthrough.
   if (newSuspensionsForMessages.length > 0) {
+    // Resolve the user's club so we ONLY message about OUR players' sentences
+    // (the roster covers both clubs; without this filter the inbox floods with
+    // a line per opponent sent-off player — Pablo bug 2026-05-30).
+    const [userPt] = await tx
+      .select({ clubId: playthroughs.clubId })
+      .from(playthroughs)
+      .where(eq(playthroughs.id, playthroughId))
+      .limit(1);
+    const userClubId = userPt?.clubId;
+
     const [headCoach] = await tx
       .select({ id: staff.id })
       .from(staff)
@@ -574,10 +584,10 @@ async function applySuspensions(
       )
       .limit(1);
 
-    if (headCoach) {
+    if (headCoach && userClubId) {
       for (const s of newSuspensionsForMessages) {
         const p = playerById.get(s.playerId);
-        if (!p) continue;
+        if (!p || p.clubId !== userClubId) continue; // only our squad
         const reasonLabel =
           s.reason === 'five_yellows'
             ? '5 amarillas acumuladas'
